@@ -14,6 +14,7 @@ import { loadAreaKey, seed } from "../pipeline/crosswalkSeed.js";
 import { resolveWeek } from "../pipeline/resolve.js";
 import type { Env, Vars } from "./env.js";
 import { CONFIG_DEFAULTS, CONFIG_KEYS, loadConfig } from "./config.js";
+import { bumpData, bumpFriends, cached } from "./cache.js";
 import {
   addWard,
   attachArea,
@@ -85,13 +86,17 @@ app.onError((err, c) => {
 app.get("/api/health", (c) => c.json({ ok: true }));
 app.get("/api/me", (c) => c.json({ user: c.get("user") }));
 
-app.get("/api/weeks", async (c) => {
-  const weeks = await weeksAvailable(c.env.DB);
-  return c.json({
-    weeks: weeks.map((w) => ({ weekStart: w, weekLabel: weekLabel(w) })),
-    latest: weeks[weeks.length - 1] ?? null,
-  });
-});
+app.get("/api/weeks", async (c) =>
+  c.json(
+    await cached(c.env, "weeks", "ki", async () => {
+      const weeks = await weeksAvailable(c.env.DB);
+      return {
+        weeks: weeks.map((w) => ({ weekStart: w, weekLabel: weekLabel(w) })),
+        latest: weeks[weeks.length - 1] ?? null,
+      };
+    }),
+  ),
+);
 
 // --- import ---------------------------------------------------------
 app.post("/api/import", async (c) => {
@@ -138,13 +143,15 @@ app.post("/api/import", async (c) => {
     reused: stored.reused,
     warnings: norm.warnings.length,
   });
+  await bumpData(c.env);
   return c.json({ dryRun: false, summary, stored });
 });
 
 // --- views --------------------------------------------------------
 app.get("/api/week/:week", async (c) => {
+  const week = c.req.param("week");
   try {
-    return c.json(await buildWeekView(c.env.DB, c.req.param("week")));
+    return c.json(await cached(c.env, `week:${week}`, "ki", () => buildWeekView(c.env.DB, week)));
   } catch (e) {
     throw new HTTPException(404, { message: String((e as Error).message) });
   }
@@ -152,32 +159,41 @@ app.get("/api/week/:week", async (c) => {
 
 app.get("/api/trends", async (c) => {
   const q = c.req.query();
-  const rows = await buildTrends(c.env.DB, {
-    upTo: q.upTo || undefined,
-    n: q.n ? parseInt(q.n, 10) : undefined,
-    zone: q.zone || null,
-    mlcOnly: q.mlcOnly === "1" || q.mlcOnly === "true",
-  });
+  const key = `trends:${q.upTo ?? ""}:${q.n ?? ""}:${q.zone ?? ""}:${q.mlcOnly ?? ""}`;
+  const rows = await cached(c.env, key, "ki", () =>
+    buildTrends(c.env.DB, {
+      upTo: q.upTo || undefined,
+      n: q.n ? parseInt(q.n, 10) : undefined,
+      zone: q.zone || null,
+      mlcOnly: q.mlcOnly === "1" || q.mlcOnly === "true",
+    }),
+  );
   return c.json({ rows });
 });
 
-app.get("/api/stakes/:week", async (c) =>
-  c.json(await buildStakeView(c.env.DB, c.req.param("week"))),
-);
+app.get("/api/stakes/:week", async (c) => {
+  const week = c.req.param("week");
+  return c.json(await cached(c.env, `stakes:${week}`, "ki", () => buildStakeView(c.env.DB, week)));
+});
 
-app.get("/api/chase/:week", async (c) =>
-  c.json(await buildChase(c.env.DB, c.req.param("week"))),
-);
+app.get("/api/chase/:week", async (c) => {
+  const week = c.req.param("week");
+  return c.json(await cached(c.env, `chase:${week}`, "ki", () => buildChase(c.env.DB, week)));
+});
 
 // --- crosswalk admin -------------------------------------------
-app.get("/api/crosswalk", async (c) => {
-  const [canonical, crosswalk, areaWard] = await Promise.all([
-    getCanonicalRows(c.env.DB),
-    getCrosswalkRows(c.env.DB),
-    getAreaWardRows(c.env.DB),
-  ]);
-  return c.json({ canonical, crosswalk, areaWard });
-});
+app.get("/api/crosswalk", async (c) =>
+  c.json(
+    await cached(c.env, "crosswalk", "ki", async () => {
+      const [canonical, crosswalk, areaWard] = await Promise.all([
+        getCanonicalRows(c.env.DB),
+        getCrosswalkRows(c.env.DB),
+        getAreaWardRows(c.env.DB),
+      ]);
+      return { canonical, crosswalk, areaWard };
+    }),
+  ),
+);
 
 app.post("/api/crosswalk/attach", async (c) => {
   const b = await c.req.json<{
@@ -188,6 +204,7 @@ app.post("/api/crosswalk/attach", async (c) => {
   }>();
   await attachArea(c.env.DB, b.imosAreaId, b.canonicalAreaKey, b.validFrom, b.note ?? null);
   await audit(c.env.DB, c.get("user"), "crosswalk.attach", b);
+  await bumpData(c.env);
   return c.json({ ok: true });
 });
 
@@ -200,6 +217,7 @@ app.post("/api/crosswalk/canonical", async (c) => {
     b.createdAt ?? new Date().toISOString().slice(0, 10),
   );
   await audit(c.env.DB, c.get("user"), "crosswalk.canonical", b);
+  await bumpData(c.env);
   return c.json({ ok: true });
 });
 
@@ -213,6 +231,7 @@ app.post("/api/crosswalk/ward", async (c) => {
   }>();
   await addWard(c.env.DB, b.canonicalAreaKey, b.wardUnitId, b.wardName, b.stake, b.validFrom);
   await audit(c.env.DB, c.get("user"), "crosswalk.ward", b);
+  await bumpData(c.env);
   return c.json({ ok: true });
 });
 
@@ -233,6 +252,7 @@ app.post("/api/seed", async (c) => {
   const validFrom = b.validFrom ?? b.weekStart;
   const result = seed(payload, areaKey, validFrom);
   await seedCrosswalk(c.env.DB, result);
+  await bumpData(c.env);
   await audit(c.env.DB, c.get("user"), "seed", {
     validFrom,
     canonical: result.canonicalAreas.length,
@@ -253,15 +273,19 @@ app.post("/api/seed", async (c) => {
 });
 
 // --- weekly console (dashboard) ------------------------------------
-app.get("/api/console", async (c) => c.json(await buildConsole(c.env.DB, areaKey)));
+app.get("/api/console", async (c) =>
+  c.json(await cached(c.env, "console", "both", () => buildConsole(c.env.DB, areaKey))),
+);
 
 // --- config ------------------------------------------------------
 app.get("/api/config", async (c) =>
-  c.json({
-    config: await loadConfig(c.env.DB),
-    defaults: CONFIG_DEFAULTS,
-    keys: CONFIG_KEYS,
-  }),
+  c.json(
+    await cached(c.env, "config", "ki", async () => ({
+      config: await loadConfig(c.env.DB),
+      defaults: CONFIG_DEFAULTS,
+      keys: CONFIG_KEYS,
+    })),
+  ),
 );
 
 app.put("/api/config", async (c) => {
@@ -271,16 +295,22 @@ app.put("/api/config", async (c) => {
   }
   await setConfig(c.env.DB, b.key, b.value);
   await audit(c.env.DB, c.get("user"), "config.set", { key: b.key });
+  await bumpData(c.env);
   return c.json({ ok: true, config: await loadConfig(c.env.DB) });
 });
 
 // --- structure (Admin → Areas) --------------------------------
-app.get("/api/structure", async (c) => c.json(await getStructure(c.env.DB)));
+app.get("/api/structure", async (c) =>
+  c.json(await cached(c.env, "structure", "ki", () => getStructure(c.env.DB))),
+);
 
 // --- transfer rollover ---------------------------------------
-app.get("/api/rollover/:week", async (c) =>
-  c.json(await buildRollover(c.env.DB, c.req.param("week"), areaKey)),
-);
+app.get("/api/rollover/:week", async (c) => {
+  const week = c.req.param("week");
+  return c.json(
+    await cached(c.env, `rollover:${week}`, "ki", () => buildRollover(c.env.DB, week, areaKey)),
+  );
+});
 
 app.post("/api/rollover/:week/apply", async (c) => {
   const week = c.req.param("week");
@@ -299,6 +329,7 @@ app.post("/api/rollover/:week/apply", async (c) => {
     areas: b.areas ?? [],
     wards: b.wards ?? [],
   });
+  await bumpData(c.env);
   return c.json({ ok: true, applied: res, plan: await buildRollover(c.env.DB, week, areaKey) });
 });
 
@@ -307,6 +338,7 @@ app.post("/api/crosswalk/canonical/rename", async (c) => {
   const b = await c.req.json<{ key: string; displayName: string }>();
   await renameCanonical(c.env.DB, b.key, b.displayName);
   await audit(c.env.DB, c.get("user"), "crosswalk.canonical.rename", b);
+  await bumpData(c.env);
   return c.json({ ok: true });
 });
 
@@ -318,6 +350,7 @@ app.post("/api/crosswalk/canonical/retire", async (c) => {
     b.retired ? new Date().toISOString().slice(0, 10) : null,
   );
   await audit(c.env.DB, c.get("user"), "crosswalk.canonical.retire", b);
+  await bumpData(c.env);
   return c.json({ ok: true });
 });
 
@@ -325,6 +358,7 @@ app.post("/api/crosswalk/mapping/close", async (c) => {
   const b = await c.req.json<{ imosAreaId: number; validFrom: string; validTo: string }>();
   await closeMapping(c.env.DB, b.imosAreaId, b.validFrom, b.validTo);
   await audit(c.env.DB, c.get("user"), "crosswalk.mapping.close", b);
+  await bumpData(c.env);
   return c.json({ ok: true });
 });
 
@@ -337,6 +371,7 @@ app.post("/api/crosswalk/ward/close", async (c) => {
   }>();
   await closeWard(c.env.DB, b.canonicalAreaKey, b.wardUnitId, b.validFrom, b.validTo);
   await audit(c.env.DB, c.get("user"), "crosswalk.ward.close", b);
+  await bumpData(c.env);
   return c.json({ ok: true });
 });
 
@@ -345,28 +380,41 @@ app.post("/api/stake/rename", async (c) => {
   if (!b.from || !b.to) throw new HTTPException(400, { message: "from and to are required" });
   const changed = await renameStake(c.env.DB, b.from, b.to);
   await audit(c.env.DB, c.get("user"), "stake.rename", { ...b, changed });
+  await bumpData(c.env);
   return c.json({ ok: true, changed });
 });
 
 // --- friends / on-date (read-only; source of truth is the Baptisms sheet) ---
 app.get("/api/friends", async (c) => {
   const q = c.req.query();
-  const rows = await listFriends(c.env.DB, {
-    zone: q.zone || undefined,
-    stake: q.stake || undefined,
-    status: (q.status as "on-date" | "baptized" | "all") || undefined,
-  });
+  const key = `friends:${q.zone ?? ""}:${q.stake ?? ""}:${q.status ?? ""}`;
+  const rows = await cached(c.env, key, "friends", () =>
+    listFriends(c.env.DB, {
+      zone: q.zone || undefined,
+      stake: q.stake || undefined,
+      status: (q.status as "on-date" | "baptized" | "all") || undefined,
+    }),
+  );
   return c.json({ friends: rows });
 });
 
 app.get("/api/friends/summary", async (c) => {
   const week = c.req.query("week") || (await weeksAvailable(c.env.DB)).at(-1) || null;
-  return c.json(await friendsSummary(c.env.DB, week));
+  return c.json(
+    await cached(c.env, `friends-summary:${week ?? ""}`, "friends", () =>
+      friendsSummary(c.env.DB, week),
+    ),
+  );
 });
 
-app.get("/api/friends/by-stake/:week", async (c) =>
-  c.json(await friendsByStake(c.env.DB, c.req.param("week"))),
-);
+app.get("/api/friends/by-stake/:week", async (c) => {
+  const week = c.req.param("week");
+  return c.json(
+    await cached(c.env, `friends-by-stake:${week}`, "friends", () =>
+      friendsByStake(c.env.DB, week),
+    ),
+  );
+});
 
 /**
  * Snapshot push from the Apps Script bound to the Baptisms (MLC) sheet.
@@ -384,6 +432,8 @@ app.post("/api/friends/sync", async (c) => {
   const week = body.weekStart || (await weeksAvailable(c.env.DB)).at(-1) || null;
   const res = await syncFriends(c.env.DB, body.rows, week);
   await audit(c.env.DB, "sheet-sync", "friends.sync", res);
+  // only invalidate the friends cache when the snapshot actually changed something
+  if (res.changed > 0 || res.deactivated > 0) await bumpFriends(c.env);
   return c.json({ ok: true, ...res });
 });
 

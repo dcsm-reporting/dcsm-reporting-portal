@@ -105,7 +105,7 @@ export function StakesPage() {
             )}
             {fb && fb.baptized.length > 0 && (
               <>
-                <h3>Baptized this month — {stake}</h3>
+                <h3>Baptized (last 6 months) — {stake}</h3>
                 <ul>
                   {fb.baptized.map((f) => (
                     <li key={f.id}>

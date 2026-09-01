@@ -63,8 +63,14 @@ function isoDate_(v) {
   return s;
 }
 
+function timeStr_(v, tz) {
+  if (v instanceof Date) return Utilities.formatDate(v, tz, 'h:mm a');
+  return String(v == null ? '' : v).trim();  // "TBD", "2:00 PM", etc.
+}
+
 function collectRows_() {
   var ss = SpreadsheetApp.getActive();
+  var tz = ss.getSpreadsheetTimeZone() || 'America/New_York';
   var out = [];
   for (var z = 0; z < ZONE_TABS.length; z++) {
     var sheet = ss.getSheetByName(ZONE_TABS[z]);
@@ -96,6 +102,7 @@ function collectRows_() {
         if (field === 'name') continue;
         var raw = values[r][cols[field]];
         if (field === 'baptismDate') rec.baptismDate = raw ? isoDate_(raw) : '';
+        else if (field === 'baptismTime') rec.baptismTime = timeStr_(raw, tz);
         else if (field === 'baptizedConfirmed') rec.baptizedConfirmed = /^(y|yes|true|1)/i.test(String(raw).trim());
         else if (field === 'attendedChurch2x' || field === 'onBaptismCalendar')
           rec[field] = /^(y|yes|true|1)/i.test(String(raw).trim());

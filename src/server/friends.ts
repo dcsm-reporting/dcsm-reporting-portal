@@ -8,6 +8,7 @@
  */
 
 import {
+  cleanTime,
   isOnDate,
   summarise,
   toIsoDate,
@@ -93,23 +94,34 @@ export async function friendsSummary(
   return { ...summarise(friends, weekStart), lastSyncedAt: lastSync?.at ?? null };
 }
 
-/** Per-stake on-date + this-month baptism lists for the Stakes page / report. */
+/**
+ * Per-stake lists for the Stakes page / stake-president report:
+ *   onDate    — everyone currently on a baptismal date
+ *   baptized  — baptized in the last 6 months (matches the old report's page 2)
+ */
 export async function friendsByStake(db: D1Database, weekStart: string) {
   const friends = await listFriends(db);
   const wardMap = wardMapForWeek(await getAreaWardRows(db), weekStart);
   const stakeOfWard = new Map<string, string>();
   for (const [, [wardName, stake]] of wardMap) stakeOfWard.set(wardName.toLowerCase(), stake);
 
-  const monthPrefix = weekStart.slice(0, 7);
+  const cutoff = new Date(Date.parse(`${weekStart}T00:00:00Z`));
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - 6);
+  const sixMonthsAgo = cutoff.toISOString().slice(0, 10);
+
   const byStake: Record<string, { onDate: Friend[]; baptized: Friend[] }> = {};
   const bucket = (s: string) => (byStake[s] ??= { onDate: [], baptized: [] });
 
   for (const f of friends) {
     const stake = f.stake || stakeOfWard.get((f.ward ?? "").toLowerCase()) || "(unassigned)";
     if (isOnDate(f)) bucket(stake).onDate.push(f);
-    if (f.baptizedConfirmed && (f.baptismDate ?? "").startsWith(monthPrefix)) {
+    if (f.baptizedConfirmed && (f.baptismDate ?? "") >= sixMonthsAgo) {
       bucket(stake).baptized.push(f);
     }
+  }
+  for (const g of Object.values(byStake)) {
+    g.onDate.sort((a, b) => (a.baptismDate ?? "").localeCompare(b.baptismDate ?? ""));
+    g.baptized.sort((a, b) => (b.baptismDate ?? "").localeCompare(a.baptismDate ?? ""));
   }
   return byStake;
 }
@@ -138,7 +150,13 @@ export async function syncFriends(
   db: D1Database,
   rows: SheetRow[],
   weekStart: string | null,
-): Promise<{ rowsIn: number; upserted: number; deactivated: number; warnings: string[] }> {
+): Promise<{
+  rowsIn: number;
+  upserted: number;
+  changed: number;
+  deactivated: number;
+  warnings: string[];
+}> {
   const warnings: string[] = [];
   const now = new Date().toISOString();
 
@@ -156,7 +174,7 @@ export async function syncFriends(
         stake: norm(r.stake) || null,
         missionaries: norm(r.missionaries) || null,
         baptismDate: toIsoDate(r.baptismDate),
-        baptismTime: norm(r.baptismTime) || null,
+        baptismTime: cleanTime(r.baptismTime),
         baptismAddress: norm(r.baptismAddress) || null,
         attendedChurch2x: yn(r.attendedChurch2x),
         onBaptismCalendar: yn(r.onBaptismCalendar),
@@ -180,11 +198,27 @@ export async function syncFriends(
   const existingByKey = new Map(existing.filter((f) => f.syncKey).map((f) => [f.syncKey!, f]));
 
   let upserted = 0;
+  let changed = 0;
   const stmts: D1PreparedStatement[] = [];
+
+  const differs = (a: (typeof clean)[number], b: StoredFriend) =>
+    a.name !== b.name ||
+    a.zone !== (b.zone ?? null) ||
+    a.ward !== (b.ward ?? null) ||
+    a.stake !== (b.stake ?? null) ||
+    a.missionaries !== (b.missionaries ?? null) ||
+    a.baptismDate !== (b.baptismDate ?? null) ||
+    a.baptismTime !== (b.baptismTime ?? null) ||
+    a.baptismAddress !== (b.baptismAddress ?? null) ||
+    a.attendedChurch2x !== b.attendedChurch2x ||
+    a.onBaptismCalendar !== b.onBaptismCalendar ||
+    a.baptizedConfirmed !== b.baptizedConfirmed ||
+    !b.active;
 
   for (const r of byKey.values()) {
     const prev = existingByKey.get(r.key);
     if (prev) {
+      if (differs(r, prev)) changed++;
       stmts.push(
         db
           .prepare(
@@ -215,6 +249,7 @@ export async function syncFriends(
             r.baptizedConfirmed ? 1 : 0, r.key, now, now,
           ),
       );
+      changed++;
     }
     upserted++;
   }
@@ -232,8 +267,8 @@ export async function syncFriends(
   // run in chunks
   for (let i = 0; i < stmts.length; i += 20) await db.batch(stmts.slice(i, i + 20));
 
-  // weekly snapshot
-  if (weekStart) {
+  // weekly snapshot — only when something moved (idempotent UPSERT keyed by week)
+  if (weekStart && (changed > 0 || gone.length > 0)) {
     const active = await listFriends(db);
     const snap = active.map((f) =>
       db
@@ -262,5 +297,5 @@ export async function syncFriends(
     .bind(now, rows.length, upserted, gone.length, warnings.length ? JSON.stringify(warnings) : null)
     .run();
 
-  return { rowsIn: rows.length, upserted, deactivated: gone.length, warnings };
+  return { rowsIn: rows.length, upserted, changed, deactivated: gone.length, warnings };
 }

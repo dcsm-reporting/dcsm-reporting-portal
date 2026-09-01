@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cleanTime,
   isOnDate,
   missionaryLastNames,
   summarise,
@@ -7,6 +8,19 @@ import {
   yn,
   type Friend,
 } from "../src/pipeline/friends.js";
+
+describe("cleanTime", () => {
+  it("pulls the clock time out of a Sheets datetime string", () => {
+    expect(cleanTime("Sat Dec 30 1899 10:00:00 GMT-0500 (Eastern Standard Time)")).toBe("10:00 AM");
+    expect(cleanTime("Sat Dec 30 1899 17:00:00 GMT-0500 (Eastern Standard Time)")).toBe("5:00 PM");
+  });
+  it("passes through plain values", () => {
+    expect(cleanTime("TBD")).toBe("TBD");
+    expect(cleanTime("2:00PM")).toBe("2:00 PM");
+    expect(cleanTime("")).toBeNull();
+    expect(cleanTime(null)).toBeNull();
+  });
+});
 
 describe("yn", () => {
   it("reads the workbook's Y/N", () => {

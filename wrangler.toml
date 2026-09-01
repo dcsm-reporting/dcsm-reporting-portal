@@ -16,6 +16,11 @@ database_name = "dcsm_ki"
 database_id = "aee239d8-061b-461b-8920-0b9b71bd0057"
 migrations_dir = "migrations"
 
+# Response cache — keeps D1 row-reads well under the free-tier daily limit.
+[[kv_namespaces]]
+binding = "CACHE"
+id = "d03729bfbb8d4051a6005b583d9ee20d"
+
 # Bundle the Area To Ward Key CSV as text so /api/seed can run server-side.
 [[rules]]
 type = "Text"

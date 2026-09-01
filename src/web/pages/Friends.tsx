@@ -20,7 +20,7 @@ export function FriendsPage() {
 
   return (
     <>
-      <h2>Friends &amp; on-date</h2>
+      <h2>Friends with Baptismal Dates &amp; Baptized</h2>
 
       {summary.data && (
         <div className="note">
@@ -109,8 +109,10 @@ function FriendTable({ rows }: { rows: FriendRow[] }) {
               <td className="row-head">{f.ward ?? "—"}</td>
               <td className="row-head muted" style={{ fontSize: ".82rem" }}>{f.missionaries ?? "—"}</td>
               <td className="row-head mono">
-                {f.baptismDate ?? "—"}
-                {f.baptismTime && f.baptismTime !== "TBD" ? ` · ${f.baptismTime}` : ""}
+                {fmtDate(f.baptismDate)}
+                {f.baptismTime && f.baptismTime !== "TBD" && !/1899|GMT/.test(f.baptismTime)
+                  ? ` · ${f.baptismTime}`
+                  : ""}
               </td>
               <td>{f.attendedChurch2x ? "✓" : ""}</td>
               <td>{f.onBaptismCalendar ? "✓" : ""}</td>
@@ -129,6 +131,14 @@ function FriendTable({ rows }: { rows: FriendRow[] }) {
       </table>
     </div>
   );
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
+  if (!y || !m || !d) return iso;
+  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1];
+  return `${mon} ${d}, ${y}`;
 }
 
 function Stat({ k, v, sub }: { k: string; v: React.ReactNode; sub?: string }) {

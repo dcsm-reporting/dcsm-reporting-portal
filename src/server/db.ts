@@ -587,11 +587,12 @@ async function getCanonicalRowsFull(db: D1Database): Promise<CanonicalFull[]> {
 }
 
 async function latestAreaNames(db: D1Database): Promise<Map<number, string>> {
+  // SQLite bare-column rule: with a single MAX() aggregate, the other selected
+  // columns come from the row holding that max. One scan, no correlated subquery.
   const { results } = await db
     .prepare(
-      `SELECT imos_area_id, imos_area_name FROM ki_fact
-       WHERE week_start = (SELECT MAX(week_start) FROM ki_fact k2 WHERE k2.imos_area_id = ki_fact.imos_area_id)
-       GROUP BY imos_area_id`,
+      `SELECT imos_area_id, imos_area_name, MAX(week_start) AS w
+       FROM ki_fact GROUP BY imos_area_id`,
     )
     .all<{ imos_area_id: number; imos_area_name: string }>();
   return new Map((results ?? []).map((r) => [r.imos_area_id, r.imos_area_name]));

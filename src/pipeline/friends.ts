@@ -77,6 +77,36 @@ export function toIsoDate(v: unknown): string | null {
   return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
 }
 
+/**
+ * Tidy a baptism-time cell. Google Sheets time-only cells arrive as a full
+ * datetime ("Sat Dec 30 1899 10:00:00 GMT-0500 …" or an ISO string); pull just
+ * the clock time as "h:mm AM/PM". Plain strings ("TBD", "2:00 PM") pass through.
+ */
+export function cleanTime(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  let s = String(v).trim();
+  if (!s || /^tbd$/i.test(s)) return s || null;
+
+  // "Sat Dec 30 1899 10:00:00 GMT-0500 (Eastern Standard Time)" or ISO datetime
+  const dm = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+  const looksLikeDatetime = /\b(18|19|20)\d\d\b/.test(s) || /GMT|T\d\d:\d\d/.test(s);
+  if (looksLikeDatetime && dm) {
+    let h = parseInt(dm[1]!, 10);
+    const min = dm[2]!;
+    let ap = dm[3]?.toUpperCase();
+    if (!ap) {
+      ap = h >= 12 ? "PM" : "AM";
+      if (h > 12) h -= 12;
+    }
+    if (h === 0) h = 12;
+    return `${h}:${min} ${ap}`;
+  }
+  // already a short time like "2:00PM" → normalise the space
+  const short = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (short) return `${parseInt(short[1]!, 10)}:${short[2]} ${short[3]!.toUpperCase()}`;
+  return s;
+}
+
 /** "Elders Zhou & Lake" / "Sisters Hansen & Elton & Wolfley" → ["Zhou","Lake",…] */
 export function missionaryLastNames(s: string | null | undefined): string[] {
   if (!s) return [];
