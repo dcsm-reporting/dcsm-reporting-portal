@@ -22,6 +22,13 @@ export function ChasePage() {
         <>
           <div className="note warn">
             <strong>{data.count} area(s)</strong> have stale numbers for {data.weekStart}.
+            {data.newCount > 0 && (
+              <>
+                {" "}
+                <strong>{data.newCount}</strong> of them are <em>brand-new this transfer</em> — no
+                prior week to compare, so a blank first week is expected, not a missed report.
+              </>
+            )}
           </div>
           <div className="board-wrap">
             <table className="board">
@@ -30,6 +37,7 @@ export function ChasePage() {
                   <th className="row-head">Zone</th>
                   <th className="row-head">Area</th>
                   <th className="row-head">Last touched</th>
+                  <th className="row-head">Note</th>
                 </tr>
               </thead>
               <tbody>
@@ -38,6 +46,9 @@ export function ChasePage() {
                     <td className="row-head">{a.zoneName}</td>
                     <td className="row-head">{a.areaName}</td>
                     <td className="row-head mono">{a.lastModified ?? "never"}</td>
+                    <td className="row-head">
+                      {a.newThisWeek ? <span className="chip new">new this transfer</span> : ""}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -4,6 +4,7 @@ Washington DC South Mission — weekly Key Indicators reporting. One web app,
 role-account owned, $0 to run. React SPA + Cloudflare Worker + D1 (SQLite).
 
 - **Architecture & rationale:** [ARCHITECTURE.md](ARCHITECTURE.md)
+- **How the area / ward mapping works:** [docs/how-mapping-works.md](docs/how-mapping-works.md)
 - **What's built / what's next / your setup steps:** [STATUS.md](STATUS.md)
 - **Spec + test oracle:** the Python at `../ki-pipeline/` (do not run it in prod)
 

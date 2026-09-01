@@ -46,6 +46,15 @@ export class ValidationError extends Error {
   override name = "ValidationError";
 }
 
+/** Whole days between two YYYY-MM-DD strings, or null if either is missing/bad. */
+export function daySpan(a?: string, b?: string): number | null {
+  if (!a || !b) return null;
+  const ta = Date.parse(`${a}T00:00:00Z`);
+  const tb = Date.parse(`${b}T00:00:00Z`);
+  if (Number.isNaN(ta) || Number.isNaN(tb)) return null;
+  return Math.round((tb - ta) / 86_400_000);
+}
+
 // --- loading -------------------------------------------------------------
 /** Parse a payload from a raw JSON string (throws SyntaxError on bad JSON). */
 export function load(source: string): ImosPayload {
@@ -176,6 +185,17 @@ export function validate(
 
   const areas = [...iterAreas(payload)];
   if (areas.length === 0) throw new ValidationError("payload contains no areas");
+
+  // A Mon–Sun reporting week spans 6 days start→end. Anything else (a month
+  // range, a single day) still imports, but it would land as one row in the
+  // weekly series — flag it loudly.
+  const span = daySpan(payload.reportStart, payload.reportEnd);
+  if (span !== null && span !== 6) {
+    warnings.push(
+      `reporting range ${payload.reportStart}…${payload.reportEnd} is ${span + 1} days, ` +
+        `not a Mon–Sun week — importing stores it as a single period under ${payload.reportStart}`,
+    );
+  }
 
   if (opts.expectedWeek != null) {
     const got: [string | undefined, string | undefined] = [

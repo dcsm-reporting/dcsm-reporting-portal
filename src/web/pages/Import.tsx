@@ -1,17 +1,51 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api, type ImportSummary } from "../api.js";
 import { useWeek } from "../lib.js";
 
-const IMOS_URL_HINT =
-  "https://imos.churchofjesuschrist.org/ws/auth-controller/api-v1/ki/report/{Mon}/{Sun}";
+const IMOS_BASE = "https://imos.churchofjesuschrist.org/ws/auth-controller/api-v1/ki/report";
+
+function iso(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+/** Monday–Sunday of the most recent reporting week that has fully passed. */
+function lastCompleteWeek(today = new Date()): { monday: string; sunday: string } {
+  const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const dow = d.getUTCDay(); // 0=Sun … 6=Sat
+  const backToSunday = dow === 0 ? 7 : dow; // if today is Sunday, use the previous Sunday
+  const sunday = new Date(d);
+  sunday.setUTCDate(d.getUTCDate() - backToSunday);
+  const monday = new Date(sunday);
+  monday.setUTCDate(sunday.getUTCDate() - 6);
+  return { monday: iso(monday), sunday: iso(sunday) };
+}
+function shift(mondayIso: string, weeks: number): { monday: string; sunday: string } {
+  const m = new Date(`${mondayIso}T00:00:00Z`);
+  m.setUTCDate(m.getUTCDate() + weeks * 7);
+  const s = new Date(m);
+  s.setUTCDate(m.getUTCDate() + 6);
+  return { monday: iso(m), sunday: iso(s) };
+}
 
 export function ImportPage() {
   const { setWeek } = useWeek();
+  const [range, setRange] = useState(() => lastCompleteWeek());
+  const [custom, setCustom] = useState(false);
+  const [customRange, setCustomRange] = useState(() => lastCompleteWeek());
+
+  const active = custom ? customRange : range;
+  const url = `${IMOS_BASE}/${active.monday}/${active.sunday}`;
+  const spanDays = useMemo(() => {
+    const a = Date.parse(`${active.monday}T00:00:00Z`);
+    const b = Date.parse(`${active.sunday}T00:00:00Z`);
+    return Math.round((b - a) / 86_400_000) + 1;
+  }, [active]);
+
   const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<ImportSummary | null>(null);
   const [committed, setCommitted] = useState<ImportSummary | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function doPreview() {
     setBusy(true);
@@ -19,15 +53,13 @@ export function ImportPage() {
     setCommitted(null);
     setPreview(null);
     try {
-      const r = await api.importPreview(raw);
-      setPreview(r.summary);
+      setPreview((await api.importPreview(raw)).summary);
     } catch (e) {
       setErr(errText(e));
     } finally {
       setBusy(false);
     }
   }
-
   async function doCommit() {
     setBusy(true);
     setErr(null);
@@ -47,10 +79,66 @@ export function ImportPage() {
     <>
       <h2>Import an IMOS week</h2>
       <p className="muted" style={{ maxWidth: "70ch" }}>
-        Open the KI report URL signed in to a missionary account, copy the whole JSON response, and
-        paste it below. Retrieval is manual by design — the Church login is never automated.
+        Pick the reporting week, open it in IMOS (you’ll need to be signed in to a missionary
+        account), copy the whole JSON response, and paste it below. Retrieval stays manual — the
+        Church login is never automated.
       </p>
-      <p className="mono muted" style={{ fontSize: ".78rem" }}>{IMOS_URL_HINT}</p>
+
+      {/* week selector + URL */}
+      <div className="drawer">
+        {!custom ? (
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="row">
+              <button className="btn" onClick={() => setRange((r) => shift(r.monday, -1))}>◂ earlier</button>
+              <strong className="mono">{active.monday} → {active.sunday}</strong>
+              <button className="btn" onClick={() => setRange((r) => shift(r.monday, 1))}>later ▸</button>
+              <button className="btn" onClick={() => setRange(lastCompleteWeek())}>most recent</button>
+            </div>
+            <label className="row" style={{ gap: ".3rem" }}>
+              <input type="checkbox" checked={custom} onChange={(e) => setCustom(e.target.checked)} />
+              <span className="muted" style={{ fontSize: ".8rem" }}>custom range</span>
+            </label>
+          </div>
+        ) : (
+          <div className="row">
+            <label className="field" style={{ margin: 0 }}>
+              <span className="k mono">start</span>
+              <input type="date" value={customRange.monday} onChange={(e) => setCustomRange((r) => ({ ...r, monday: e.target.value }))} />
+            </label>
+            <label className="field" style={{ margin: 0 }}>
+              <span className="k mono">end</span>
+              <input type="date" value={customRange.sunday} onChange={(e) => setCustomRange((r) => ({ ...r, sunday: e.target.value }))} />
+            </label>
+            <label className="row" style={{ gap: ".3rem" }}>
+              <input type="checkbox" checked={custom} onChange={(e) => setCustom(e.target.checked)} />
+              <span className="muted" style={{ fontSize: ".8rem" }}>custom range</span>
+            </label>
+          </div>
+        )}
+
+        <div className="row" style={{ marginTop: ".8rem" }}>
+          <a className="btn primary" href={url} target="_blank" rel="noopener noreferrer">Open in IMOS ↗</a>
+          <button
+            className="btn"
+            onClick={() => {
+              navigator.clipboard?.writeText(url);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1800);
+            }}
+          >
+            {copied ? "Copied" : "Copy URL"}
+          </button>
+          <code style={{ fontSize: ".72rem", wordBreak: "break-all" }}>{url}</code>
+        </div>
+
+        {spanDays !== 7 && (
+          <div className="note warn" style={{ marginTop: ".8rem" }}>
+            This range is {spanDays} days. IMOS will happily return it, but it isn’t a Mon–Sun week —
+            importing it stores one aggregated row under {active.monday}, which will skew the weekly
+            series. Use it only for a deliberate one-off.
+          </div>
+        )}
+      </div>
 
       <div className="field">
         <label>IMOS KI report JSON</label>
@@ -93,16 +181,23 @@ export function ImportPage() {
 }
 
 function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
+  const span =
+    Math.round(
+      (Date.parse(`${s.weekEnd}T00:00:00Z`) - Date.parse(`${s.weekStart}T00:00:00Z`)) / 86_400_000,
+    ) + 1;
   return (
     <>
       <h3>{heading}</h3>
       <div className="cards">
-        <Stat k="Week" v={s.weekLabel} sub={`${s.weekStart} → ${s.weekEnd}`} />
+        <Stat k="Week" v={s.weekLabel} sub={`${s.weekStart} → ${s.weekEnd} · ${span} days`} />
         <Stat k="Active areas" v={s.activeAreas} />
         <Stat k="KI facts" v={s.nFacts} />
         <Stat k="Ward rows" v={s.nWardFacts} />
         <Stat k="Missionaries" v={s.nMissionaries} />
       </div>
+      {span !== 7 && (
+        <div className="note warn">This payload covers {span} days — not a normal week.</div>
+      )}
       {s.alreadyStored && (
         <div className="note warn">A week with this start date is already stored — committing overwrites its rows.</div>
       )}
@@ -117,10 +212,10 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
           <strong>{s.unmapped.length} area(s) not in the crosswalk:</strong>{" "}
           {s.unmapped.map((u) => `${u.imosAreaName} (${u.imosAreaId})`).join(", ")}.
           <br />
-          They import fine; resolve them in Admin → Crosswalk so stake rollups pick them up.
+          They import fine; resolve them in <strong>Structure → Rollover</strong> so stake rollups pick them up.
         </div>
       )}
-      {s.warnings.length === 0 && s.unmapped.length === 0 && (
+      {s.warnings.length === 0 && s.unmapped.length === 0 && span === 7 && (
         <div className="note ok">All checks clean.</div>
       )}
     </>

@@ -35,6 +35,8 @@ export interface RolloverInput {
   areas: RolloverAreaInput[];
   orgs: RolloverOrgInput[];
   prevZoneNames: string[] | null;
+  /** IMOS area ids present in the immediately-prior stored week (null if none). */
+  prevAreaIds: number[] | null;
   crosswalk: AreaCrosswalkRow[];
   areaWard: AreaWardRow[];
   canonical: CanonicalAreaRow[];
@@ -59,6 +61,8 @@ export interface RolloverArea {
   imosAreaName: string;
   zoneName: string;
   mapped: boolean;
+  /** Appears this week but not in the prior stored week — a split/new area. */
+  newThisWeek: boolean;
   currentKey: string | null;
   suggestion: AreaSuggestion | null;
 }
@@ -89,6 +93,7 @@ export interface RolloverPlan {
     zonesRetired: number;
     areasUnmapped: number;
     areasSuggested: number;
+    areasNew: number;
     wardsUnmapped: number;
     wardsSuggested: number;
     clean: boolean;
@@ -200,6 +205,7 @@ export function planRollover(input: RolloverInput): RolloverPlan {
   zones.sort((a, b) => a.name.localeCompare(b.name));
 
   // areas
+  const prevAreas = input.prevAreaIds === null ? null : new Set(input.prevAreaIds);
   const areaPlanKey = new Map<number, string>(); // what each imos area id will resolve to after apply
   const areas: RolloverArea[] = input.areas
     .map((a) => {
@@ -214,6 +220,7 @@ export function planRollover(input: RolloverInput): RolloverPlan {
         imosAreaName: a.imosAreaName,
         zoneName: a.zoneName,
         mapped: currentKey !== null,
+        newThisWeek: prevAreas !== null && !prevAreas.has(a.imosAreaId),
         currentKey,
         suggestion,
       };
@@ -237,6 +244,7 @@ export function planRollover(input: RolloverInput): RolloverPlan {
     .sort((x, y) => x.areaName.localeCompare(y.areaName) || x.orgName.localeCompare(y.orgName));
 
   const areasUnmapped = areas.filter((a) => !a.mapped).length;
+  const areasNew = areas.filter((a) => a.newThisWeek).length;
   const areasSuggested = areas.filter((a) => a.suggestion && a.suggestion.confidence !== "low").length;
   const wardsSuggested = wards.filter((w) => w.suggestion.stake !== null).length;
   const zonesNew = zones.filter((z) => z.status === "new").length;
@@ -252,6 +260,7 @@ export function planRollover(input: RolloverInput): RolloverPlan {
       zonesRetired,
       areasUnmapped,
       areasSuggested,
+      areasNew,
       wardsUnmapped: wards.length,
       wardsSuggested,
       clean: areasUnmapped === 0 && wards.length === 0 && zonesNew === 0 && zonesRetired === 0,

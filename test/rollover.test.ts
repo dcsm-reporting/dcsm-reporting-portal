@@ -49,6 +49,7 @@ describe("planRollover", () => {
       areas,
       orgs,
       prevZoneNames: null,
+      prevAreaIds: null,
       ...seededTables("2026-08-24.json"),
       areaKey,
     });
@@ -66,6 +67,7 @@ describe("planRollover", () => {
       areas,
       orgs,
       prevZoneNames: [...new Set(prev.facts.map((f) => f.zoneName))],
+      prevAreaIds: [...new Set(prev.facts.map((f) => f.areaId))],
       ...seededTables("2026-08-17.json"),
       areaKey,
     });
@@ -81,6 +83,9 @@ describe("planRollover", () => {
     // zones are stable between 8-17 and 8-24
     expect(plan.summary.zonesNew).toBe(0);
     expect(plan.summary.zonesRetired).toBe(0);
+    // the areas that only appear on 8-24 are flagged new
+    expect(plan.summary.areasNew).toBeGreaterThan(0);
+    expect(plan.areas.filter((a) => a.newThisWeek).every((a) => !a.mapped)).toBe(true);
   });
 
   it("applying every suggestion would fully resolve the week", () => {
@@ -92,6 +97,7 @@ describe("planRollover", () => {
       areas,
       orgs,
       prevZoneNames: null,
+      prevAreaIds: null,
       ...tables,
       areaKey,
     });
@@ -128,6 +134,7 @@ describe("planRollover", () => {
       areas,
       orgs,
       prevZoneNames: null,
+      prevAreaIds: null,
       ...tables,
       areaKey,
     });

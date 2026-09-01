@@ -74,11 +74,13 @@ export interface ChaseView {
   weekStart: string;
   weekLabel: string;
   count: number;
+  newCount: number;
   areas: {
     imosAreaId: number;
     areaName: string;
     zoneName: string;
     lastModified: string | null;
+    newThisWeek: boolean;
   }[];
 }
 
@@ -234,6 +236,7 @@ export interface RolloverPlan {
     imosAreaName: string;
     zoneName: string;
     mapped: boolean;
+    newThisWeek: boolean;
     currentKey: string | null;
     suggestion: {
       canonicalAreaKey: string;
@@ -262,6 +265,7 @@ export interface RolloverPlan {
     zonesRetired: number;
     areasUnmapped: number;
     areasSuggested: number;
+    areasNew: number;
     wardsUnmapped: number;
     wardsSuggested: number;
     clean: boolean;

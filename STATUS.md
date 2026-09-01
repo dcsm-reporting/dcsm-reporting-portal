@@ -56,13 +56,24 @@ the one-time cloud account setup.
 - **Publish** — board PNG export and the stake-report email draft. Design: render
   the board component to canvas → `toBlob()` for PNG; stake report → formatted
   HTML the operator pastes into Gmail (no email infra, no credentials).
-- **Historical backfill from the old system** — a `/api/backfill` + UI to load
-  pre-IMOS weeks from the old exports (Form Responses, KI Reporting sheet, Stake
-  President Reports). IMOS itself already serves historical ranges, so the clean
-  path is: pull older IMOS JSON weeks and import them normally. The old *sheet*
-  data is messy (Form Responses has years of column drift) but the stake-report
-  ward history may be usable to seed `ward_fact` for weeks IMOS can't reach.
-  **Blocked on Elder Lake sending the export files** — then this gets built.
+- **Historical backfill from the old system** — files received (`~/Downloads/`):
+  - `Key Indicator Reporting.xlsx` → sheet **`RemoveDuplicates`**: ~5000 rows,
+    **2024-09-29 … 2026-08-31**, one row per area per week with all 6 KI
+    goals + actuals + "People On Date". This is ~2 years of clean area-level
+    history — the backfill source for `ki_fact` (mission/zone/area rollups +
+    Trends back to 2024). No ward level, so old-week stake reports won't work.
+    Sheet **`LeadershipAreas`** = the hand-maintained MLC area list per transfer
+    (settles reconciliation #1).
+  - `Baptisms (MLC).xlsx` → **`All Units & Addresses`** (unit id → ward / stake /
+    address — authoritative, better than the fuzzy CSV); per-zone sheets =
+    on-date/baptism friend records to seed the Friends module.
+  - `Stake President Reports 2.0.xlsx` → **`EMAILS`** sheet = per-stake report
+    recipients (To/CC/ZL/STL/AP/stake-president) — feeds Publish without needing
+    DCSM Contacts.
+  Plan: a `/api/backfill` that takes normalised `{weekStart, zone, area, goals,
+  actuals}` rows (synthetic `import_run`, marked `source='legacy'`) + a parser
+  script for `RemoveDuplicates`. Then load `All Units & Addresses` to firm up
+  `area_ward`. **Next build.**
 - **Directory sync** — `/api/directory/sync` reading DCSM Contacts. Needs the
   sheet shared to the role account and a small CSV/Sheets read. Chase list shows
   area + zone now; add the leader name/phone once the directory loads.

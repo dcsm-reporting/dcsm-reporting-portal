@@ -616,6 +616,14 @@ export async function distinctZonesForWeek(db: D1Database, weekStart: string): P
   return (results ?? []).map((r) => r.imos_zone_name);
 }
 
+export async function distinctAreaIdsForWeek(db: D1Database, weekStart: string): Promise<number[]> {
+  const { results } = await db
+    .prepare("SELECT DISTINCT imos_area_id FROM ki_fact WHERE week_start = ?")
+    .bind(weekStart)
+    .all<{ imos_area_id: number }>();
+  return (results ?? []).map((r) => r.imos_area_id);
+}
+
 // --- crosswalk edits (Admin) -----------------------------------------
 export async function renameCanonical(db: D1Database, key: string, displayName: string) {
   await db

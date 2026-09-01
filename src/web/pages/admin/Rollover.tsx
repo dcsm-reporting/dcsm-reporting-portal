@@ -97,9 +97,9 @@ function RolloverBody({
   const summaryCards = useMemo(
     () => [
       ["Areas to map", plan.summary.areasUnmapped],
+      ["…new this transfer", plan.summary.areasNew],
       ["Wards to map", plan.summary.wardsUnmapped],
-      ["New zones", plan.summary.zonesNew],
-      ["Retired zones", plan.summary.zonesRetired],
+      ["New / retired zones", `${plan.summary.zonesNew} / ${plan.summary.zonesRetired}`],
     ],
     [plan],
   );
@@ -157,6 +157,15 @@ function RolloverBody({
         </>
       )}
 
+      {plan.summary.areasNew > 0 && (
+        <div className="note">
+          <strong>“new”</strong> marks an area that appears this week but wasn’t in last week’s
+          payload — usually a transfer split (one area becoming two). Give it its own canonical key
+          and map it; its history simply starts here. If it’s really the <em>same</em> area under a
+          new IMOS id, set the key to the existing one instead and untick “New?”.
+        </div>
+      )}
+
       {/* areas */}
       {unmappedAreas.length > 0 && (
         <>
@@ -199,7 +208,8 @@ function RolloverBody({
                         />
                       </td>
                       <td>
-                        {a.imosAreaName}
+                        {a.imosAreaName}{" "}
+                        {a.newThisWeek && <span className="chip new">new</span>}
                         <div className="muted mono" style={{ fontSize: ".72rem" }}>#{a.imosAreaId}</div>
                       </td>
                       <td>{a.zoneName}</td>

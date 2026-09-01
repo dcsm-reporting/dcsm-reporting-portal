@@ -27,6 +27,7 @@ import {
   attachArea,
   audit,
   createCanonicalArea,
+  distinctAreaIdsForWeek,
   distinctZonesForWeek,
   getAreaWardRows,
   getCanonicalRows,
@@ -179,12 +180,18 @@ export async function buildStakeView(db: D1Database, weekStart: string, windowN 
 }
 
 export async function buildChase(db: D1Database, weekStart: string) {
-  const [history, facts] = await Promise.all([
+  const all = await weeksAvailable(db);
+  const prior = all.filter((w) => w < weekStart);
+  const prevWeek = prior[prior.length - 1] ?? null;
+
+  const [history, facts, prevIds] = await Promise.all([
     loadAreaHistory(db, weekStart),
     loadFacts(db, weekStart),
+    prevWeek ? distinctAreaIdsForWeek(db, prevWeek) : Promise.resolve<number[] | null>(null),
   ]);
   const zoneOf = new Map<number, string>();
   for (const f of facts) if (!zoneOf.has(f.areaId)) zoneOf.set(f.areaId, f.zoneName);
+  const prev = prevIds === null ? null : new Set(prevIds);
 
   const stale = history
     .filter((h) => !h.updatedThisWeek)
@@ -193,10 +200,17 @@ export async function buildChase(db: D1Database, weekStart: string) {
       areaName: h.imosAreaName,
       zoneName: zoneOf.get(h.imosAreaId) ?? "",
       lastModified: h.modifiedDate,
+      newThisWeek: prev !== null && !prev.has(h.imosAreaId),
     }))
     .sort((a, b) => a.zoneName.localeCompare(b.zoneName) || a.areaName.localeCompare(b.areaName));
 
-  return { weekStart, weekLabel: weekLabel(weekStart), count: stale.length, areas: stale };
+  return {
+    weekStart,
+    weekLabel: weekLabel(weekStart),
+    count: stale.length,
+    newCount: stale.filter((s) => s.newThisWeek).length,
+    areas: stale,
+  };
 }
 
 // --- transfer rollover ------------------------------------------------
@@ -231,15 +245,17 @@ export async function buildRollover(
       });
 
   const prior = all.filter((w) => w < weekStart);
-  const prevZoneNames = prior.length
-    ? await distinctZonesForWeek(db, prior[prior.length - 1]!)
-    : null;
+  const prevWeek = prior[prior.length - 1] ?? null;
+  const [prevZoneNames, prevAreaIds] = prevWeek
+    ? await Promise.all([distinctZonesForWeek(db, prevWeek), distinctAreaIdsForWeek(db, prevWeek)])
+    : [null, null];
 
   return planRollover({
     weekStart,
     areas: [...areas.values()],
     orgs: [...orgs.values()],
     prevZoneNames,
+    prevAreaIds,
     crosswalk,
     areaWard,
     canonical,
