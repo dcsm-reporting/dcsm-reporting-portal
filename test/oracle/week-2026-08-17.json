@@ -1,0 +1,4694 @@
+{
+  "active_area_count": 98,
+  "active_area_ids": [
+    7461792,
+    7461808,
+    7461821,
+    7461825,
+    18909147,
+    53667116,
+    73939665,
+    74717366,
+    78532476,
+    108398001,
+    140856924,
+    140857104,
+    141075428,
+    149146157,
+    187512562,
+    210391091,
+    333865086,
+    333865088,
+    333865095,
+    367262633,
+    374033788,
+    387779816,
+    409644617,
+    417122154,
+    417122514,
+    452643179,
+    474055861,
+    480093547,
+    488608442,
+    500246353,
+    500263479,
+    500288386,
+    500300056,
+    500308274,
+    500308554,
+    500311083,
+    500364216,
+    500372563,
+    500372639,
+    500390810,
+    500398719,
+    500398732,
+    500399951,
+    500406440,
+    500420408,
+    500421416,
+    500423311,
+    500424344,
+    500424688,
+    500429371,
+    500463814,
+    500536523,
+    500551885,
+    500569644,
+    500572043,
+    500594791,
+    500607422,
+    500610530,
+    500610531,
+    500610814,
+    500614471,
+    500619311,
+    500621996,
+    500622625,
+    500622628,
+    500622636,
+    500625428,
+    500627831,
+    500627876,
+    500631882,
+    500637311,
+    500637576,
+    500657864,
+    500662230,
+    500662275,
+    500663115,
+    500663592,
+    500667113,
+    500667227,
+    500667476,
+    500670536,
+    500670537,
+    500671658,
+    500676992,
+    500676993,
+    500677017,
+    500678173,
+    500681175,
+    500686408,
+    500686428,
+    500686460,
+    500686461,
+    500687649,
+    500687784,
+    500695222,
+    500696282,
+    500696412,
+    500697061
+  ],
+  "by_area": {
+    "Alexandria": {
+      "ALEXANDRIA": {
+        "100": {
+          "actual": 53,
+          "code": "NP",
+          "goal": 64,
+          "pct": 83
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 9,
+          "code": "BD",
+          "goal": 20,
+          "pct": 45
+        },
+        "300": {
+          "actual": 25,
+          "code": "NMS",
+          "goal": 26,
+          "pct": 96
+        },
+        "40": {
+          "actual": 20,
+          "code": "SA",
+          "goal": 31,
+          "pct": 65
+        },
+        "600": {
+          "actual": 37,
+          "code": "LMP",
+          "goal": 51,
+          "pct": 73
+        }
+      },
+      "Alexandria 1A": {
+        "100": {
+          "actual": 8,
+          "code": "NP",
+          "goal": 7,
+          "pct": 114
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 200
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 1,
+          "pct": 0
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 25
+        }
+      },
+      "Alexandria 1B": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 5,
+          "pct": 60
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 3,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 4,
+          "pct": 25
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 38
+        }
+      },
+      "Alexandria 2  l  Assistants": {
+        "100": {
+          "actual": 10,
+          "code": "NP",
+          "goal": 10,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 3,
+          "code": "BD",
+          "goal": 3,
+          "pct": 100
+        },
+        "300": {
+          "actual": 5,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 125
+        },
+        "40": {
+          "actual": 6,
+          "code": "SA",
+          "goal": 3,
+          "pct": 200
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 86
+        }
+      },
+      "Arlington Ridge A": {
+        "100": {
+          "actual": 0,
+          "code": "NP",
+          "goal": 5,
+          "pct": 0
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 200
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 4,
+          "pct": 0
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 0
+        }
+      },
+      "Arlington Ridge B": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 6,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 50
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 8,
+          "pct": 25
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 43
+        }
+      },
+      "Fort Belvoir": {
+        "100": {
+          "actual": 7,
+          "code": "NP",
+          "goal": 10,
+          "pct": 70
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 4,
+          "pct": 25
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 33
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 3,
+          "pct": 67
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 43
+        }
+      },
+      "Huntley Meadows A": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 3,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 1,
+          "pct": 300
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 150
+        }
+      },
+      "Huntley Meadows B": {
+        "100": {
+          "actual": 0,
+          "code": "NP",
+          "goal": 2,
+          "pct": 0
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 2,
+          "pct": 50
+        },
+        "600": {
+          "actual": 7,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 175
+        }
+      },
+      "Kingstowne": {
+        "100": {
+          "actual": 5,
+          "code": "NP",
+          "goal": 4,
+          "pct": 125
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": null,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 1,
+          "pct": 200
+        },
+        "300": {
+          "actual": 6,
+          "code": "NMS",
+          "goal": 7,
+          "pct": 86
+        },
+        "40": {
+          "actual": 4,
+          "code": "SA",
+          "goal": 2,
+          "pct": 200
+        },
+        "600": {
+          "actual": 9,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 225
+        }
+      },
+      "Mt Vernon": {
+        "100": {
+          "actual": 11,
+          "code": "NP",
+          "goal": 12,
+          "pct": 92
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 5,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 125
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 40
+        }
+      }
+    },
+    "Annandale": {
+      "ANNANDALE": {
+        "100": {
+          "actual": 49,
+          "code": "NP",
+          "goal": 47,
+          "pct": 104
+        },
+        "20": {
+          "actual": 2,
+          "code": "BC",
+          "goal": 4,
+          "pct": 50
+        },
+        "30": {
+          "actual": 11,
+          "code": "BD",
+          "goal": 16,
+          "pct": 69
+        },
+        "300": {
+          "actual": 11,
+          "code": "NMS",
+          "goal": 16,
+          "pct": 69
+        },
+        "40": {
+          "actual": 18,
+          "code": "SA",
+          "goal": 31,
+          "pct": 58
+        },
+        "600": {
+          "actual": 58,
+          "code": "LMP",
+          "goal": 54,
+          "pct": 107
+        }
+      },
+      "Annandale A": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 3,
+          "pct": 33
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 0
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 5,
+          "pct": 20
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 50
+        }
+      },
+      "Annandale B": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 3,
+          "pct": 67
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 50
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 75
+        }
+      },
+      "Burke": {
+        "100": {
+          "actual": 12,
+          "code": "NP",
+          "goal": 10,
+          "pct": 120
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 1,
+          "pct": 200
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 200
+        },
+        "40": {
+          "actual": 4,
+          "code": "SA",
+          "goal": 3,
+          "pct": 133
+        },
+        "600": {
+          "actual": 9,
+          "code": "LMP",
+          "goal": 9,
+          "pct": 100
+        }
+      },
+      "Fairfax": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 5,
+          "pct": 80
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 1,
+          "pct": 0
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 50
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 2,
+          "pct": 150
+        },
+        "600": {
+          "actual": 15,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 214
+        }
+      },
+      "Lincolnia A": {
+        "100": {
+          "actual": 9,
+          "code": "NP",
+          "goal": 8,
+          "pct": 112
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 1,
+          "pct": 0
+        },
+        "30": {
+          "actual": 4,
+          "code": "BD",
+          "goal": 4,
+          "pct": 100
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 75
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 4,
+          "code": "LMP",
+          "goal": 6,
+          "pct": 67
+        }
+      },
+      "Lincolnia B": {
+        "100": {
+          "actual": 12,
+          "code": "NP",
+          "goal": 11,
+          "pct": 109
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 3,
+          "pct": 33
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 4,
+          "pct": 50
+        },
+        "600": {
+          "actual": 15,
+          "code": "LMP",
+          "goal": 12,
+          "pct": 125
+        }
+      },
+      "Rolling Valley  l  Office": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 2,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 5,
+          "pct": 60
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 60
+        }
+      },
+      "Springfield": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 1,
+          "pct": 200
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 2,
+          "pct": 0
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 50
+        }
+      },
+      "Wakefield  l  SMS Content": {
+        "100": {
+          "actual": 5,
+          "code": "NP",
+          "goal": 4,
+          "pct": 125
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 3,
+          "code": "BD",
+          "goal": 2,
+          "pct": 150
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 4,
+          "pct": 75
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 120
+        }
+      }
+    },
+    "Bull Run": {
+      "BULL RUN": {
+        "100": {
+          "actual": 74,
+          "code": "NP",
+          "goal": 97,
+          "pct": 76
+        },
+        "20": {
+          "actual": 5,
+          "code": "BC",
+          "goal": 4,
+          "pct": 125
+        },
+        "30": {
+          "actual": 16,
+          "code": "BD",
+          "goal": 15,
+          "pct": 107
+        },
+        "300": {
+          "actual": 26,
+          "code": "NMS",
+          "goal": 33,
+          "pct": 79
+        },
+        "40": {
+          "actual": 31,
+          "code": "SA",
+          "goal": 28,
+          "pct": 111
+        },
+        "600": {
+          "actual": 69,
+          "code": "LMP",
+          "goal": 67,
+          "pct": 103
+        }
+      },
+      "Centreville 1": {
+        "100": {
+          "actual": 5,
+          "code": "NP",
+          "goal": 6,
+          "pct": 83
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 3,
+          "pct": 100
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 6,
+          "pct": 100
+        }
+      },
+      "Centreville 2": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 9,
+          "pct": 67
+        },
+        "20": {
+          "actual": 2,
+          "code": "BC",
+          "goal": 2,
+          "pct": 100
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 67
+        },
+        "40": {
+          "actual": 4,
+          "code": "SA",
+          "goal": 4,
+          "pct": 100
+        },
+        "600": {
+          "actual": 7,
+          "code": "LMP",
+          "goal": 6,
+          "pct": 117
+        }
+      },
+      "Chantilly": {
+        "100": {
+          "actual": 22,
+          "code": "NP",
+          "goal": 40,
+          "pct": 55
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 2,
+          "pct": 100
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 75
+        },
+        "40": {
+          "actual": 9,
+          "code": "SA",
+          "goal": 5,
+          "pct": 180
+        },
+        "600": {
+          "actual": 11,
+          "code": "LMP",
+          "goal": 13,
+          "pct": 85
+        }
+      },
+      "Fair Oaks": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 5,
+          "pct": 120
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 2,
+          "pct": 100
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 3,
+          "pct": 100
+        },
+        "600": {
+          "actual": 12,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 150
+        }
+      },
+      "Gainesville": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 4,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 4,
+          "code": "BD",
+          "goal": 2,
+          "pct": 200
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 67
+        },
+        "40": {
+          "actual": 4,
+          "code": "SA",
+          "goal": 4,
+          "pct": 100
+        },
+        "600": {
+          "actual": 7,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 140
+        }
+      },
+      "Manassas A": {
+        "100": {
+          "actual": 12,
+          "code": "NP",
+          "goal": 12,
+          "pct": 100
+        },
+        "20": {
+          "actual": 2,
+          "code": "BC",
+          "goal": 1,
+          "pct": 200
+        },
+        "30": {
+          "actual": 5,
+          "code": "BD",
+          "goal": 1,
+          "pct": 500
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 5,
+          "pct": 40
+        },
+        "40": {
+          "actual": 4,
+          "code": "SA",
+          "goal": 2,
+          "pct": 200
+        },
+        "600": {
+          "actual": 17,
+          "code": "LMP",
+          "goal": 12,
+          "pct": 142
+        }
+      },
+      "Manassas B": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 5,
+          "pct": 60
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 2,
+          "pct": 50
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 33
+        }
+      },
+      "Opal  l  Auburn": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 4,
+          "pct": 75
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 4,
+          "code": "NMS",
+          "goal": 6,
+          "pct": 67
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 1,
+          "pct": 100
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 25
+        }
+      },
+      "Vint Hill": {
+        "100": {
+          "actual": 5,
+          "code": "NP",
+          "goal": 8,
+          "pct": 62
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 5,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 125
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 5,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 71
+        }
+      },
+      "Warrenton": {
+        "100": {
+          "actual": 8,
+          "code": "NP",
+          "goal": 4,
+          "pct": 200
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 100
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 1,
+          "pct": 100
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 67
+        }
+      }
+    },
+    "Langley": {
+      "Bull Run A (YSA)": {
+        "100": {
+          "actual": 7,
+          "code": "NP",
+          "goal": 9,
+          "pct": 78
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": null,
+          "pct": null
+        },
+        "30": {
+          "actual": 3,
+          "code": "BD",
+          "goal": 4,
+          "pct": 75
+        },
+        "300": {
+          "actual": 4,
+          "code": "NMS",
+          "goal": 8,
+          "pct": 50
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 4,
+          "pct": 50
+        },
+        "600": {
+          "actual": 12,
+          "code": "LMP",
+          "goal": 12,
+          "pct": 100
+        }
+      },
+      "Bull Run B (YSA)": {
+        "100": {
+          "actual": 10,
+          "code": "NP",
+          "goal": 10,
+          "pct": 100
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 5,
+          "code": "BD",
+          "goal": 4,
+          "pct": 125
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 11,
+          "code": "SA",
+          "goal": 5,
+          "pct": 220
+        },
+        "600": {
+          "actual": 15,
+          "code": "LMP",
+          "goal": 15,
+          "pct": 100
+        }
+      },
+      "Dulles (YSA)": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 3,
+          "pct": 33
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 2,
+          "pct": 100
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 4,
+          "pct": 0
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 50
+        }
+      },
+      "LANGLEY": {
+        "100": {
+          "actual": 51,
+          "code": "NP",
+          "goal": 73,
+          "pct": 70
+        },
+        "20": {
+          "actual": 3,
+          "code": "BC",
+          "goal": 3,
+          "pct": 100
+        },
+        "30": {
+          "actual": 32,
+          "code": "BD",
+          "goal": 37,
+          "pct": 86
+        },
+        "300": {
+          "actual": 23,
+          "code": "NMS",
+          "goal": 39,
+          "pct": 59
+        },
+        "40": {
+          "actual": 32,
+          "code": "SA",
+          "goal": 43,
+          "pct": 74
+        },
+        "600": {
+          "actual": 80,
+          "code": "LMP",
+          "goal": 91,
+          "pct": 88
+        }
+      },
+      "Langley A (YSA)": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 9,
+          "pct": 67
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 3,
+          "code": "BD",
+          "goal": 4,
+          "pct": 75
+        },
+        "300": {
+          "actual": 4,
+          "code": "NMS",
+          "goal": 6,
+          "pct": 67
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 7,
+          "pct": 43
+        },
+        "600": {
+          "actual": 15,
+          "code": "LMP",
+          "goal": 15,
+          "pct": 100
+        }
+      },
+      "Langley B (YSA)": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 4,
+          "pct": 100
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 3,
+          "pct": 33
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 25
+        },
+        "40": {
+          "actual": 5,
+          "code": "SA",
+          "goal": 3,
+          "pct": 167
+        },
+        "600": {
+          "actual": 10,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 250
+        }
+      },
+      "Occoquan (YSA)": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 8,
+          "pct": 50
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 3,
+          "pct": 67
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 75
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 4,
+          "pct": 50
+        },
+        "600": {
+          "actual": 4,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 80
+        }
+      },
+      "Occoquan B  (YSA)": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 7,
+          "pct": 43
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 7,
+          "pct": 29
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 5,
+          "pct": 20
+        },
+        "600": {
+          "actual": 5,
+          "code": "LMP",
+          "goal": 14,
+          "pct": 36
+        }
+      },
+      "Pentagon City A  (YSA)": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 8,
+          "pct": 25
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 4,
+          "code": "BD",
+          "goal": 3,
+          "pct": 133
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 50
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 4,
+          "pct": 50
+        },
+        "600": {
+          "actual": 9,
+          "code": "LMP",
+          "goal": 9,
+          "pct": 100
+        }
+      },
+      "Pentagon City B (YSA)": {
+        "100": {
+          "actual": 10,
+          "code": "NP",
+          "goal": 10,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 6,
+          "code": "BD",
+          "goal": 4,
+          "pct": 150
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 4,
+          "pct": 75
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 86
+        }
+      },
+      "Potomac Yard (YSA) I Potomac (SA)": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 5,
+          "pct": 80
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 4,
+          "code": "BD",
+          "goal": 3,
+          "pct": 133
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 6,
+          "pct": 50
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 3,
+          "pct": 100
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 6,
+          "pct": 33
+        }
+      }
+    },
+    "Loudoun": {
+      "Algonkian": {
+        "100": {
+          "actual": 8,
+          "code": "NP",
+          "goal": 8,
+          "pct": 100
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 3,
+          "pct": 67
+        },
+        "600": {
+          "actual": 4,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 100
+        }
+      },
+      "Ashburn": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 3,
+          "pct": 67
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 1,
+          "pct": 0
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 60
+        }
+      },
+      "Belmont Ridge": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 2,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 33
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 3,
+          "pct": 100
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 50
+        }
+      },
+      "Brambleton": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 6,
+          "pct": 17
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 3,
+          "pct": 67
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 10,
+          "pct": 30
+        }
+      },
+      "Broadlands": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 5,
+          "pct": 40
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 2,
+          "pct": 100
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 10,
+          "pct": 60
+        }
+      },
+      "Goose Creek": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 4,
+          "pct": 25
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 4,
+          "code": "BD",
+          "goal": 2,
+          "pct": 200
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 33
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 3,
+          "pct": 0
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 6,
+          "pct": 17
+        }
+      },
+      "LOUDOUN": {
+        "100": {
+          "actual": 29,
+          "code": "NP",
+          "goal": 57,
+          "pct": 51
+        },
+        "20": {
+          "actual": 2,
+          "code": "BC",
+          "goal": 2,
+          "pct": 100
+        },
+        "30": {
+          "actual": 8,
+          "code": "BD",
+          "goal": 15,
+          "pct": 53
+        },
+        "300": {
+          "actual": 12,
+          "code": "NMS",
+          "goal": 18,
+          "pct": 67
+        },
+        "40": {
+          "actual": 16,
+          "code": "SA",
+          "goal": 32,
+          "pct": 50
+        },
+        "600": {
+          "actual": 60,
+          "code": "LMP",
+          "goal": 104,
+          "pct": 58
+        }
+      },
+      "Leesburg": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 10,
+          "pct": 60
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 5,
+          "pct": 60
+        },
+        "600": {
+          "actual": 20,
+          "code": "LMP",
+          "goal": 32,
+          "pct": 62
+        }
+      },
+      "Potomac Crossing": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 3,
+          "pct": 100
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 67
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 3,
+          "pct": 0
+        },
+        "600": {
+          "actual": 10,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 125
+        }
+      },
+      "Sterling Park": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 7,
+          "pct": 29
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 1,
+          "pct": 100
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 25
+        }
+      },
+      "Tall Cedars": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 5,
+          "pct": 20
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 3,
+          "code": "BD",
+          "goal": 1,
+          "pct": 300
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 120
+        }
+      },
+      "Telegraph Springs  l  Short Hill": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 4,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 5,
+          "pct": 40
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 12,
+          "pct": 25
+        }
+      }
+    },
+    "Manassas": {
+      "Cub Run A": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 5,
+          "pct": 60
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 2,
+          "pct": 100
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 3,
+          "pct": 67
+        },
+        "600": {
+          "actual": 4,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 80
+        }
+      },
+      "Cub Run B": {
+        "100": {
+          "actual": 5,
+          "code": "NP",
+          "goal": 5,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 1,
+          "pct": 200
+        }
+      },
+      "MANASSAS": {
+        "100": {
+          "actual": 88,
+          "code": "NP",
+          "goal": 79,
+          "pct": 111
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 5,
+          "code": "BD",
+          "goal": 22,
+          "pct": 23
+        },
+        "300": {
+          "actual": 21,
+          "code": "NMS",
+          "goal": 30,
+          "pct": 70
+        },
+        "40": {
+          "actual": 19,
+          "code": "SA",
+          "goal": 37,
+          "pct": 51
+        },
+        "600": {
+          "actual": 37,
+          "code": "LMP",
+          "goal": 51,
+          "pct": 73
+        }
+      },
+      "Occoquan River A": {
+        "100": {
+          "actual": 7,
+          "code": "NP",
+          "goal": 5,
+          "pct": 140
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 50
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 2,
+          "pct": 150
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 100
+        }
+      },
+      "Occoquan River B": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 4,
+          "pct": 75
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 5,
+          "pct": 60
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 2,
+          "pct": 0
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 100
+        }
+      },
+      "Old Town A": {
+        "100": {
+          "actual": 13,
+          "code": "NP",
+          "goal": 8,
+          "pct": 162
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 3,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 0
+        },
+        "40": {
+          "actual": 4,
+          "code": "SA",
+          "goal": 4,
+          "pct": 100
+        },
+        "600": {
+          "actual": 5,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 100
+        }
+      },
+      "Old Town B": {
+        "100": {
+          "actual": 7,
+          "code": "NP",
+          "goal": 6,
+          "pct": 117
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 3,
+          "pct": 100
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 75
+        }
+      },
+      "Old Town C": {
+        "100": {
+          "actual": 9,
+          "code": "NP",
+          "goal": 7,
+          "pct": 129
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 50
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 2,
+          "pct": 0
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 67
+        }
+      },
+      "Old Town D": {
+        "100": {
+          "actual": 8,
+          "code": "NP",
+          "goal": 8,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 5,
+          "pct": 20
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 67
+        }
+      },
+      "Potomac River A": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 4,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 2,
+          "pct": 150
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 100
+        }
+      },
+      "Potomac River B": {
+        "100": {
+          "actual": 7,
+          "code": "NP",
+          "goal": 10,
+          "pct": 70
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 4,
+          "pct": 0
+        },
+        "600": {
+          "actual": 4,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 57
+        }
+      },
+      "Sudley A": {
+        "100": {
+          "actual": 12,
+          "code": "NP",
+          "goal": 7,
+          "pct": 171
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 1,
+          "pct": 0
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 3,
+          "pct": 33
+        },
+        "300": {
+          "actual": 6,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 200
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 4,
+          "pct": 25
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 6,
+          "pct": 33
+        }
+      },
+      "Sudley B  l  C": {
+        "100": {
+          "actual": 10,
+          "code": "NP",
+          "goal": 10,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 3,
+          "pct": 0
+        },
+        "300": {
+          "actual": 5,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 125
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 5,
+          "pct": 20
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 25
+        }
+      }
+    },
+    "McLean": {
+      "Arlington 1": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 4,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 4,
+          "pct": 75
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 60
+        }
+      },
+      "Arlington 2": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 4,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 1,
+          "pct": 0
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 0
+        }
+      },
+      "Falls Church": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 4,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 0
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 3,
+          "pct": 0
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 50
+        }
+      },
+      "Great Falls": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 2,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 2,
+          "pct": 0
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 3,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 4,
+          "code": "SA",
+          "goal": 5,
+          "pct": 80
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 40
+        }
+      },
+      "Idylwood A": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 2,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 4,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 200
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 2,
+          "pct": 0
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 0
+        }
+      },
+      "MCLEAN": {
+        "100": {
+          "actual": 15,
+          "code": "NP",
+          "goal": 24,
+          "pct": 62
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 3,
+          "pct": 0
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 11,
+          "pct": 9
+        },
+        "300": {
+          "actual": 15,
+          "code": "NMS",
+          "goal": 12,
+          "pct": 125
+        },
+        "40": {
+          "actual": 11,
+          "code": "SA",
+          "goal": 22,
+          "pct": 50
+        },
+        "600": {
+          "actual": 19,
+          "code": "LMP",
+          "goal": 33,
+          "pct": 58
+        }
+      },
+      "McLean": {
+        "100": {
+          "actual": 0,
+          "code": "NP",
+          "goal": 1,
+          "pct": 0
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 1,
+          "pct": 0
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 1,
+          "pct": 0
+        }
+      },
+      "Persian B": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 1,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 1,
+          "pct": 0
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 8,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 200
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 50
+        }
+      },
+      "Persian D": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 6,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 3,
+          "pct": 100
+        },
+        "600": {
+          "actual": 11,
+          "code": "LMP",
+          "goal": 12,
+          "pct": 92
+        }
+      }
+    },
+    "Oakton": {
+      "Franklin": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 4,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 6,
+          "code": "NMS",
+          "goal": 6,
+          "pct": 100
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 2,
+          "pct": 0
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 33
+        }
+      },
+      "Herndon": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 6,
+          "pct": 67
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 50
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 2,
+          "pct": 50
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 0
+        }
+      },
+      "Mandarin A": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 3,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 2,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 2,
+          "pct": 100
+        },
+        "600": {
+          "actual": 6,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 86
+        }
+      },
+      "Mandarin B": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 2,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 6,
+          "code": "NMS",
+          "goal": 5,
+          "pct": 120
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 2,
+          "pct": 100
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 67
+        }
+      },
+      "Mandarin C": {
+        "100": {
+          "actual": 0,
+          "code": "NP",
+          "goal": 2,
+          "pct": 0
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 3,
+          "pct": 0
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 0
+        }
+      },
+      "OAKTON": {
+        "100": {
+          "actual": 20,
+          "code": "NP",
+          "goal": 26,
+          "pct": 77
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 11,
+          "pct": 9
+        },
+        "300": {
+          "actual": 17,
+          "code": "NMS",
+          "goal": 18,
+          "pct": 94
+        },
+        "40": {
+          "actual": 12,
+          "code": "SA",
+          "goal": 17,
+          "pct": 71
+        },
+        "600": {
+          "actual": 12,
+          "code": "LMP",
+          "goal": 26,
+          "pct": 46
+        }
+      },
+      "Oak Marr": {
+        "100": {
+          "actual": 1,
+          "code": "NP",
+          "goal": 2,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": null,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 1,
+          "pct": 300
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 150
+        }
+      },
+      "Oakton": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 3,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 1,
+          "pct": 0
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 1,
+          "pct": 0
+        }
+      },
+      "Reston": {
+        "100": {
+          "actual": 3,
+          "code": "NP",
+          "goal": 3,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 50
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 2,
+          "pct": 50
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 0
+        }
+      },
+      "Vienna": {
+        "100": {
+          "actual": 0,
+          "code": "NP",
+          "goal": 1,
+          "pct": 0
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 0,
+          "pct": null
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 2,
+          "pct": 150
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 0
+        }
+      }
+    },
+    "Potomac": {
+      "Bella Vista A": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 5,
+          "pct": 120
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 5,
+          "pct": 60
+        },
+        "40": {
+          "actual": 6,
+          "code": "SA",
+          "goal": 3,
+          "pct": 200
+        },
+        "600": {
+          "actual": 5,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 125
+        }
+      },
+      "Bella Vista B": {
+        "100": {
+          "actual": 8,
+          "code": "NP",
+          "goal": 10,
+          "pct": 80
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 67
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 2,
+          "pct": 100
+        },
+        "600": {
+          "actual": 12,
+          "code": "LMP",
+          "goal": 12,
+          "pct": 100
+        }
+      },
+      "Little River A": {
+        "100": {
+          "actual": 12,
+          "code": "NP",
+          "goal": 9,
+          "pct": 133
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 1,
+          "pct": 0
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 1,
+          "pct": 200
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 3,
+          "pct": 0
+        },
+        "600": {
+          "actual": 3,
+          "code": "LMP",
+          "goal": 10,
+          "pct": 30
+        }
+      },
+      "Little River B": {
+        "100": {
+          "actual": 12,
+          "code": "NP",
+          "goal": 11,
+          "pct": 109
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 3,
+          "pct": 100
+        },
+        "600": {
+          "actual": 10,
+          "code": "LMP",
+          "goal": 10,
+          "pct": 100
+        }
+      },
+      "Little River C": {
+        "100": {
+          "actual": 12,
+          "code": "NP",
+          "goal": 12,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 3,
+          "code": "BD",
+          "goal": 3,
+          "pct": 100
+        },
+        "300": {
+          "actual": 9,
+          "code": "NMS",
+          "goal": 8,
+          "pct": 112
+        },
+        "40": {
+          "actual": 9,
+          "code": "SA",
+          "goal": 6,
+          "pct": 150
+        },
+        "600": {
+          "actual": 15,
+          "code": "LMP",
+          "goal": 15,
+          "pct": 100
+        }
+      },
+      "Little River D": {
+        "100": {
+          "actual": 5,
+          "code": "NP",
+          "goal": 10,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 2,
+          "pct": 100
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": null,
+          "pct": null
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 4,
+          "pct": 75
+        },
+        "600": {
+          "actual": 4,
+          "code": "LMP",
+          "goal": 7,
+          "pct": 57
+        }
+      },
+      "Loudoun A": {
+        "100": {
+          "actual": 11,
+          "code": "NP",
+          "goal": 9,
+          "pct": 122
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 5,
+          "code": "BD",
+          "goal": 3,
+          "pct": 167
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 5,
+          "pct": 60
+        },
+        "40": {
+          "actual": 3,
+          "code": "SA",
+          "goal": 5,
+          "pct": 60
+        },
+        "600": {
+          "actual": 8,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 100
+        }
+      },
+      "Loudoun B": {
+        "100": {
+          "actual": 8,
+          "code": "NP",
+          "goal": 9,
+          "pct": 89
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 9,
+          "code": "NMS",
+          "goal": 6,
+          "pct": 150
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 8,
+          "code": "LMP",
+          "goal": 9,
+          "pct": 89
+        }
+      },
+      "POTOMAC": {
+        "100": {
+          "actual": 90,
+          "code": "NP",
+          "goal": 90,
+          "pct": 100
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 1,
+          "pct": 0
+        },
+        "30": {
+          "actual": 18,
+          "code": "BD",
+          "goal": 22,
+          "pct": 82
+        },
+        "300": {
+          "actual": 36,
+          "code": "NMS",
+          "goal": 40,
+          "pct": 90
+        },
+        "40": {
+          "actual": 35,
+          "code": "SA",
+          "goal": 39,
+          "pct": 90
+        },
+        "600": {
+          "actual": 82,
+          "code": "LMP",
+          "goal": 90,
+          "pct": 91
+        }
+      },
+      "Spring Lake A": {
+        "100": {
+          "actual": 9,
+          "code": "NP",
+          "goal": 7,
+          "pct": 129
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 3,
+          "pct": 33
+        },
+        "300": {
+          "actual": 4,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 100
+        },
+        "40": {
+          "actual": 6,
+          "code": "SA",
+          "goal": 7,
+          "pct": 86
+        },
+        "600": {
+          "actual": 14,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 175
+        }
+      },
+      "Spring Lake B": {
+        "100": {
+          "actual": 5,
+          "code": "NP",
+          "goal": 4,
+          "pct": 125
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 67
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 2,
+          "pct": 100
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 67
+        }
+      },
+      "Spring Lake C": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 4,
+          "pct": 50
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 33
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 1,
+          "pct": 0
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 4,
+          "pct": 25
+        }
+      }
+    },
+    "Woodbridge": {
+      "Dale City A": {
+        "100": {
+          "actual": 13,
+          "code": "NP",
+          "goal": 7,
+          "pct": 186
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 0,
+          "pct": null
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 0
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 2,
+          "pct": 50
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 5,
+          "pct": 20
+        }
+      },
+      "Dale City B": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 6,
+          "pct": 100
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 1,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 100
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 10,
+          "code": "LMP",
+          "goal": 10,
+          "pct": 100
+        }
+      },
+      "Lake Ridge A": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 7,
+          "pct": 86
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 3,
+          "code": "NMS",
+          "goal": 3,
+          "pct": 100
+        },
+        "40": {
+          "actual": 2,
+          "code": "SA",
+          "goal": 2,
+          "pct": 100
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 3,
+          "pct": 67
+        }
+      },
+      "Lake Ridge B": {
+        "100": {
+          "actual": 0,
+          "code": "NP",
+          "goal": 3,
+          "pct": 0
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 0,
+          "code": "BD",
+          "goal": 1,
+          "pct": 0
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 0,
+          "code": "SA",
+          "goal": 1,
+          "pct": 0
+        },
+        "600": {
+          "actual": 0,
+          "code": "LMP",
+          "goal": 1,
+          "pct": 0
+        }
+      },
+      "Prince William": {
+        "100": {
+          "actual": 2,
+          "code": "NP",
+          "goal": 8,
+          "pct": 25
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": null,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 3,
+          "pct": 67
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 50
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 3,
+          "pct": 33
+        },
+        "600": {
+          "actual": 4,
+          "code": "LMP",
+          "goal": 8,
+          "pct": 50
+        }
+      },
+      "Quantico": {
+        "100": {
+          "actual": 4,
+          "code": "NP",
+          "goal": 6,
+          "pct": 67
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 1,
+          "pct": 100
+        },
+        "300": {
+          "actual": 0,
+          "code": "NMS",
+          "goal": 1,
+          "pct": 0
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 2,
+          "pct": 50
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 1,
+          "pct": 100
+        }
+      },
+      "WOODBRIDGE": {
+        "100": {
+          "actual": 56,
+          "code": "NP",
+          "goal": 62,
+          "pct": 90
+        },
+        "20": {
+          "actual": 1,
+          "code": "BC",
+          "goal": 1,
+          "pct": 100
+        },
+        "30": {
+          "actual": 9,
+          "code": "BD",
+          "goal": 12,
+          "pct": 75
+        },
+        "300": {
+          "actual": 12,
+          "code": "NMS",
+          "goal": 18,
+          "pct": 67
+        },
+        "40": {
+          "actual": 12,
+          "code": "SA",
+          "goal": 18,
+          "pct": 67
+        },
+        "600": {
+          "actual": 21,
+          "code": "LMP",
+          "goal": 36,
+          "pct": 58
+        }
+      },
+      "Woodbridge A": {
+        "100": {
+          "actual": 19,
+          "code": "NP",
+          "goal": 20,
+          "pct": 95
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 2,
+          "code": "BD",
+          "goal": 2,
+          "pct": 100
+        },
+        "300": {
+          "actual": 2,
+          "code": "NMS",
+          "goal": 2,
+          "pct": 100
+        },
+        "40": {
+          "actual": 5,
+          "code": "SA",
+          "goal": 4,
+          "pct": 125
+        },
+        "600": {
+          "actual": 2,
+          "code": "LMP",
+          "goal": 6,
+          "pct": 33
+        }
+      },
+      "Woodbridge B": {
+        "100": {
+          "actual": 6,
+          "code": "NP",
+          "goal": 5,
+          "pct": 120
+        },
+        "20": {
+          "actual": 0,
+          "code": "BC",
+          "goal": 0,
+          "pct": null
+        },
+        "30": {
+          "actual": 1,
+          "code": "BD",
+          "goal": 2,
+          "pct": 50
+        },
+        "300": {
+          "actual": 4,
+          "code": "NMS",
+          "goal": 4,
+          "pct": 100
+        },
+        "40": {
+          "actual": 1,
+          "code": "SA",
+          "goal": 1,
+          "pct": 100
+        },
+        "600": {
+          "actual": 1,
+          "code": "LMP",
+          "goal": 2,
+          "pct": 50
+        }
+      }
+    }
+  },
+  "by_zone": {
+    "Alexandria": {
+      "100": {
+        "actual": 53,
+        "code": "NP",
+        "goal": 64,
+        "pct": 83
+      },
+      "20": {
+        "actual": 0,
+        "code": "BC",
+        "goal": 0,
+        "pct": null
+      },
+      "30": {
+        "actual": 9,
+        "code": "BD",
+        "goal": 20,
+        "pct": 45
+      },
+      "300": {
+        "actual": 25,
+        "code": "NMS",
+        "goal": 26,
+        "pct": 96
+      },
+      "40": {
+        "actual": 20,
+        "code": "SA",
+        "goal": 31,
+        "pct": 65
+      },
+      "600": {
+        "actual": 37,
+        "code": "LMP",
+        "goal": 51,
+        "pct": 73
+      }
+    },
+    "Annandale": {
+      "100": {
+        "actual": 49,
+        "code": "NP",
+        "goal": 47,
+        "pct": 104
+      },
+      "20": {
+        "actual": 2,
+        "code": "BC",
+        "goal": 4,
+        "pct": 50
+      },
+      "30": {
+        "actual": 11,
+        "code": "BD",
+        "goal": 16,
+        "pct": 69
+      },
+      "300": {
+        "actual": 11,
+        "code": "NMS",
+        "goal": 16,
+        "pct": 69
+      },
+      "40": {
+        "actual": 18,
+        "code": "SA",
+        "goal": 31,
+        "pct": 58
+      },
+      "600": {
+        "actual": 58,
+        "code": "LMP",
+        "goal": 54,
+        "pct": 107
+      }
+    },
+    "Bull Run": {
+      "100": {
+        "actual": 74,
+        "code": "NP",
+        "goal": 97,
+        "pct": 76
+      },
+      "20": {
+        "actual": 5,
+        "code": "BC",
+        "goal": 4,
+        "pct": 125
+      },
+      "30": {
+        "actual": 16,
+        "code": "BD",
+        "goal": 15,
+        "pct": 107
+      },
+      "300": {
+        "actual": 26,
+        "code": "NMS",
+        "goal": 33,
+        "pct": 79
+      },
+      "40": {
+        "actual": 31,
+        "code": "SA",
+        "goal": 28,
+        "pct": 111
+      },
+      "600": {
+        "actual": 69,
+        "code": "LMP",
+        "goal": 67,
+        "pct": 103
+      }
+    },
+    "Langley": {
+      "100": {
+        "actual": 51,
+        "code": "NP",
+        "goal": 73,
+        "pct": 70
+      },
+      "20": {
+        "actual": 3,
+        "code": "BC",
+        "goal": 3,
+        "pct": 100
+      },
+      "30": {
+        "actual": 32,
+        "code": "BD",
+        "goal": 37,
+        "pct": 86
+      },
+      "300": {
+        "actual": 23,
+        "code": "NMS",
+        "goal": 39,
+        "pct": 59
+      },
+      "40": {
+        "actual": 32,
+        "code": "SA",
+        "goal": 43,
+        "pct": 74
+      },
+      "600": {
+        "actual": 80,
+        "code": "LMP",
+        "goal": 91,
+        "pct": 88
+      }
+    },
+    "Loudoun": {
+      "100": {
+        "actual": 29,
+        "code": "NP",
+        "goal": 57,
+        "pct": 51
+      },
+      "20": {
+        "actual": 2,
+        "code": "BC",
+        "goal": 2,
+        "pct": 100
+      },
+      "30": {
+        "actual": 8,
+        "code": "BD",
+        "goal": 15,
+        "pct": 53
+      },
+      "300": {
+        "actual": 12,
+        "code": "NMS",
+        "goal": 18,
+        "pct": 67
+      },
+      "40": {
+        "actual": 16,
+        "code": "SA",
+        "goal": 32,
+        "pct": 50
+      },
+      "600": {
+        "actual": 60,
+        "code": "LMP",
+        "goal": 104,
+        "pct": 58
+      }
+    },
+    "MISSION": {
+      "100": {
+        "actual": 525,
+        "code": "NP",
+        "goal": 619,
+        "pct": 85
+      },
+      "20": {
+        "actual": 14,
+        "code": "BC",
+        "goal": 19,
+        "pct": 74
+      },
+      "30": {
+        "actual": 110,
+        "code": "BD",
+        "goal": 181,
+        "pct": 61
+      },
+      "300": {
+        "actual": 198,
+        "code": "NMS",
+        "goal": 250,
+        "pct": 79
+      },
+      "40": {
+        "actual": 206,
+        "code": "SA",
+        "goal": 298,
+        "pct": 69
+      },
+      "600": {
+        "actual": 475,
+        "code": "LMP",
+        "goal": 603,
+        "pct": 79
+      }
+    },
+    "Manassas": {
+      "100": {
+        "actual": 88,
+        "code": "NP",
+        "goal": 79,
+        "pct": 111
+      },
+      "20": {
+        "actual": 1,
+        "code": "BC",
+        "goal": 1,
+        "pct": 100
+      },
+      "30": {
+        "actual": 5,
+        "code": "BD",
+        "goal": 22,
+        "pct": 23
+      },
+      "300": {
+        "actual": 21,
+        "code": "NMS",
+        "goal": 30,
+        "pct": 70
+      },
+      "40": {
+        "actual": 19,
+        "code": "SA",
+        "goal": 37,
+        "pct": 51
+      },
+      "600": {
+        "actual": 37,
+        "code": "LMP",
+        "goal": 51,
+        "pct": 73
+      }
+    },
+    "McLean": {
+      "100": {
+        "actual": 15,
+        "code": "NP",
+        "goal": 24,
+        "pct": 62
+      },
+      "20": {
+        "actual": 0,
+        "code": "BC",
+        "goal": 3,
+        "pct": 0
+      },
+      "30": {
+        "actual": 1,
+        "code": "BD",
+        "goal": 11,
+        "pct": 9
+      },
+      "300": {
+        "actual": 15,
+        "code": "NMS",
+        "goal": 12,
+        "pct": 125
+      },
+      "40": {
+        "actual": 11,
+        "code": "SA",
+        "goal": 22,
+        "pct": 50
+      },
+      "600": {
+        "actual": 19,
+        "code": "LMP",
+        "goal": 33,
+        "pct": 58
+      }
+    },
+    "Oakton": {
+      "100": {
+        "actual": 20,
+        "code": "NP",
+        "goal": 26,
+        "pct": 77
+      },
+      "20": {
+        "actual": 0,
+        "code": "BC",
+        "goal": 0,
+        "pct": null
+      },
+      "30": {
+        "actual": 1,
+        "code": "BD",
+        "goal": 11,
+        "pct": 9
+      },
+      "300": {
+        "actual": 17,
+        "code": "NMS",
+        "goal": 18,
+        "pct": 94
+      },
+      "40": {
+        "actual": 12,
+        "code": "SA",
+        "goal": 17,
+        "pct": 71
+      },
+      "600": {
+        "actual": 12,
+        "code": "LMP",
+        "goal": 26,
+        "pct": 46
+      }
+    },
+    "Potomac": {
+      "100": {
+        "actual": 90,
+        "code": "NP",
+        "goal": 90,
+        "pct": 100
+      },
+      "20": {
+        "actual": 0,
+        "code": "BC",
+        "goal": 1,
+        "pct": 0
+      },
+      "30": {
+        "actual": 18,
+        "code": "BD",
+        "goal": 22,
+        "pct": 82
+      },
+      "300": {
+        "actual": 36,
+        "code": "NMS",
+        "goal": 40,
+        "pct": 90
+      },
+      "40": {
+        "actual": 35,
+        "code": "SA",
+        "goal": 39,
+        "pct": 90
+      },
+      "600": {
+        "actual": 82,
+        "code": "LMP",
+        "goal": 90,
+        "pct": 91
+      }
+    },
+    "Woodbridge": {
+      "100": {
+        "actual": 56,
+        "code": "NP",
+        "goal": 62,
+        "pct": 90
+      },
+      "20": {
+        "actual": 1,
+        "code": "BC",
+        "goal": 1,
+        "pct": 100
+      },
+      "30": {
+        "actual": 9,
+        "code": "BD",
+        "goal": 12,
+        "pct": 75
+      },
+      "300": {
+        "actual": 12,
+        "code": "NMS",
+        "goal": 18,
+        "pct": 67
+      },
+      "40": {
+        "actual": 12,
+        "code": "SA",
+        "goal": 18,
+        "pct": 67
+      },
+      "600": {
+        "actual": 21,
+        "code": "LMP",
+        "goal": 36,
+        "pct": 58
+      }
+    }
+  },
+  "file": "2026-08-17.json",
+  "mlc": {
+    "100": {
+      "code": "NP",
+      "mission": 525,
+      "mlc": 216,
+      "share": 41
+    },
+    "20": {
+      "code": "BC",
+      "mission": 14,
+      "mlc": 5,
+      "share": 36
+    },
+    "30": {
+      "code": "BD",
+      "mission": 110,
+      "mlc": 46,
+      "share": 42
+    },
+    "300": {
+      "code": "NMS",
+      "mission": 198,
+      "mlc": 81,
+      "share": 41
+    },
+    "40": {
+      "code": "SA",
+      "mission": 206,
+      "mlc": 84,
+      "share": 41
+    },
+    "600": {
+      "code": "LMP",
+      "mission": 475,
+      "mlc": 186,
+      "share": 39
+    }
+  },
+  "n_facts": 588,
+  "n_missionaries": 203,
+  "n_ward_facts": 624,
+  "warnings": [],
+  "week_end": "2026-08-23",
+  "week_start": "2026-08-17"
+}

@@ -1,0 +1,30 @@
+name = "dcsm-ki-portal"
+main = "src/server/index.ts"
+compatibility_date = "2024-12-05"
+compatibility_flags = ["nodejs_compat"]
+
+# Single-service deploy: the Worker serves /api/* and falls back to the built
+# SPA in dist/client for everything else.
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dcsm_ki"
+# `database_id` is filled in by `wrangler d1 create dcsm_ki` at first setup.
+database_id = "PLACEHOLDER-run-wrangler-d1-create-dcsm_ki"
+migrations_dir = "migrations"
+
+# Bundle the Area To Ward Key CSV as text so /api/seed can run server-side.
+[[rules]]
+type = "Text"
+globs = ["**/*.csv"]
+fallthrough = true
+
+[vars]
+# In production, Cloudflare Access sits in front and injects
+# Cf-Access-Authenticated-User-Email. DEV_USER is only read when that header is
+# absent (i.e. local `wrangler dev`).
+DEV_USER = "dev@localhost"

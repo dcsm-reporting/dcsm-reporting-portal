@@ -1,0 +1,327 @@
+{
+  "entity": {
+    "type": "mission",
+    "id": 14523,
+    "name": "Washington DC South Mission",
+    "normalizedName": "Washington DC South Mission",
+    "entityType": "mission",
+    "kiData": [
+      {"id": 20, "date": "2026-08-24"},
+      {"id": 30, "date": "2026-08-24"},
+      {"id": 40, "date": "2026-08-24"},
+      {"id": 100, "date": "2026-08-24"},
+      {"id": 300, "date": "2026-08-24"},
+      {"id": 600, "date": "2026-08-24"}
+    ],
+    "entities": [
+      {
+        "type": "zone",
+        "id": 7461598,
+        "name": "Alexandria",
+        "entityType": "zone",
+        "entities": [
+          {
+            "type": "district",
+            "id": 128093851,
+            "name": "Alexandria 1",
+            "entityType": "district",
+            "entities": [
+              {
+                "type": "area",
+                "id": 488608442,
+                "name": "Mt Vernon",
+                "entityType": "area",
+                "entities": [
+                  {
+                    "type": "org", "id": 22211, "name": "Mount Vernon", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 0, "date": "2026-08-24"},
+                      {"id": 40, "actual": 2, "date": "2026-08-24"},
+                      {"id": 100, "actual": 6, "date": "2026-08-24"},
+                      {"id": 300, "actual": 2, "date": "2026-08-24"},
+                      {"id": 600, "actual": 6, "date": "2026-08-24"}
+                    ]
+                  },
+                  {
+                    "type": "org", "id": 63939, "name": "Online", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 0, "date": "2026-08-24"},
+                      {"id": 40, "actual": 0, "date": "2026-08-24"},
+                      {"id": 100, "actual": 0, "date": "2026-08-24"},
+                      {"id": 300, "actual": 0, "date": "2026-08-24"},
+                      {"id": 600, "actual": 0, "date": "2026-08-24"}
+                    ]
+                  }
+                ],
+                "missionaries": [
+                  {"missionaryId": 878360, "firstName": "Logan", "lastName": "Peterson", "areaId": 488608442, "position": "ZONE_LEADER_LEAD", "gender": "M"},
+                  {"missionaryId": 888054, "firstName": "Harrison", "lastName": "Bierer", "areaId": 488608442, "position": "ZONE_LEADER", "gender": "M"}
+                ],
+                "areaBookHistory": [{"date": "2026-08-24", "enabled": true}],
+                "kiData": [
+                  {"id": 20, "goal": 0, "date": "2026-08-24"},
+                  {"id": 30, "goal": 2, "date": "2026-08-24"},
+                  {"id": 40, "goal": 3, "date": "2026-08-24"},
+                  {"id": 100, "goal": 8, "date": "2026-08-24"},
+                  {"id": 300, "goal": 4, "date": "2026-08-24"},
+                  {"id": 600, "goal": 4, "date": "2026-08-24"}
+                ],
+                "entityType": "area"
+              },
+              {
+                "type": "area",
+                "id": 500308274,
+                "name": "Fort Belvoir",
+                "entityType": "area",
+                "entities": [
+                  {
+                    "type": "org", "id": 4011060, "name": "Fort Belvoir", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 1, "date": "2026-08-24"},
+                      {"id": 40, "actual": 1, "date": "2026-08-24"},
+                      {"id": 100, "actual": 4, "date": "2026-08-24"},
+                      {"id": 300, "actual": 2, "date": "2026-08-24"},
+                      {"id": 600, "actual": 1, "date": "2026-08-24"}
+                    ]
+                  },
+                  {
+                    "type": "org", "id": 63939, "name": "Online", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 0, "date": "2026-08-24"},
+                      {"id": 40, "actual": 0, "date": "2026-08-24"},
+                      {"id": 100, "actual": 0, "date": "2026-08-24"},
+                      {"id": 300, "actual": 0, "date": "2026-08-24"},
+                      {"id": 600, "actual": 0, "date": "2026-08-24"}
+                    ]
+                  }
+                ],
+                "missionaries": [
+                  {"missionaryId": 859292, "firstName": "Porter", "lastName": "Evans", "areaId": 500308274, "position": "DISTRICT_LEADER", "gender": "M"},
+                  {"missionaryId": 903481, "firstName": "Maddux", "lastName": "Ostergar", "areaId": 500308274, "position": "DISTRICT_LEADER", "gender": "M"}
+                ],
+                "areaBookHistory": [{"date": "2026-08-24", "enabled": true}],
+                "kiData": [
+                  {"id": 20, "goal": 0, "date": "2026-08-24"},
+                  {"id": 30, "goal": 2, "date": "2026-08-24"},
+                  {"id": 40, "goal": 3, "date": "2026-08-24"},
+                  {"id": 100, "goal": 8, "date": "2026-08-24"},
+                  {"id": 300, "goal": 3, "date": "2026-08-24"},
+                  {"id": 600, "goal": 5, "date": "2026-08-24"}
+                ],
+                "entityType": "area"
+              }
+            ],
+            "entityType": "district"
+          },
+          {
+            "type": "district",
+            "id": 500686427,
+            "name": "Alexandria 4",
+            "entityType": "district",
+            "entities": [
+              {
+                "type": "area",
+                "id": 141075428,
+                "name": "Alexandria 2  l  Assistants",
+                "entityType": "area",
+                "entities": [
+                  {
+                    "type": "org", "id": 4011059, "name": "Alexandria 2nd", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 2, "date": "2026-08-24"},
+                      {"id": 40, "actual": 2, "date": "2026-08-24"},
+                      {"id": 100, "actual": 3, "date": "2026-08-24"},
+                      {"id": 300, "actual": 2, "date": "2026-08-24"},
+                      {"id": 600, "actual": 5, "date": "2026-08-24"}
+                    ]
+                  },
+                  {
+                    "type": "org", "id": 63939, "name": "Online", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 0, "date": "2026-08-24"},
+                      {"id": 40, "actual": 0, "date": "2026-08-24"},
+                      {"id": 100, "actual": 0, "date": "2026-08-24"},
+                      {"id": 300, "actual": 0, "date": "2026-08-24"},
+                      {"id": 600, "actual": 0, "date": "2026-08-24"}
+                    ]
+                  }
+                ],
+                "missionaries": [
+                  {"missionaryId": 844365, "firstName": "Dylan", "lastName": "Penafiel Albarran", "areaId": 141075428, "position": "ASSISTANT", "gender": "M"},
+                  {"missionaryId": 857213, "firstName": "Miles", "lastName": "Barber", "areaId": 141075428, "position": "ASSISTANT", "gender": "M"}
+                ],
+                "areaBookHistory": [{"date": "2026-08-24", "enabled": true}],
+                "kiData": [
+                  {"id": 20, "goal": 1, "date": "2026-08-24"},
+                  {"id": 30, "goal": 3, "date": "2026-08-24"},
+                  {"id": 40, "goal": 5, "date": "2026-08-24"},
+                  {"id": 100, "goal": 8, "date": "2026-08-24"},
+                  {"id": 300, "goal": 5, "date": "2026-08-24"},
+                  {"id": 600, "goal": 6, "date": "2026-08-24"}
+                ],
+                "entityType": "area"
+              }
+            ],
+            "entityType": "district"
+          }
+        ]
+      },
+      {
+        "type": "zone",
+        "id": 7461593,
+        "name": "Annandale",
+        "entityType": "zone",
+        "entities": [
+          {
+            "type": "district",
+            "id": 500315133,
+            "name": "Annandale 1",
+            "entityType": "district",
+            "entities": [
+              {
+                "type": "area",
+                "id": 474055861,
+                "name": "Fairfax",
+                "entityType": "area",
+                "entities": [
+                  {
+                    "type": "org", "id": 18650, "name": "Fairfax", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 1, "date": "2026-08-24"},
+                      {"id": 40, "actual": 2, "date": "2026-08-24"},
+                      {"id": 100, "actual": 4, "date": "2026-08-24"},
+                      {"id": 300, "actual": 1, "date": "2026-08-24"},
+                      {"id": 600, "actual": 10, "date": "2026-08-24"}
+                    ]
+                  },
+                  {
+                    "type": "org", "id": 63939, "name": "Online", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 0, "date": "2026-08-24"},
+                      {"id": 40, "actual": 0, "date": "2026-08-24"},
+                      {"id": 100, "actual": 0, "date": "2026-08-24"},
+                      {"id": 300, "actual": 0, "date": "2026-08-24"},
+                      {"id": 600, "actual": 0, "date": "2026-08-24"}
+                    ]
+                  }
+                ],
+                "missionaries": [
+                  {"missionaryId": 841743, "firstName": "Jordyn", "lastName": "Stabler", "areaId": 474055861, "position": "TRAINER", "gender": "F"},
+                  {"missionaryId": 923719, "firstName": "Lorelai", "lastName": "Peterson", "areaId": 474055861, "position": "JUNIOR_COMPANION", "gender": "F"}
+                ],
+                "areaBookHistory": [{"date": "2026-08-24", "enabled": true}],
+                "kiData": [
+                  {"id": 20, "goal": 0, "date": "2026-08-24"},
+                  {"id": 30, "goal": 2, "date": "2026-08-24"},
+                  {"id": 40, "goal": 3, "date": "2026-08-24"},
+                  {"id": 100, "goal": 5, "date": "2026-08-24"},
+                  {"id": 300, "goal": 2, "date": "2026-08-24"},
+                  {"id": 600, "goal": 10, "date": "2026-08-24"}
+                ],
+                "entityType": "area"
+              },
+              {
+                "type": "area",
+                "id": 480093547,
+                "name": "Lincolnia B",
+                "entityType": "area",
+                "entities": [
+                  {
+                    "type": "org", "id": 76172, "name": "Lincolnia", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 0, "date": "2026-08-24"},
+                      {"id": 40, "actual": 1, "date": "2026-08-24"},
+                      {"id": 100, "actual": 11, "date": "2026-08-24"},
+                      {"id": 300, "actual": 1, "date": "2026-08-24"},
+                      {"id": 600, "actual": 6, "date": "2026-08-24"}
+                    ]
+                  },
+                  {
+                    "type": "org", "id": 63939, "name": "Online", "entityType": "org",
+                    "kiData": [
+                      {"id": 20, "actual": 0, "date": "2026-08-24"},
+                      {"id": 30, "actual": 0, "date": "2026-08-24"},
+                      {"id": 40, "actual": 0, "date": "2026-08-24"},
+                      {"id": 100, "actual": 0, "date": "2026-08-24"},
+                      {"id": 300, "actual": 0, "date": "2026-08-24"},
+                      {"id": 600, "actual": 0, "date": "2026-08-24"}
+                    ]
+                  }
+                ],
+                "missionaries": [
+                  {"missionaryId": 827230, "firstName": "Carter", "lastName": "Clayton", "areaId": 480093547, "position": "ZONE_LEADER_LEAD", "gender": "M"},
+                  {"missionaryId": 859644, "firstName": "Mason", "lastName": "Smith", "areaId": 480093547, "position": "ZONE_LEADER", "gender": "M"}
+                ],
+                "areaBookHistory": [{"date": "2026-08-24", "enabled": true}],
+                "kiData": [
+                  {"id": 20, "goal": 0, "date": "2026-08-24"},
+                  {"id": 30, "goal": 2, "date": "2026-08-24"},
+                  {"id": 40, "goal": 2, "date": "2026-08-24"},
+                  {"id": 100, "goal": 12, "date": "2026-08-24"},
+                  {"id": 300, "goal": 2, "date": "2026-08-24"},
+                  {"id": 600, "goal": 13, "date": "2026-08-24"}
+                ],
+                "entityType": "area"
+              }
+            ],
+            "entityType": "district"
+          }
+        ]
+      },
+      {
+        "type": "zone",
+        "id": 500616356,
+        "name": "Service",
+        "entityType": "zone",
+        "entities": [
+          {
+            "type": "district",
+            "id": 500628637,
+            "name": "Wheatley 1",
+            "entityType": "district",
+            "entities": [
+              {
+                "type": "area",
+                "id": 500687953,
+                "name": "Wheatley 1E",
+                "entityType": "area",
+                "entities": [],
+                "missionaries": [],
+                "areaBookHistory": [{"date": "2026-08-24", "enabled": false}],
+                "kiData": [
+                  {"id": 20, "date": "2026-08-24"},
+                  {"id": 30, "date": "2026-08-24"},
+                  {"id": 40, "date": "2026-08-24"},
+                  {"id": 100, "date": "2026-08-24"},
+                  {"id": 300, "date": "2026-08-24"},
+                  {"id": 600, "date": "2026-08-24"}
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyIndicators": [
+    {"id": 20, "name": "People Who Are Baptized and Confirmed", "shortName": "Baptized and Confirmed", "sortOrder": 70, "calculated": true},
+    {"id": 30, "name": "People With a Baptismal Date", "shortName": "Has Baptismal Date", "sortOrder": 60, "calculated": true},
+    {"id": 40, "name": "People Who Attend Sacrament Meeting", "shortName": "Potential Member Sacrament", "sortOrder": 30, "calculated": true},
+    {"id": 100, "name": "New People Being Taught", "shortName": "New People", "sortOrder": 10, "calculated": true},
+    {"id": 300, "name": "New Members Attending Sacrament Meeting", "shortName": "New Members at Sacrament", "sortOrder": 80, "calculated": true},
+    {"id": 600, "name": "Lessons With a Member Participating", "shortName": "Lessons With Member Participating", "sortOrder": 15, "calculated": true}
+  ],
+  "reportStart": "2026-08-24",
+  "reportEnd": "2026-08-30",
+  "lastMissionKIOverride": true,
+  "currentMissionKIOverride": true
+}
