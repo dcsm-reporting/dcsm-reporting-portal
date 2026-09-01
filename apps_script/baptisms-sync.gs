@@ -11,16 +11,21 @@
  *     SYNC_SECRET   (the same value set with `wrangler secret put FRIENDS_SYNC_SECRET`)
  */
 
-// Per-zone tabs to read. Any name here that isn't a real tab is skipped.
+// Per-zone working tabs (zone taken from the tab name).
 var ZONE_TABS = [
   'Alexandria', 'Annandale', 'Bull Run', 'Langley', 'Loudoun',
   'Manassas', 'McLean', 'Oakton', 'Potomac', 'Woodbridge',
   'Bella Vista North'
 ];
 
+// History tabs (zone/stake read from columns, not the tab name). This catches
+// completed baptisms after STLs cycle them out of the working tabs.
+var HISTORY_TABS = ['Organized Baptisms'];
+
 var HEADER_MATCH = 'name (first and last)';
 
-// column label (lowercased, trimmed) → payload field
+// column label (lowercased, trimmed) → payload field.
+// "actual zone" / "actual stake" win over the plain columns when present.
 var FIELD_BY_HEADER = {
   'name (first and last)': 'name',
   'baptism date (mm/dd/yy)': 'baptismDate',
@@ -31,6 +36,8 @@ var FIELD_BY_HEADER = {
   'baptism calendar (y/n)': 'onBaptismCalendar',
   'ward name': 'ward',
   'stake': 'stake',
+  'actual stake': 'stake',
+  'actual zone': 'zone',
   'missionary names (last name + last name)': 'missionaries',
   'missionary names': 'missionaries',
   'completed baptism': 'baptizedConfirmed'
@@ -68,49 +75,54 @@ function timeStr_(v, tz) {
   return String(v == null ? '' : v).trim();  // "TBD", "2:00 PM", etc.
 }
 
+function readTab_(ss, tabName, fallbackZone, tz, out, seen) {
+  var sheet = ss.getSheetByName(tabName);
+  if (!sheet) return;
+  var values = sheet.getDataRange().getValues();
+
+  var hdrRow = -1;
+  for (var i = 0; i < values.length && hdrRow < 0; i++) {
+    for (var j = 0; j < values[i].length; j++) {
+      if (String(values[i][j] || '').trim().toLowerCase() === HEADER_MATCH) { hdrRow = i; break; }
+    }
+  }
+  if (hdrRow < 0) return;
+
+  var cols = {};
+  for (var c = 0; c < values[hdrRow].length; c++) {
+    var key = String(values[hdrRow][c] || '').trim().toLowerCase();
+    if (FIELD_BY_HEADER[key] && cols[FIELD_BY_HEADER[key]] === undefined) cols[FIELD_BY_HEADER[key]] = c;
+  }
+  if (cols.name === undefined) return;
+
+  for (var r = hdrRow + 1; r < values.length; r++) {
+    var name = String(values[r][cols.name] || '').trim();
+    if (!name) continue;
+    var rec = { zone: fallbackZone || '', name: name };
+    for (var field in cols) {
+      if (field === 'name') continue;
+      var raw = values[r][cols[field]];
+      if (field === 'baptismDate') rec.baptismDate = raw ? isoDate_(raw) : '';
+      else if (field === 'baptismTime') rec.baptismTime = timeStr_(raw, tz);
+      else if (field === 'baptizedConfirmed') rec.baptizedConfirmed = /^(y|yes|true|1)/i.test(String(raw).trim());
+      else if (field === 'attendedChurch2x' || field === 'onBaptismCalendar')
+        rec[field] = /^(y|yes|true|1)/i.test(String(raw).trim());
+      else { var v = String(raw == null ? '' : raw).trim(); if (v) rec[field] = v; }
+    }
+    // dedupe on ward|name across tabs (working tab wins — it's read first)
+    var k = String(rec.ward || '').toLowerCase() + '|' + name.toLowerCase();
+    if (seen[k]) continue;
+    seen[k] = true;
+    out.push(rec);
+  }
+}
+
 function collectRows_() {
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone() || 'America/New_York';
-  var out = [];
-  for (var z = 0; z < ZONE_TABS.length; z++) {
-    var sheet = ss.getSheetByName(ZONE_TABS[z]);
-    if (!sheet) continue;
-    var values = sheet.getDataRange().getValues();
-
-    // find the header row
-    var hdrRow = -1;
-    for (var i = 0; i < values.length; i++) {
-      for (var j = 0; j < values[i].length; j++) {
-        if (String(values[i][j] || '').trim().toLowerCase() === HEADER_MATCH) { hdrRow = i; break; }
-      }
-      if (hdrRow >= 0) break;
-    }
-    if (hdrRow < 0) continue;
-
-    var cols = {};
-    for (var c = 0; c < values[hdrRow].length; c++) {
-      var key = String(values[hdrRow][c] || '').trim().toLowerCase();
-      if (FIELD_BY_HEADER[key]) cols[FIELD_BY_HEADER[key]] = c;
-    }
-    if (cols.name === undefined) continue;
-
-    for (var r = hdrRow + 1; r < values.length; r++) {
-      var name = String(values[r][cols.name] || '').trim();
-      if (!name) continue;
-      var rec = { zone: ZONE_TABS[z], name: name };
-      for (var field in cols) {
-        if (field === 'name') continue;
-        var raw = values[r][cols[field]];
-        if (field === 'baptismDate') rec.baptismDate = raw ? isoDate_(raw) : '';
-        else if (field === 'baptismTime') rec.baptismTime = timeStr_(raw, tz);
-        else if (field === 'baptizedConfirmed') rec.baptizedConfirmed = /^(y|yes|true|1)/i.test(String(raw).trim());
-        else if (field === 'attendedChurch2x' || field === 'onBaptismCalendar')
-          rec[field] = /^(y|yes|true|1)/i.test(String(raw).trim());
-        else rec[field] = String(raw == null ? '' : raw).trim();
-      }
-      out.push(rec);
-    }
-  }
+  var out = [], seen = {};
+  for (var z = 0; z < ZONE_TABS.length; z++) readTab_(ss, ZONE_TABS[z], ZONE_TABS[z], tz, out, seen);
+  for (var h = 0; h < HISTORY_TABS.length; h++) readTab_(ss, HISTORY_TABS[h], '', tz, out, seen);
   return out;
 }
 

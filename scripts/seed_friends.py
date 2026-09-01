@@ -159,7 +159,11 @@ def main() -> int:
     req = urllib.request.Request(
         args.base.rstrip("/") + "/api/friends/sync",
         data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {args.secret}"},
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {args.secret}",
+            "User-Agent": "Mozilla/5.0 (dcsm-ki-portal seed_friends.py)",
+        },
         method="POST",
     )
     with urllib.request.urlopen(req) as resp:

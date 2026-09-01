@@ -20,12 +20,16 @@ import { getAreaWardRows } from "./db.js";
 import { wardMapForWeek } from "../pipeline/resolve.js";
 
 type Row = Record<string, string | number | null>;
-export type StoredFriend = Friend & { active: boolean; syncKey: string | null };
+export type StoredFriend = Friend & {
+  active: boolean;
+  syncKey: string | null;
+  leftSheetAt: string | null;
+};
 
 const COLS =
   "id, name, zone, canonical_area_key, ward, stake, missionaries, baptism_date, baptism_time, " +
   "baptism_address, attended_church_2x, on_baptism_calendar, baptized_confirmed, dropped, active, " +
-  "source, sync_key, created_at, created_by, updated_at, updated_by";
+  "left_sheet_at, source, sync_key, created_at, created_by, updated_at, updated_by";
 
 function toFriend(r: Row): StoredFriend {
   return {
@@ -50,6 +54,7 @@ function toFriend(r: Row): StoredFriend {
     updatedBy: (r.updated_by as string | null) ?? null,
     active: Boolean(r.active),
     syncKey: (r.sync_key as string | null) ?? null,
+    leftSheetAt: (r.left_sheet_at as string | null) ?? null,
   };
 }
 
@@ -142,8 +147,9 @@ export interface SheetRow {
 }
 
 const norm = (s: unknown) => String(s ?? "").trim();
-export function syncKeyOf(zone: string, ward: string, name: string): string {
-  return `${norm(zone)}|${norm(ward)}|${norm(name)}`.toLowerCase();
+/** Zone is left out — it's renamed at transfers; ward|name is stable. */
+export function syncKeyOf(ward: string, name: string): string {
+  return `${norm(ward)}|${norm(name)}`.toLowerCase();
 }
 
 export async function syncFriends(
@@ -154,6 +160,7 @@ export async function syncFriends(
   rowsIn: number;
   upserted: number;
   changed: number;
+  retained: number;
   deactivated: number;
   warnings: string[];
 }> {
@@ -167,7 +174,7 @@ export async function syncFriends(
       const zone = norm(r.zone);
       const ward = norm(r.ward);
       return {
-        key: syncKeyOf(zone, ward, name),
+        key: syncKeyOf(ward, name),
         name,
         zone: zone || null,
         ward: ward || null,
@@ -213,7 +220,8 @@ export async function syncFriends(
     a.attendedChurch2x !== b.attendedChurch2x ||
     a.onBaptismCalendar !== b.onBaptismCalendar ||
     a.baptizedConfirmed !== b.baptizedConfirmed ||
-    !b.active;
+    !b.active ||
+    b.dropped;
 
   for (const r of byKey.values()) {
     const prev = existingByKey.get(r.key);
@@ -222,9 +230,11 @@ export async function syncFriends(
       stmts.push(
         db
           .prepare(
+            // back in the sheet ⇒ active again and no longer "dropped"
             `UPDATE friend SET name=?, zone=?, ward=?, stake=?, missionaries=?, baptism_date=?,
                baptism_time=?, baptism_address=?, attended_church_2x=?, on_baptism_calendar=?,
-               baptized_confirmed=?, active=1, source='sheet', updated_at=?, updated_by='sheet-sync'
+               baptized_confirmed=?, active=1, dropped=0, left_sheet_at=NULL, source='sheet',
+               updated_at=?, updated_by='sheet-sync'
              WHERE id=?`,
           )
           .bind(
@@ -254,21 +264,43 @@ export async function syncFriends(
     upserted++;
   }
 
-  // anyone active + sheet-sourced who dropped out of the snapshot → deactivate
+  // Anyone sheet-sourced + active who dropped out of the snapshot: STLs cycle
+  // completed baptisms out each month, so keep those (just stamp when they left);
+  // an on-date friend that's removed is treated as no longer progressing.
   const gone = existing.filter(
-    (f) => f.source === "sheet" && (f as Friend & { active: boolean }).active && f.syncKey && !byKey.has(f.syncKey),
+    (f) => f.source === "sheet" && f.active && f.syncKey && !byKey.has(f.syncKey),
   );
+  let retained = 0;
+  let deactivated = 0;
   for (const f of gone) {
-    stmts.push(
-      db.prepare("UPDATE friend SET active=0, updated_at=?, updated_by='sheet-sync' WHERE id=?").bind(now, f.id),
-    );
+    if (f.baptizedConfirmed) {
+      if (f.leftSheetAt == null) {
+        stmts.push(
+          db
+            .prepare(
+              "UPDATE friend SET left_sheet_at=?, updated_at=?, updated_by='sheet-sync' WHERE id=?",
+            )
+            .bind(now, now, f.id),
+        );
+      }
+      retained++;
+    } else {
+      stmts.push(
+        db
+          .prepare(
+            "UPDATE friend SET active=0, dropped=1, updated_at=?, updated_by='sheet-sync' WHERE id=?",
+          )
+          .bind(now, f.id),
+      );
+      deactivated++;
+    }
   }
 
   // run in chunks
   for (let i = 0; i < stmts.length; i += 20) await db.batch(stmts.slice(i, i + 20));
 
   // weekly snapshot — only when something moved (idempotent UPSERT keyed by week)
-  if (weekStart && (changed > 0 || gone.length > 0)) {
+  if (weekStart && (changed > 0 || deactivated > 0)) {
     const active = await listFriends(db);
     const snap = active.map((f) =>
       db
@@ -294,8 +326,8 @@ export async function syncFriends(
     .prepare(
       "INSERT INTO friend_sync (at, rows_in, upserted, deactivated, warnings) VALUES (?, ?, ?, ?, ?)",
     )
-    .bind(now, rows.length, upserted, gone.length, warnings.length ? JSON.stringify(warnings) : null)
+    .bind(now, rows.length, upserted, deactivated, warnings.length ? JSON.stringify(warnings) : null)
     .run();
 
-  return { rowsIn: rows.length, upserted, changed, deactivated: gone.length, warnings };
+  return { rowsIn: rows.length, upserted, changed, retained, deactivated, warnings };
 }
