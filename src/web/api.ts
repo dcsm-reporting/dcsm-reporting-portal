@@ -13,9 +13,9 @@ async function jget<T>(url: string): Promise<T> {
   }
   return r.json() as Promise<T>;
 }
-async function jpost<T>(url: string, body: unknown): Promise<T> {
+async function jsend<T>(method: string, url: string, body: unknown): Promise<T> {
   const r = await fetch(url, {
-    method: "POST",
+    method,
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -23,6 +23,8 @@ async function jpost<T>(url: string, body: unknown): Promise<T> {
   if (!r.ok) throw Object.assign(new Error(data.error ?? `${r.status}`), { data });
   return data as T;
 }
+const jpost = <T>(url: string, body: unknown) => jsend<T>("POST", url, body);
+const jput = <T>(url: string, body: unknown) => jsend<T>("PUT", url, body);
 
 export interface WeekMeta {
   weekStart: string;
@@ -38,6 +40,7 @@ export interface WeekView {
   weekLabel: string;
   generatedAt: string;
   zones: string[];
+  bands: { goalPct: { low: number; mid: number }; mlcShare: { low: number; mid: number } };
   byZone: ZoneGrid;
   byArea: Record<string, ZoneGrid>;
   mlc: { this: MlcGrid; last: MlcGrid | null; lastWeekStart: string | null };
@@ -101,4 +104,171 @@ export const api = {
     }),
   crosswalk: () =>
     jget<{ canonical: unknown[]; crosswalk: unknown[]; areaWard: unknown[] }>("/api/crosswalk"),
+
+  // --- weekly console -----------------------------------------------
+  console: () => jget<ConsoleView>("/api/console"),
+
+  // --- config ------------------------------------------------------
+  config: () => jget<ConfigResponse>("/api/config"),
+  setConfig: (key: string, value: unknown) =>
+    jput<{ ok: true; config: PortalConfig }>("/api/config", { key, value }),
+
+  // --- structure -------------------------------------------------
+  structure: () => jget<Structure>("/api/structure"),
+
+  // --- transfer rollover -------------------------------------
+  rollover: (w: string) => jget<RolloverPlan>(`/api/rollover/${w}`),
+  applyRollover: (w: string, body: RolloverApplyBody) =>
+    jpost<{ ok: true; applied: { areas: number; wards: number }; plan: RolloverPlan }>(
+      `/api/rollover/${w}/apply`,
+      body,
+    ),
+
+  // --- crosswalk edits ---------------------------------------
+  renameCanonical: (key: string, displayName: string) =>
+    jpost<{ ok: true }>("/api/crosswalk/canonical/rename", { key, displayName }),
+  retireCanonical: (key: string, retired: boolean) =>
+    jpost<{ ok: true }>("/api/crosswalk/canonical/retire", { key, retired }),
+  createCanonical: (key: string, displayName: string) =>
+    jpost<{ ok: true }>("/api/crosswalk/canonical", { key, displayName }),
+  attachArea: (imosAreaId: number, canonicalAreaKey: string, validFrom: string) =>
+    jpost<{ ok: true }>("/api/crosswalk/attach", { imosAreaId, canonicalAreaKey, validFrom }),
+  closeMapping: (imosAreaId: number, validFrom: string, validTo: string) =>
+    jpost<{ ok: true }>("/api/crosswalk/mapping/close", { imosAreaId, validFrom, validTo }),
+  addWard: (b: {
+    canonicalAreaKey: string;
+    wardUnitId: number;
+    wardName: string;
+    stake: string;
+    validFrom: string;
+  }) => jpost<{ ok: true }>("/api/crosswalk/ward", b),
+  closeWard: (canonicalAreaKey: string, wardUnitId: number, validFrom: string, validTo: string) =>
+    jpost<{ ok: true }>("/api/crosswalk/ward/close", {
+      canonicalAreaKey,
+      wardUnitId,
+      validFrom,
+      validTo,
+    }),
+  renameStake: (from: string, to: string) =>
+    jpost<{ ok: true; changed: number }>("/api/stake/rename", { from, to }),
+  seed: (weekStart: string, validFrom?: string) =>
+    jpost<{ ok: true; validFrom: string; counts: Record<string, number>; unresolved: string[] }>(
+      "/api/seed",
+      { weekStart, validFrom },
+    ),
 };
+
+// --- console -------------------------------------------------------
+export interface ConsoleStep {
+  id: string;
+  label: string;
+  state: "done" | "attention" | "todo";
+  detail: string;
+}
+export interface ConsoleView {
+  weeksStored: number;
+  range: { first: string; last: string } | null;
+  latest: string | null;
+  latestLabel?: string;
+  counts?: {
+    zones: number;
+    areasResolved: number;
+    areasUnmapped: number;
+    stakes: number;
+    chase: number;
+  };
+  steps: ConsoleStep[];
+  config: PortalConfig;
+}
+
+// --- config -----------------------------------------------------
+export interface PortalConfig {
+  mlcPositions: string[];
+  zoneOrder: string[];
+  zoneExclude: string[];
+  bands: { goalPct: { low: number; mid: number }; mlcShare: { low: number; mid: number } };
+}
+export interface ConfigResponse {
+  config: PortalConfig;
+  defaults: PortalConfig;
+  keys: string[];
+}
+
+// --- structure ------------------------------------------------
+export interface StructureArea {
+  key: string;
+  displayName: string;
+  createdAt: string;
+  retiredAt: string | null;
+  mappings: {
+    imosAreaId: number;
+    imosAreaName: string;
+    validFrom: string;
+    validTo: string | null;
+    note: string | null;
+    open: boolean;
+  }[];
+  wards: {
+    wardUnitId: number;
+    wardName: string;
+    stake: string;
+    validFrom: string;
+    validTo: string | null;
+    open: boolean;
+  }[];
+}
+export interface Structure {
+  areas: StructureArea[];
+  stakes: string[];
+  zones: string[];
+  positionsSeen: string[];
+}
+
+// --- rollover -----------------------------------------------
+export type Confidence = "high" | "medium" | "low";
+export interface RolloverPlan {
+  weekStart: string;
+  zones: { name: string; status: "unchanged" | "new" | "retired"; areaCount: number }[];
+  areas: {
+    imosAreaId: number;
+    imosAreaName: string;
+    zoneName: string;
+    mapped: boolean;
+    currentKey: string | null;
+    suggestion: {
+      canonicalAreaKey: string;
+      displayName: string;
+      isNew: boolean;
+      reason: string;
+      confidence: Confidence;
+    } | null;
+  }[];
+  wards: {
+    orgId: number;
+    orgName: string;
+    imosAreaId: number;
+    areaName: string;
+    mapped: boolean;
+    suggestion: {
+      canonicalAreaKey: string | null;
+      wardName: string;
+      stake: string | null;
+      reason: string;
+      confidence: Confidence;
+    };
+  }[];
+  summary: {
+    zonesNew: number;
+    zonesRetired: number;
+    areasUnmapped: number;
+    areasSuggested: number;
+    wardsUnmapped: number;
+    wardsSuggested: number;
+    clean: boolean;
+  };
+}
+export interface RolloverApplyBody {
+  validFrom?: string;
+  areas: { imosAreaId: number; canonicalAreaKey: string; isNew: boolean; displayName: string }[];
+  wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
+}

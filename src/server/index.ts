@@ -11,27 +11,42 @@ import { HTTPException } from "hono/http-exception";
 import areaKeyCsv from "../../resources/area-to-ward-key.csv";
 import { load, normalize, ValidationError } from "../pipeline/readImos.js";
 import { loadAreaKey, seed } from "../pipeline/crosswalkSeed.js";
+import { resolveWeek } from "../pipeline/resolve.js";
 import type { Env, Vars } from "./env.js";
+import { CONFIG_DEFAULTS, CONFIG_KEYS, loadConfig } from "./config.js";
 import {
   addWard,
   attachArea,
   audit,
+  closeMapping,
+  closeWard,
   createCanonicalArea,
   getAreaWardRows,
   getCanonicalRows,
   getCrosswalkRows,
+  getStructure,
   loadFacts,
+  renameCanonical,
+  renameStake,
   seedCrosswalk,
+  setCanonicalRetired,
+  setConfig,
   storeImport,
   weeksAvailable,
 } from "./db.js";
 import {
+  applyRollover,
   buildChase,
+  buildConsole,
+  buildRollover,
   buildStakeView,
   buildTrends,
   buildWeekView,
   weekLabel,
 } from "./service.js";
+
+/** Parsed once — the Area To Ward Key is bundled as text. */
+const areaKey = loadAreaKey(areaKeyCsv);
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -91,7 +106,6 @@ app.post("/api/import", async (c) => {
     getCanonicalRows(c.env.DB),
     getAreaWardRows(c.env.DB),
   ]);
-  const { resolveWeek } = await import("../pipeline/resolve.js");
   const rr = resolveWeek(norm.facts, norm.weekStart, { crosswalk, areaWard, canonical });
 
   const existing = await loadFacts(c.env.DB, norm.weekStart);
@@ -209,7 +223,7 @@ app.post("/api/seed", async (c) => {
 
   const payload = load(run.raw_json);
   const validFrom = b.validFrom ?? b.weekStart;
-  const result = seed(payload, loadAreaKey(areaKeyCsv), validFrom);
+  const result = seed(payload, areaKey, validFrom);
   await seedCrosswalk(c.env.DB, result);
   await audit(c.env.DB, c.get("user"), "seed", {
     validFrom,
@@ -228,6 +242,102 @@ app.post("/api/seed", async (c) => {
     },
     unresolved: result.unresolved,
   });
+});
+
+// --- weekly console (dashboard) ------------------------------------
+app.get("/api/console", async (c) => c.json(await buildConsole(c.env.DB, areaKey)));
+
+// --- config ------------------------------------------------------
+app.get("/api/config", async (c) =>
+  c.json({
+    config: await loadConfig(c.env.DB),
+    defaults: CONFIG_DEFAULTS,
+    keys: CONFIG_KEYS,
+  }),
+);
+
+app.put("/api/config", async (c) => {
+  const b = await c.req.json<{ key: string; value: unknown }>();
+  if (!(CONFIG_KEYS as readonly string[]).includes(b.key)) {
+    throw new HTTPException(400, { message: `unknown config key: ${b.key}` });
+  }
+  await setConfig(c.env.DB, b.key, b.value);
+  await audit(c.env.DB, c.get("user"), "config.set", { key: b.key });
+  return c.json({ ok: true, config: await loadConfig(c.env.DB) });
+});
+
+// --- structure (Admin → Areas) --------------------------------
+app.get("/api/structure", async (c) => c.json(await getStructure(c.env.DB)));
+
+// --- transfer rollover ---------------------------------------
+app.get("/api/rollover/:week", async (c) =>
+  c.json(await buildRollover(c.env.DB, c.req.param("week"), areaKey)),
+);
+
+app.post("/api/rollover/:week/apply", async (c) => {
+  const week = c.req.param("week");
+  const b = await c.req.json<{
+    validFrom?: string;
+    areas: {
+      imosAreaId: number;
+      canonicalAreaKey: string;
+      isNew: boolean;
+      displayName: string;
+    }[];
+    wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
+  }>();
+  const res = await applyRollover(c.env.DB, c.get("user"), {
+    validFrom: b.validFrom || week,
+    areas: b.areas ?? [],
+    wards: b.wards ?? [],
+  });
+  return c.json({ ok: true, applied: res, plan: await buildRollover(c.env.DB, week, areaKey) });
+});
+
+// --- crosswalk edits ---------------------------------------
+app.post("/api/crosswalk/canonical/rename", async (c) => {
+  const b = await c.req.json<{ key: string; displayName: string }>();
+  await renameCanonical(c.env.DB, b.key, b.displayName);
+  await audit(c.env.DB, c.get("user"), "crosswalk.canonical.rename", b);
+  return c.json({ ok: true });
+});
+
+app.post("/api/crosswalk/canonical/retire", async (c) => {
+  const b = await c.req.json<{ key: string; retired: boolean }>();
+  await setCanonicalRetired(
+    c.env.DB,
+    b.key,
+    b.retired ? new Date().toISOString().slice(0, 10) : null,
+  );
+  await audit(c.env.DB, c.get("user"), "crosswalk.canonical.retire", b);
+  return c.json({ ok: true });
+});
+
+app.post("/api/crosswalk/mapping/close", async (c) => {
+  const b = await c.req.json<{ imosAreaId: number; validFrom: string; validTo: string }>();
+  await closeMapping(c.env.DB, b.imosAreaId, b.validFrom, b.validTo);
+  await audit(c.env.DB, c.get("user"), "crosswalk.mapping.close", b);
+  return c.json({ ok: true });
+});
+
+app.post("/api/crosswalk/ward/close", async (c) => {
+  const b = await c.req.json<{
+    canonicalAreaKey: string;
+    wardUnitId: number;
+    validFrom: string;
+    validTo: string;
+  }>();
+  await closeWard(c.env.DB, b.canonicalAreaKey, b.wardUnitId, b.validFrom, b.validTo);
+  await audit(c.env.DB, c.get("user"), "crosswalk.ward.close", b);
+  return c.json({ ok: true });
+});
+
+app.post("/api/stake/rename", async (c) => {
+  const b = await c.req.json<{ from: string; to: string }>();
+  if (!b.from || !b.to) throw new HTTPException(400, { message: "from and to are required" });
+  const changed = await renameStake(c.env.DB, b.from, b.to);
+  await audit(c.env.DB, c.get("user"), "stake.rename", { ...b, changed });
+  return c.json({ ok: true, changed });
 });
 
 app.all("/api/*", (c) => c.json({ error: "no such endpoint" }, 404));

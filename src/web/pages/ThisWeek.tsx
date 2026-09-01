@@ -38,7 +38,7 @@ export function ThisWeekPage() {
       {data.resolve.unmapped.length > 0 && (
         <div className="note warn">
           <strong>{data.resolve.unmapped.length} IMOS area(s) not in the crosswalk.</strong>{" "}
-          Stake rollups will park them under “(unmapped)”. Fix in <strong>Admin → Crosswalk</strong>.
+          Stake rollups will park them under “(unmapped)”. Fix in <strong>Structure → Rollover</strong>.
         </div>
       )}
 
@@ -63,7 +63,7 @@ export function ThisWeekPage() {
                         {isOpen ? "▾" : "▸"} {z}
                       </a>
                     </td>
-                    <KiCells row={data.byZone[z]!} />
+                    <KiCells row={data.byZone[z]!} bands={data.bands.goalPct} />
                   </tr>
                   {isOpen &&
                     areaNames.map((a) => (
@@ -71,7 +71,7 @@ export function ThisWeekPage() {
                         <td className="row-head" style={{ paddingLeft: "1.8rem" }} title={a}>
                           {a}
                         </td>
-                        <KiCells row={areas[a]!} />
+                        <KiCells row={areas[a]!} bands={data.bands.goalPct} />
                       </tr>
                     ))}
                 </Fragment>
@@ -80,7 +80,7 @@ export function ThisWeekPage() {
             {mission && (
               <tr className="mission">
                 <td className="row-head">MISSION</td>
-                <KiCells row={mission} />
+                <KiCells row={mission} bands={data.bands.goalPct} />
               </tr>
             )}
           </tbody>
@@ -109,7 +109,7 @@ export function ThisWeekPage() {
                   <td>{t.mission}</td>
                   <td>{t.mlc}</td>
                   <td>
-                    <span className={`pct ${bandClass(t.share, 20, 30)}`}>
+                    <span className={`pct ${bandClass(t.share, data.bands.mlcShare.low, data.bands.mlcShare.mid)}`}>
                       {t.share === null ? "–" : `${t.share}%`}
                     </span>
                   </td>
@@ -121,7 +121,7 @@ export function ThisWeekPage() {
         </table>
       </div>
       <p className="muted" style={{ fontSize: ".78rem" }}>
-        Generated {new Date(data.generatedAt).toLocaleString()} · goal % bands 50 / 80 · MLC share bands 20 / 30
+        Generated {new Date(data.generatedAt).toLocaleString()} · goal % bands {data.bands.goalPct.low} / {data.bands.goalPct.mid} · MLC share bands {data.bands.mlcShare.low} / {data.bands.mlcShare.mid}
       </p>
     </>
   );

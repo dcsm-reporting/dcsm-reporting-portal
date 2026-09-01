@@ -457,3 +457,213 @@ export async function audit(
     .bind(new Date().toISOString(), actor, action, JSON.stringify(detail ?? null))
     .run();
 }
+
+// --- MLC recompute (config-driven, at read time) -----------------------
+/** Area ids that hold one of `positions` in the week's missionary snapshot. */
+export async function mlcAreaIdsForWeek(
+  db: D1Database,
+  weekStart: string,
+  positions: string[],
+): Promise<Set<number>> {
+  if (positions.length === 0) return new Set();
+  const ph = positions.map(() => "?").join(",");
+  const { results } = await db
+    .prepare(
+      `SELECT DISTINCT imos_area_id FROM missionary_snapshot
+       WHERE week_start = ? AND position IN (${ph})`,
+    )
+    .bind(weekStart, ...positions)
+    .all<{ imos_area_id: number }>();
+  return new Set((results ?? []).map((r) => r.imos_area_id));
+}
+
+export async function distinctPositions(db: D1Database): Promise<string[]> {
+  const { results } = await db
+    .prepare("SELECT DISTINCT position FROM missionary_snapshot WHERE position <> '' ORDER BY position")
+    .all<{ position: string }>();
+  return (results ?? []).map((r) => r.position);
+}
+
+// --- structure (Admin → Areas) ---------------------------------------
+export interface StructureArea {
+  key: string;
+  displayName: string;
+  createdAt: string;
+  retiredAt: string | null;
+  mappings: {
+    imosAreaId: number;
+    imosAreaName: string;
+    validFrom: string;
+    validTo: string | null;
+    note: string | null;
+    open: boolean;
+  }[];
+  wards: {
+    wardUnitId: number;
+    wardName: string;
+    stake: string;
+    validFrom: string;
+    validTo: string | null;
+    open: boolean;
+  }[];
+}
+export interface Structure {
+  areas: StructureArea[];
+  stakes: string[];
+  zones: string[];
+  positionsSeen: string[];
+}
+
+export async function getStructure(db: D1Database): Promise<Structure> {
+  const [canonical, crosswalk, areaWard, names, zones, positionsSeen] = await Promise.all([
+    getCanonicalRowsFull(db),
+    getCrosswalkRows(db),
+    getAreaWardRows(db),
+    latestAreaNames(db),
+    distinctZones(db),
+    distinctPositions(db),
+  ]);
+
+  const byKey = new Map<string, StructureArea>();
+  for (const c of canonical) {
+    byKey.set(c.canonicalAreaKey, {
+      key: c.canonicalAreaKey,
+      displayName: c.displayName,
+      createdAt: c.createdAt,
+      retiredAt: c.retiredAt,
+      mappings: [],
+      wards: [],
+    });
+  }
+  for (const m of crosswalk) {
+    const a = byKey.get(m.canonicalAreaKey);
+    if (!a) continue;
+    a.mappings.push({
+      imosAreaId: m.imosAreaId,
+      imosAreaName: names.get(m.imosAreaId) ?? `#${m.imosAreaId}`,
+      validFrom: m.validFrom,
+      validTo: m.validTo,
+      note: m.note,
+      open: m.validTo === null,
+    });
+  }
+  for (const w of areaWard) {
+    const a = byKey.get(w.canonicalAreaKey);
+    if (!a) continue;
+    a.wards.push({
+      wardUnitId: w.wardUnitId,
+      wardName: w.wardName,
+      stake: w.stake,
+      validFrom: w.validFrom,
+      validTo: w.validTo,
+      open: w.validTo === null,
+    });
+  }
+  const areas = [...byKey.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+  for (const a of areas) {
+    a.mappings.sort((x, y) => y.validFrom.localeCompare(x.validFrom));
+    a.wards.sort((x, y) => x.wardName.localeCompare(y.wardName));
+  }
+  const stakes = [...new Set(areaWard.map((w) => w.stake))].sort();
+  return { areas, stakes, zones, positionsSeen };
+}
+
+interface CanonicalFull {
+  canonicalAreaKey: string;
+  displayName: string;
+  createdAt: string;
+  retiredAt: string | null;
+}
+async function getCanonicalRowsFull(db: D1Database): Promise<CanonicalFull[]> {
+  const { results } = await db
+    .prepare("SELECT canonical_area_key, display_name, created_at, retired_at FROM canonical_area")
+    .all<Record<string, string | null>>();
+  return (results ?? []).map((r) => ({
+    canonicalAreaKey: r.canonical_area_key as string,
+    displayName: r.display_name as string,
+    createdAt: r.created_at as string,
+    retiredAt: (r.retired_at as string | null) ?? null,
+  }));
+}
+
+async function latestAreaNames(db: D1Database): Promise<Map<number, string>> {
+  const { results } = await db
+    .prepare(
+      `SELECT imos_area_id, imos_area_name FROM ki_fact
+       WHERE week_start = (SELECT MAX(week_start) FROM ki_fact k2 WHERE k2.imos_area_id = ki_fact.imos_area_id)
+       GROUP BY imos_area_id`,
+    )
+    .all<{ imos_area_id: number; imos_area_name: string }>();
+  return new Map((results ?? []).map((r) => [r.imos_area_id, r.imos_area_name]));
+}
+
+async function distinctZones(db: D1Database): Promise<string[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT DISTINCT imos_zone_name FROM ki_fact WHERE imos_zone_name <> '' ORDER BY imos_zone_name",
+    )
+    .all<{ imos_zone_name: string }>();
+  return (results ?? []).map((r) => r.imos_zone_name);
+}
+
+export async function distinctZonesForWeek(db: D1Database, weekStart: string): Promise<string[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT DISTINCT imos_zone_name FROM ki_fact WHERE week_start = ? AND imos_zone_name <> ''",
+    )
+    .bind(weekStart)
+    .all<{ imos_zone_name: string }>();
+  return (results ?? []).map((r) => r.imos_zone_name);
+}
+
+// --- crosswalk edits (Admin) -----------------------------------------
+export async function renameCanonical(db: D1Database, key: string, displayName: string) {
+  await db
+    .prepare("UPDATE canonical_area SET display_name = ? WHERE canonical_area_key = ?")
+    .bind(displayName, key)
+    .run();
+}
+
+export async function setCanonicalRetired(db: D1Database, key: string, retiredAt: string | null) {
+  await db
+    .prepare("UPDATE canonical_area SET retired_at = ? WHERE canonical_area_key = ?")
+    .bind(retiredAt, key)
+    .run();
+}
+
+export async function closeMapping(
+  db: D1Database,
+  imosAreaId: number,
+  validFrom: string,
+  validTo: string,
+) {
+  await db
+    .prepare(
+      "UPDATE area_crosswalk SET valid_to = ? WHERE imos_area_id = ? AND valid_from = ?",
+    )
+    .bind(validTo, imosAreaId, validFrom)
+    .run();
+}
+
+export async function closeWard(
+  db: D1Database,
+  canonicalAreaKey: string,
+  wardUnitId: number,
+  validFrom: string,
+  validTo: string,
+) {
+  await db
+    .prepare(
+      "UPDATE area_ward SET valid_to = ? WHERE canonical_area_key = ? AND ward_unit_id = ? AND valid_from = ?",
+    )
+    .bind(validTo, canonicalAreaKey, wardUnitId, validFrom)
+    .run();
+}
+
+export async function renameStake(db: D1Database, from: string, to: string): Promise<number> {
+  const res = await db
+    .prepare("UPDATE area_ward SET stake = ? WHERE stake = ?")
+    .bind(to, from)
+    .run();
+  return res.meta.changes ?? 0;
+}

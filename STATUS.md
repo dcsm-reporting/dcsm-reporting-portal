@@ -1,17 +1,22 @@
 # Build status — DCSM KI Portal
 
-_Last updated: overnight build, 2026-08-31 → 09-01._
+_Last updated: 2026-09-01 — structure-management + weekly console added._
 
 ## TL;DR
 
 The whole reporting pipeline is ported to TypeScript, **verified byte-for-byte
-against the Python reference on all 12 real sample weeks** (78 automated tests),
+against the Python reference on all 12 real sample weeks** (81 automated tests),
 and running end to end on a local Cloudflare stack. Import a week, see the
 boards, drill into zones, view the month, stakes, trends, and the chase list —
-all live against a real D1 database seeded with 12 weeks of history.
+all live against a real D1 database seeded with 12 weeks of history. The Admin
+area is now a full **structure manager**: a guided transfer Rollover flow, a
+canonical-area/ward editor, and live Config knobs (MLC positions, zone order,
+colour bands) that take effect without a deploy. Plus a **Weekly console**
+landing page that tracks the weekly routine as a checklist.
 
-What's left is mostly polish, the Friends module, and the one-time cloud
-account setup (your job in the morning — see below).
+What's left: the Friends module, Publish (board PNGs + stake-report email
+draft), historical backfill (needs your old export files), directory sync, and
+the one-time cloud account setup.
 
 ## Done and verified
 
@@ -28,7 +33,11 @@ account setup (your job in the morning — see below).
 | **Stakes** | ✅ per-stake ward table + totals, 12-week mini bar charts, stake picker |
 | **Trends** | ✅ Recharts line chart, scope (mission / zone / MLC-only), window 4–52 wk, per-KI toggles |
 | **Chase list** | ✅ areas with no IMOS `history[]` entry for the week (3 stale on 8-24, correct) |
-| **Admin** | ✅ crosswalk stats, seed button, unmapped-area attach control |
+| **Weekly console** (`/weekly`) | ✅ dashboard: weeks stored, zones/areas/stakes/chase counts, a per-week checklist (import / crosswalk clean / structure current / chase / boards / stake reports) with jump links |
+| **Structure → Rollover** (`/admin/rollover`) | ✅ guided transfer flow — diffs the week's IMOS structure vs the crosswalk, proposes a canonical key per unmapped area (exact-match / CSV / new, with a confidence chip) and a stake per unmapped ward, "select suggested" + bulk **Apply effective `<week>`**. First-run seed button when no crosswalk exists. Pure planner in `src/pipeline/rollover.ts`, 3 tests |
+| **Structure → Areas & wards** (`/admin/areas`) | ✅ all 107 canonical areas, filterable; expand a row to rename it, retire/un-retire, see + close effective-dated IMOS id mappings, add a mapping, see + retire ward→stake rows, add a ward row. Stake-rename (updates every ward row under it) |
+| **Structure → Config** (`/admin/config`) | ✅ live knobs read from the `config` table on every request (no deploy): MLC positions (recomputed at read time, retro-applies), zone order, zones excluded from mission totals, colour bands |
+| **Structure → Crosswalk (raw)** | ✅ read-only table view for debugging |
 | **Local run** | ✅ `wrangler dev` + local D1, 12 weeks + crosswalk seeded (`npm run seed:local`) — 107 areas, 112 ward rows, 11 stakes, 0 unmapped |
 
 ### Numbers cross-checked against the Python oracle
@@ -47,12 +56,17 @@ account setup (your job in the morning — see below).
 - **Publish** — board PNG export and the stake-report email draft. Design: render
   the board component to canvas → `toBlob()` for PNG; stake report → formatted
   HTML the operator pastes into Gmail (no email infra, no credentials).
+- **Historical backfill from the old system** — a `/api/backfill` + UI to load
+  pre-IMOS weeks from the old exports (Form Responses, KI Reporting sheet, Stake
+  President Reports). IMOS itself already serves historical ranges, so the clean
+  path is: pull older IMOS JSON weeks and import them normally. The old *sheet*
+  data is messy (Form Responses has years of column drift) but the stake-report
+  ward history may be usable to seed `ward_fact` for weeks IMOS can't reach.
+  **Blocked on Elder Lake sending the export files** — then this gets built.
 - **Directory sync** — `/api/directory/sync` reading DCSM Contacts. Needs the
   sheet shared to the role account and a small CSV/Sheets read. Chase list shows
   area + zone now; add the leader name/phone once the directory loads.
 - **Data page** — read-only browse of stored weeks + raw payload download.
-- **Transfer rollover screen** — the guided "confirm zones / map new IDs" flow.
-  The pieces exist (unmapped list + attach in Admin); this just wraps them.
 - **`wrangler d1 export` cron** — weekly SQL dump committed to git as the
   immutable audit trail. One GitHub Action.
 - **Code-split the bundle** — 583 kB (Recharts). Lazy-load Trends/Stakes.

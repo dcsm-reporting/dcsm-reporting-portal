@@ -114,7 +114,15 @@ export function KiHeadCells() {
   );
 }
 
-export function KiCells({ row, showGoal = true }: { row: Record<number, KiCell>; showGoal?: boolean }) {
+export function KiCells({
+  row,
+  showGoal = true,
+  bands,
+}: {
+  row: Record<number, KiCell>;
+  showGoal?: boolean;
+  bands?: { low: number; mid: number };
+}) {
   return (
     <>
       {KI_IDS.map((ki) => {
@@ -124,7 +132,9 @@ export function KiCells({ row, showGoal = true }: { row: Record<number, KiCell>;
           <td key={ki} className="ki-group">
             <span className="cell-actual">{c.actual}</span>
             {showGoal && c.goal !== null ? <span className="cell-goal"> /{c.goal}</span> : null}{" "}
-            <span className={`pct ${bandClass(c.pct)}`}>{c.pct === null ? "–" : `${c.pct}%`}</span>
+            <span className={`pct ${bandClass(c.pct, bands?.low, bands?.mid)}`}>
+              {c.pct === null ? "–" : `${c.pct}%`}
+            </span>
           </td>
         );
       })}
