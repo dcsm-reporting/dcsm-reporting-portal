@@ -13,8 +13,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "dcsm_ki"
-# `database_id` is filled in by `wrangler d1 create dcsm_ki` at first setup.
-database_id = "PLACEHOLDER-run-wrangler-d1-create-dcsm_ki"
+database_id = "aee239d8-061b-461b-8920-0b9b71bd0057"
 migrations_dir = "migrations"
 
 # Bundle the Area To Ward Key CSV as text so /api/seed can run server-side.
@@ -23,8 +22,10 @@ type = "Text"
 globs = ["**/*.csv"]
 fallthrough = true
 
+# NOTE: no DEV_USER here on purpose. In production the auth middleware requires
+# the Cf-Access-Authenticated-User-Email header that Cloudflare Access injects —
+# with no DEV_USER fallback, the API fails closed (401) until Access is set up.
+# For local `wrangler dev`, put `DEV_USER = "you@example.com"` in `.dev.vars`
+# (gitignored) so the local server lets you in.
 [vars]
-# In production, Cloudflare Access sits in front and injects
-# Cf-Access-Authenticated-User-Email. DEV_USER is only read when that header is
-# absent (i.e. local `wrangler dev`).
-DEV_USER = "dev@localhost"
+PORTAL_ENV = "production"
