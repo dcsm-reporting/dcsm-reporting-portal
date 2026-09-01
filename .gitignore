@@ -8,3 +8,4 @@ coverage/
 *.log
 
 .wrangler-dev.log
+.friends-sync-secret.txt

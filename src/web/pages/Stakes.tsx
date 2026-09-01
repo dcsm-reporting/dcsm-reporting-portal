@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
-import { api } from "../api.js";
+import { api, type FriendRow } from "../api.js";
 import { ErrorNote, KI_CODE, KI_IDS, Loading, useAsync, useWeek } from "../lib.js";
+
+type StakeFriends = Record<string, { onDate: FriendRow[]; baptized: FriendRow[] }>;
 
 export function StakesPage() {
   const { week } = useWeek();
   const { data, err, loading } = useAsync(() => api.stakes(week!), [week]);
+  const friends = useAsync<StakeFriends>(
+    () => (week ? api.friendsByStake(week) : Promise.resolve({})),
+    [week],
+  );
   const [sel, setSel] = useState<string | null>(null);
 
   if (!week) return <p className="muted">No weeks imported yet.</p>;
@@ -78,8 +84,45 @@ export function StakesPage() {
           );
         })}
       </div>
+      {(() => {
+        const fb = friends.data?.[stake];
+        return (
+          <>
+            <h3>On date — {stake}</h3>
+            {!fb || fb.onDate.length === 0 ? (
+              <p className="muted">None on the Baptisms (MLC) sheet for this stake.</p>
+            ) : (
+              <ul>
+                {fb.onDate.map((f) => (
+                  <li key={f.id}>
+                    <strong>{f.name}</strong> — {f.baptismDate}
+                    {f.ward ? ` · ${f.ward}` : ""}
+                    {f.onBaptismCalendar ? " · 📅" : ""}
+                    {f.attendedChurch2x ? " · ⛪×2" : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {fb && fb.baptized.length > 0 && (
+              <>
+                <h3>Baptized this month — {stake}</h3>
+                <ul>
+                  {fb.baptized.map((f) => (
+                    <li key={f.id}>
+                      <strong>{f.name}</strong> — {f.baptismDate}
+                      {f.ward ? ` · ${f.ward}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        );
+      })()}
+
       <p className="muted" style={{ fontSize: ".78rem" }}>
         {data.wardMapSize} ward→stake rows effective this week. Actual counts only — IMOS carries goals at area level, not ward.
+        {" "}On-date names from the Baptisms (MLC) sheet.
       </p>
     </>
   );

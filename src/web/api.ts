@@ -158,7 +158,48 @@ export const api = {
       "/api/seed",
       { weekStart, validFrom },
     ),
+
+  // --- friends / on-date (read-only; source is the Baptisms sheet) --------
+  friends: (q: { zone?: string; stake?: string; status?: "on-date" | "baptized" | "all" } = {}) => {
+    const p = new URLSearchParams();
+    if (q.zone) p.set("zone", q.zone);
+    if (q.stake) p.set("stake", q.stake);
+    if (q.status) p.set("status", q.status);
+    return jget<{ friends: FriendRow[] }>(`/api/friends?${p}`);
+  },
+  friendsSummary: (week?: string) =>
+    jget<FriendsSummary>(`/api/friends/summary${week ? `?week=${week}` : ""}`),
+  friendsByStake: (week: string) =>
+    jget<Record<string, { onDate: FriendRow[]; baptized: FriendRow[] }>>(
+      `/api/friends/by-stake/${week}`,
+    ),
 };
+
+export interface FriendRow {
+  id: string;
+  name: string;
+  zone: string | null;
+  ward: string | null;
+  stake: string | null;
+  missionaries: string | null;
+  baptismDate: string | null;
+  baptismTime: string | null;
+  baptismAddress: string | null;
+  attendedChurch2x: boolean;
+  onBaptismCalendar: boolean;
+  baptizedConfirmed: boolean;
+  dropped: boolean;
+}
+export interface FriendsSummary {
+  onDateTotal: number;
+  onDateThisWeek: number;
+  baptizedThisMonth: number;
+  calendarYes: number;
+  calendarNo: number;
+  church2xYes: number;
+  church2xNo: number;
+  lastSyncedAt: string | null;
+}
 
 // --- console -------------------------------------------------------
 export interface ConsoleStep {

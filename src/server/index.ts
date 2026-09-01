@@ -44,6 +44,13 @@ import {
   buildWeekView,
   weekLabel,
 } from "./service.js";
+import {
+  friendsByStake,
+  friendsSummary,
+  listFriends,
+  syncFriends,
+  type SheetRow,
+} from "./friends.js";
 
 /** Parsed once — the Area To Ward Key is bundled as text. */
 const areaKey = loadAreaKey(areaKeyCsv);
@@ -52,7 +59,8 @@ const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 // --- auth ---------------------------------------------------------------
 app.use("/api/*", async (c, next) => {
-  if (c.req.path === "/api/health") return next();
+  // health check and the sheet-sync webhook do their own thing
+  if (c.req.path === "/api/health" || c.req.path === "/api/friends/sync") return next();
   const email =
     c.req.header("Cf-Access-Authenticated-User-Email") ||
     c.req.header("cf-access-authenticated-user-email") ||
@@ -338,6 +346,45 @@ app.post("/api/stake/rename", async (c) => {
   const changed = await renameStake(c.env.DB, b.from, b.to);
   await audit(c.env.DB, c.get("user"), "stake.rename", { ...b, changed });
   return c.json({ ok: true, changed });
+});
+
+// --- friends / on-date (read-only; source of truth is the Baptisms sheet) ---
+app.get("/api/friends", async (c) => {
+  const q = c.req.query();
+  const rows = await listFriends(c.env.DB, {
+    zone: q.zone || undefined,
+    stake: q.stake || undefined,
+    status: (q.status as "on-date" | "baptized" | "all") || undefined,
+  });
+  return c.json({ friends: rows });
+});
+
+app.get("/api/friends/summary", async (c) => {
+  const week = c.req.query("week") || (await weeksAvailable(c.env.DB)).at(-1) || null;
+  return c.json(await friendsSummary(c.env.DB, week));
+});
+
+app.get("/api/friends/by-stake/:week", async (c) =>
+  c.json(await friendsByStake(c.env.DB, c.req.param("week"))),
+);
+
+/**
+ * Snapshot push from the Apps Script bound to the Baptisms (MLC) sheet.
+ * Auth: `Authorization: Bearer <FRIENDS_SYNC_SECRET>` (this path is excluded
+ * from the Access user check; add a matching Access "Bypass" rule for it).
+ */
+app.post("/api/friends/sync", async (c) => {
+  const secret = c.env.FRIENDS_SYNC_SECRET;
+  const given = (c.req.header("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!secret || given !== secret) throw new HTTPException(401, { message: "bad sync secret" });
+
+  const body = await c.req.json<{ weekStart?: string; rows?: SheetRow[] }>();
+  if (!Array.isArray(body.rows)) throw new HTTPException(400, { message: "rows[] required" });
+
+  const week = body.weekStart || (await weeksAvailable(c.env.DB)).at(-1) || null;
+  const res = await syncFriends(c.env.DB, body.rows, week);
+  await audit(c.env.DB, "sheet-sync", "friends.sync", res);
+  return c.json({ ok: true, ...res });
 });
 
 app.all("/api/*", (c) => c.json({ error: "no such endpoint" }, 404));

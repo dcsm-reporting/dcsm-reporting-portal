@@ -50,9 +50,13 @@ the one-time cloud account setup.
 
 ## Not done yet
 
-- **Friends / on-date module** — schema tables exist (`friend`, `friend_status`),
-  no UI or routes. This is the STL-entered investigator names (§10 of the old
-  spec). Next-biggest piece of work.
+- **Friends / on-date module** — ✅ built. `friend` + `friend_week` +
+  `friend_sync` (migration 0003). `/friends` page (summary cards + filterable
+  read-only table), on-date + baptism lists wired into `/stakes`. Source of
+  truth stays the **Baptisms (MLC) Google Sheet**: `apps_script/baptisms-sync.gs`
+  pushes a snapshot to `POST /api/friends/sync` (bearer secret, Access-bypassed
+  path). 137 records seeded into production. Setup: `docs/friends-sheet-bridge.md`.
+  _Remaining: the Apps Script + Access bypass rule are Elder Lake's to wire (2 steps)._
 - **Publish** — board PNG export and the stake-report email draft. Design: render
   the board component to canvas → `toBlob()` for PNG; stake report → formatted
   HTML the operator pastes into Gmail (no email infra, no credentials).

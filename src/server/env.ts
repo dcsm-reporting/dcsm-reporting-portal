@@ -5,6 +5,8 @@ export interface Env {
   DEV_USER?: string;
   /** Optional extra allowlist (comma-separated emails). Access is the real gate. */
   ALLOWED_EMAILS?: string;
+  /** Bearer secret the Baptisms-sheet Apps Script presents to POST /api/friends/sync. */
+  FRIENDS_SYNC_SECRET?: string;
 }
 
 export interface Vars {

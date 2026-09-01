@@ -6,6 +6,7 @@ import { MonthPage } from "./pages/Month.js";
 import { StakesPage } from "./pages/Stakes.js";
 import { TrendsPage } from "./pages/Trends.js";
 import { ChasePage } from "./pages/Chase.js";
+import { FriendsPage } from "./pages/Friends.js";
 import { ImportPage } from "./pages/Import.js";
 import { AdminLayout } from "./pages/admin/AdminLayout.js";
 import { RolloverPage } from "./pages/admin/Rollover.js";
@@ -18,6 +19,7 @@ const TABS: [string, string][] = [
   ["/weekly", "Weekly console"],
   ["/month", "Month"],
   ["/stakes", "Stakes"],
+  ["/friends", "Friends"],
   ["/trends", "Trends"],
   ["/chase", "Chase list"],
   ["/import", "Import"],
@@ -54,6 +56,7 @@ export function App() {
             <Route path="/weekly" element={<ConsolePage />} />
             <Route path="/month" element={<MonthPage />} />
             <Route path="/stakes" element={<StakesPage />} />
+            <Route path="/friends" element={<FriendsPage />} />
             <Route path="/trends" element={<TrendsPage />} />
             <Route path="/chase" element={<ChasePage />} />
             <Route path="/import" element={<ImportPage />} />
