@@ -13,8 +13,10 @@ const LINK_FOR: Record<string, string> = {
   crosswalk: "/admin/rollover",
   rollover: "/admin/rollover",
   chase: "/chase",
-  boards: "/",
-  stakes: "/stakes",
+  friends: "/friends",
+  reconcile: "/friends",
+  boards: "/publish",
+  stakes: "/publish",
 };
 
 export function ConsolePage() {
@@ -49,6 +51,20 @@ export function ConsolePage() {
         <Stat k="Areas resolved" v={data.counts?.areasResolved ?? "—"} sub={data.counts?.areasUnmapped ? `${data.counts.areasUnmapped} unmapped` : "all mapped"} />
         <Stat k="Stakes" v={data.counts?.stakes ?? "—"} />
         <Stat k="Chase list" v={data.counts?.chase ?? "—"} sub={data.counts?.chase ? "need a nudge" : "all current"} />
+        {data.friends && (
+          <Stat
+            k="Friends synced"
+            v={data.friends.syncAgeHours === null ? "never" : `${data.friends.syncAgeHours} h ago`}
+            sub={`${data.friends.onDate} on date · ${data.friends.baptizedThisMonth} baptized`}
+          />
+        )}
+        {data.reconcile && (
+          <Stat
+            k={`Reconcile ${data.reconcile.month}`}
+            v={data.reconcile.gap > 0 ? `+${data.reconcile.gap}` : data.reconcile.gap}
+            sub={data.reconcile.stakesWithGap > 0 ? `${data.reconcile.stakesWithGap} stake gap(s)` : "matches feed"}
+          />
+        )}
       </div>
 
       {attention.length > 0 && (

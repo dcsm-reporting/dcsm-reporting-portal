@@ -17,6 +17,10 @@ export function FriendsPage() {
     () => api.friends({ zone: zone || undefined, status }),
     [zone, status],
   );
+  const refresh = () => {
+    list.reload();
+    summary.reload();
+  };
 
   return (
     <>
@@ -87,18 +91,19 @@ export function FriendsPage() {
 
       {list.loading && <Loading what="friends" />}
       {list.err && <ErrorNote err={list.err} />}
-      {list.data && <FriendTable rows={list.data.friends} />}
+      {list.data && <FriendTable rows={list.data.friends} onChange={refresh} />}
 
-      <Reconciliation />
+      <Reconciliation onChange={refresh} />
     </>
   );
 }
 
-function Reconciliation() {
+function Reconciliation({ onChange }: { onChange: () => void }) {
   const { week } = useWeek();
   const defaultMonth = (week ?? new Date().toISOString().slice(0, 10)).slice(0, 7);
   const [month, setMonth] = useState(defaultMonth);
-  const { data, err, loading } = useAsync(() => api.reconcile(month), [month]);
+  const [nonce, setNonce] = useState(0);
+  const { data, err, loading } = useAsync(() => api.reconcile(month), [month, nonce]);
 
   return (
     <>
@@ -177,6 +182,13 @@ function Reconciliation() {
             </div>
           )}
 
+          <RecordBaptism
+            onRecorded={() => {
+              setNonce((n) => n + 1);
+              onChange();
+            }}
+          />
+
           <h4 style={{ marginTop: "1.6rem", fontFamily: "IBM Plex Sans", fontWeight: 600 }}>
             Disappeared near their date ({data.disappeared.length})
           </h4>
@@ -221,8 +233,102 @@ function Reconciliation() {
   );
 }
 
-function FriendTable({ rows }: { rows: FriendRow[] }) {
+function RecordBaptism({ onRecorded }: { onRecorded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({
+    name: "", baptismDate: "", ward: "", stake: "", missionaries: "", notes: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setF((s) => ({ ...s, [k]: e.target.value }));
+
+  const submit = async () => {
+    if (!f.name.trim() || !f.baptismDate) {
+      setMsg("Name and baptism date are required.");
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.recordBaptism({
+        name: f.name.trim(),
+        baptismDate: f.baptismDate,
+        ward: f.ward.trim() || undefined,
+        stake: f.stake.trim() || undefined,
+        missionaries: f.missionaries.trim() || undefined,
+        notes: f.notes.trim() || undefined,
+      });
+      setMsg(r.duplicate ? "Already on record — nothing added." : "Recorded. Gap updated.");
+      setF({ name: "", baptismDate: "", ward: "", stake: "", missionaries: "", notes: "" });
+      onRecorded();
+    } catch (e) {
+      setMsg(`Failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <div style={{ marginTop: "1rem" }}>
+        <button className="btn" onClick={() => setOpen(true)}>
+          + Record a baptism the sheet is missing
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="drawer" style={{ marginTop: "1rem" }}>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <strong>Record a completed baptism</strong>
+        <button className="btn" onClick={() => setOpen(false)}>Close</button>
+      </div>
+      <p className="muted" style={{ fontSize: ".82rem", maxWidth: "68ch" }}>
+        Use this only when a baptism truly happened but isn't on the Baptisms (MLC) sheet (STL
+        deleted the row, late confirmation). It's saved as an authoritative portal record and counts
+        toward the named total. If the STL later re-adds them to the sheet, remove this entry from
+        the list below to avoid a double-count.
+      </p>
+      <div className="inline-form">
+        <label className="field"><span className="k mono">Name *</span>
+          <input value={f.name} onChange={set("name")} /></label>
+        <label className="field"><span className="k mono">Baptism date *</span>
+          <input type="date" value={f.baptismDate} onChange={set("baptismDate")} /></label>
+        <label className="field"><span className="k mono">Ward</span>
+          <input value={f.ward} onChange={set("ward")} /></label>
+        <label className="field"><span className="k mono">Stake</span>
+          <input value={f.stake} onChange={set("stake")} /></label>
+        <label className="field"><span className="k mono">Missionaries</span>
+          <input value={f.missionaries} onChange={set("missionaries")} /></label>
+        <label className="field"><span className="k mono">Note</span>
+          <input value={f.notes} onChange={set("notes")} placeholder="why it's being added by hand" /></label>
+      </div>
+      <div className="row" style={{ marginTop: ".6rem" }}>
+        <button className="btn primary" disabled={busy} onClick={submit}>
+          {busy ? "Saving…" : "Record baptism"}
+        </button>
+        {msg && <span className="muted" style={{ fontSize: ".85rem" }}>{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => void }) {
+  const [removing, setRemoving] = useState<string | null>(null);
   if (rows.length === 0) return <p className="muted">No records.</p>;
+
+  const remove = async (id: string, name: string) => {
+    if (!window.confirm(`Remove the hand-entered baptism record for ${name}?`)) return;
+    setRemoving(id);
+    try {
+      await api.deleteRecord(id);
+      onChange();
+    } finally {
+      setRemoving(null);
+    }
+  };
   return (
     <div className="board-wrap" style={{ marginTop: ".8rem" }}>
       <table className="board">
@@ -266,6 +372,22 @@ function FriendTable({ rows }: { rows: FriendRow[] }) {
                   <span className="chip low">dropped</span>
                 ) : (
                   <span className="chip">on date</span>
+                )}
+                {f.source === "portal" && (
+                  <>
+                    {" "}
+                    <span className="chip new" title={f.notes ?? "hand-entered in the portal"}>
+                      portal
+                    </span>{" "}
+                    <button
+                      className="btn"
+                      disabled={removing === f.id}
+                      onClick={() => remove(f.id, f.name)}
+                      style={{ fontSize: ".72rem", padding: "2px 7px" }}
+                    >
+                      {removing === f.id ? "removing…" : "remove"}
+                    </button>
+                  </>
                 )}
               </td>
             </tr>

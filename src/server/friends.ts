@@ -135,6 +135,76 @@ export async function friendsByStake(db: D1Database, weekStart: string) {
   return byStake;
 }
 
+// --- portal-native record (close-the-gap on reconciliation) --------------
+export interface RecordInput {
+  name: string;
+  baptismDate: string; // YYYY-MM-DD
+  ward?: string | null;
+  stake?: string | null;
+  zone?: string | null;
+  missionaries?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * Add a completed baptism the portal knows about that the Baptisms (MLC) sheet
+ * doesn't (an STL deleted the row, a late confirmation, etc.). Written as
+ * `source='portal'`, so the sheet sync never touches it. Authoritative
+ * (`confidence` NULL) — it counts in reconciliation like a sheet row.
+ *
+ * Returns `{ duplicate: true, id }` without inserting when an active friend
+ * already has the same folded name + date, so a double-submit is a no-op.
+ */
+export async function recordBaptism(
+  db: D1Database,
+  actor: string,
+  input: RecordInput,
+): Promise<{ id: string; duplicate: boolean }> {
+  const name = norm(input.name);
+  const date = toIsoDate(input.baptismDate);
+  if (!name) throw new Error("name is required");
+  if (!date) throw new Error("a valid baptism date is required");
+
+  const existing = await listFriends(db, { includeInactive: true });
+  const wn = wnKeyOf(norm(input.ward) || null, name);
+  const dup = existing.find(
+    (f) =>
+      f.baptizedConfirmed &&
+      f.baptismDate === date &&
+      (wnKeyOf(f.ward, f.name) === wn || fold(f.name) === fold(name)),
+  );
+  if (dup) return { id: dup.id, duplicate: true };
+
+  const now = new Date().toISOString();
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      `INSERT INTO friend (id, name, zone, ward, stake, missionaries, baptism_date,
+         baptism_time, baptism_address, attended_church_2x, on_baptism_calendar,
+         baptized_confirmed, confirmed_at, confidence, notes, dropped, active, source,
+         sync_key, created_at, created_by, updated_at, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, 0, 1, 1, ?, NULL, ?, 0, 1, 'portal',
+         NULL, ?, ?, ?, ?)`,
+    )
+    .bind(
+      id,
+      name,
+      norm(input.zone) || null,
+      norm(input.ward) || null,
+      norm(input.stake) || null,
+      norm(input.missionaries) || null,
+      date,
+      date,
+      norm(input.notes) || null,
+      now,
+      actor,
+      now,
+      actor,
+    )
+    .run();
+  return { id, duplicate: false };
+}
+
 // --- sheet sync -----------------------------------------------------------
 export interface SheetRow {
   zone?: string;

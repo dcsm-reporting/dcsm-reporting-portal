@@ -53,6 +53,7 @@ import {
   friendsByStake,
   friendsSummary,
   listFriends,
+  recordBaptism,
   syncFriends,
   type SheetRow,
 } from "./friends.js";
@@ -422,6 +423,46 @@ app.get("/api/friends/by-stake/:week", async (c) => {
       friendsByStake(c.env.DB, week),
     ),
   );
+});
+
+/**
+ * Add a completed baptism the sheet doesn't have (reconciliation "close the gap").
+ * Portal-sourced, authoritative, invisible to the sheet sync.
+ */
+app.post("/api/friends/record", async (c) => {
+  const b = await c.req.json<{
+    name: string;
+    baptismDate: string;
+    ward?: string;
+    stake?: string;
+    zone?: string;
+    missionaries?: string;
+    notes?: string;
+  }>();
+  const res = await recordBaptism(c.env.DB, c.get("user"), b);
+  await audit(c.env.DB, c.get("user"), "friends.record", {
+    name: b.name,
+    baptismDate: b.baptismDate,
+    ...res,
+  });
+  if (!res.duplicate) await bumpFriends(c.env);
+  return c.json({ ok: true, ...res });
+});
+
+/** Remove a portal-recorded baptism (mistaken entry). Sheet rows are untouchable here. */
+app.delete("/api/friends/record/:id", async (c) => {
+  const id = c.req.param("id");
+  const row = await c.env.DB.prepare("SELECT source, name FROM friend WHERE id = ?")
+    .bind(id)
+    .first<{ source: string; name: string }>();
+  if (!row) throw new HTTPException(404, { message: "no such record" });
+  if (row.source !== "portal") {
+    throw new HTTPException(409, { message: "only portal-recorded baptisms can be removed here" });
+  }
+  await c.env.DB.prepare("DELETE FROM friend WHERE id = ? AND source = 'portal'").bind(id).run();
+  await audit(c.env.DB, c.get("user"), "friends.record.delete", { id, name: row.name });
+  await bumpFriends(c.env);
+  return c.json({ ok: true });
 });
 
 // --- data page (read-only browse) --------------------------------

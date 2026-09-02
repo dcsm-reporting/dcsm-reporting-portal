@@ -22,6 +22,8 @@ import { planRollover, type RolloverInput, type RolloverPlan } from "../pipeline
 import type { AreaKey } from "../pipeline/crosswalkSeed.js";
 import type { KiFact } from "../pipeline/types.js";
 import { loadConfig, type ResolvedConfig } from "./config.js";
+import { friendsSummary } from "./friends.js";
+import { buildReconcile } from "./reconcile.js";
 import {
   addWard,
   attachArea,
@@ -306,12 +308,22 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     };
   }
   const latest = all[all.length - 1]!;
-  const [week, chase, stake, rollover] = await Promise.all([
+  const [week, chase, stake, rollover, friends, reconcile] = await Promise.all([
     buildWeekView(db, latest),
     buildChase(db, latest),
     buildStakeView(db, latest),
     buildRollover(db, latest, areaKey),
+    friendsSummary(db, latest).catch(() => null),
+    buildReconcile(db, latest.slice(0, 7)).catch(() => null),
   ]);
+
+  // friends sheet sync freshness — the STL sheet should land at least weekly
+  const syncAgeH = friends?.lastSyncedAt
+    ? (Date.now() - Date.parse(friends.lastSyncedAt)) / 3_600_000
+    : null;
+  const reconcileGap = reconcile
+    ? reconcile.byStake.filter((r) => r.gap > 0).length
+    : 0;
 
   const steps = [
     {
@@ -348,10 +360,40 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
           : `${chase.count} area(s) haven't touched their numbers.`,
     },
     {
+      id: "friends",
+      label: "Baptisms (MLC) sheet in sync",
+      state:
+        syncAgeH === null
+          ? ("attention" as const)
+          : syncAgeH > 24 * 8
+            ? ("attention" as const)
+            : ("done" as const),
+      detail:
+        syncAgeH === null
+          ? "No sheet sync has landed yet — check the Apps Script bridge."
+          : `Last sync ${syncAgeH < 1 ? "under an hour" : `${Math.round(syncAgeH)} h`} ago · ` +
+            `${friends?.onDateTotal ?? 0} on date, ${friends?.baptizedThisMonth ?? 0} baptized this month.`,
+    },
+    {
+      id: "reconcile",
+      label: "Baptism reconciliation",
+      state: reconcile === null
+        ? ("todo" as const)
+        : reconcileGap > 0
+          ? ("attention" as const)
+          : ("done" as const),
+      detail:
+        reconcile === null
+          ? "Run it from Friends → Monthly baptism reconciliation."
+          : reconcileGap > 0
+            ? `${reconcileGap} stake(s) show more in the KI feed than named records — close before the monthly report.`
+            : `Named records match the KI feed for ${latest.slice(0, 7)}.`,
+    },
+    {
       id: "boards",
       label: "Download board images",
       state: "todo" as const,
-      detail: "This Week → Publish (PNG export — coming).",
+      detail: "Publish → Boards — mission + per-zone PNGs.",
     },
     {
       id: "stakes",
@@ -359,7 +401,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       state: stake.wardMapSize > 0 ? ("todo" as const) : ("attention" as const),
       detail:
         stake.wardMapSize > 0
-          ? `${stake.stakes.length} stakes ready.`
+          ? `${stake.stakes.length} stakes ready — Publish → Stake reports.`
           : "No ward→stake rows for this week — seed the crosswalk.",
     },
   ];
@@ -376,6 +418,17 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       stakes: stake.stakes.length,
       chase: chase.count,
     },
+    friends: friends
+      ? {
+          onDate: friends.onDateTotal,
+          baptizedThisMonth: friends.baptizedThisMonth,
+          lastSyncedAt: friends.lastSyncedAt,
+          syncAgeHours: syncAgeH === null ? null : Math.round(syncAgeH),
+        }
+      : null,
+    reconcile: reconcile
+      ? { month: reconcile.month, gap: reconcile.mission.gap, stakesWithGap: reconcileGap }
+      : null,
     steps,
     config: cfg,
   };

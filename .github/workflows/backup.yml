@@ -1,0 +1,47 @@
+name: D1 backup
+
+# Weekly point-in-time dump of the production D1 database, committed back to
+# the repo under backups/. Also runnable on demand from the Actions tab.
+#
+# Requires two repo secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN  — a token with "D1:Edit" on the account
+#   CLOUDFLARE_ACCOUNT_ID — the account id (Workers & Pages → right sidebar)
+#
+# If this repo has no GitHub remote yet, this file just sits dormant; it starts
+# working the first time it is pushed to GitHub with those secrets set.
+
+on:
+  schedule:
+    - cron: "17 9 * * 1" # Mondays 09:17 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Export D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          mkdir -p backups
+          STAMP=$(date -u +%Y-%m-%d)
+          npx wrangler d1 export dcsm_ki --remote --output "backups/dcsm_ki-${STAMP}.sql"
+          test "$(wc -c < backups/dcsm_ki-${STAMP}.sql)" -gt 2000
+          # keep the newest 12
+          ls -1t backups/dcsm_ki-*.sql | tail -n +13 | xargs -r rm -f
+      - name: Commit
+        run: |
+          git config user.name  "dcsm-backup-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backups/
+          git diff --cached --quiet || git commit -m "chore(backup): D1 dump $(date -u +%Y-%m-%d)"
+          git push

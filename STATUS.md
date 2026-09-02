@@ -1,27 +1,36 @@
 # Build status — DCSM KI Portal
 
-_Last updated: 2026-09-02 — deployed; Friends + reconciliation + historical backfill._
+_Last updated: 2026-09-02 — deployed; Publish + backup layer + portal-native baptism records._
 
 ## TL;DR
 
 **Live at `https://dcsm-ki-portal.dcsm-reporting.workers.dev`**, owned by the
 `dcsm.reporting@gmail.com` Cloudflare account, gated by Cloudflare Access
 (`@missionary.org` + `@churchofjesuschrist.org`). Remote D1 holds 12 real IMOS
-weeks + the crosswalk + 563 friend records (137 from the live Baptisms (MLC)
-sheet, 416 historical baptisms backfilled from five legacy sources).
+weeks (KI facts 2026-06-01 … 2026-08-24) + the crosswalk + ~500 friend records
+(live Baptisms (MLC) sheet + 370 historical baptisms backfilled from five legacy
+sources, confidence-tiered).
 
 The reporting pipeline is ported to TypeScript and **verified byte-for-byte
-against the Python reference on all 12 sample weeks** (88 tests). Boards, month,
-stakes, trends, chase list, weekly console, a full transfer/structure manager,
-a read-only Data page, and a Friends module that mirrors the Baptisms (MLC)
-sheet with a monthly baptism-reconciliation view.
+against the Python reference on all 12 sample weeks** (88 tests). This Week /
+Month / Stakes / Trends / Chase boards, an operations console, a full
+transfer/structure manager, a read-only Data page with a one-click full backup,
+a Friends module that mirrors the Baptisms (MLC) sheet with monthly baptism
+reconciliation (and a portal-native way to record a baptism the sheet is
+missing), and a **Publish** page that renders mission + zone board PNGs and
+per-stake president reports with Gmail hand-off.
 
 D1 read cost is kept under the free-tier daily limit by a KV response cache +
 query fixes; a paid plan is on for this month as a cushion, not a dependency.
 
-What's left: **Publish** (board PNGs + stake-report email draft — recipients
-from the EMAILS sheet), **directory sync** (optional now the EMAILS sheet
-covers stake reports), the weekly `d1 export → git` cron, and bundle polish.
+**Durability:** Cloudflare D1 time-travel (30 days, no setup) + `scripts/backup.sh`
+(on-demand SQL dump) + a dormant weekly `d1 export → git` GitHub Action that
+activates when the repo gets a remote. See `docs/backup.md`.
+
+What's left: push the repo to GitHub + set the two Actions secrets to arm the
+backup cron; optional directory sync for leader phone numbers on the chase list.
+A historical KI backfill was attempted and **abandoned** — the legacy workbook
+has no clean pre-IMOS weekly series (see note below).
 
 ## Done and verified
 
@@ -38,7 +47,10 @@ covers stake reports), the weekly `d1 export → git` cron, and bundle polish.
 | **Stakes** | ✅ per-stake ward table + totals, 12-week mini bar charts, stake picker |
 | **Trends** | ✅ Recharts line chart, scope (mission / zone / MLC-only), window 4–52 wk, per-KI toggles |
 | **Chase list** | ✅ areas with no IMOS `history[]` entry for the week (3 stale on 8-24, correct) |
-| **Weekly console** (`/weekly`) | ✅ dashboard: weeks stored, zones/areas/stakes/chase counts, a per-week checklist (import / crosswalk clean / structure current / chase / boards / stake reports) with jump links |
+| **Weekly console** (`/weekly`) | ✅ operations cockpit: weeks stored, zones/areas/stakes/chase counts, friends-sync freshness, reconciliation gap, a per-week checklist (import / crosswalk clean / structure current / chase / friends sync / reconciliation / boards / stake reports) with jump links |
+| **Publish** (`/publish`) | ✅ Boards tab: mission + per-zone KI board components rendered to PNG via `html-to-image` (2×), MLC block. Stake reports tab: per-stake ward table + totals + 12-week sparkbars + on-date + last-6-months baptized, Print/Save-PDF, "Copy for email" (rich HTML), "Open in Gmail" deep link with To/CC from the recipients table. Recipients editor at Structure → Recipients (seed from the EMAILS sheet) |
+| **Friends → record a baptism** | ✅ `POST /api/friends/record` — portal-native completed baptism for the case the Baptisms (MLC) sheet is missing one (STL deleted the row, late confirmation). Written `source='portal'`, authoritative, invisible to the sheet sync, dup-guarded on folded name+date; removable from the Friends list. Counts toward the reconciliation named total |
+| **Backup / durability** | ✅ `/api/export` (all 14 tables as JSON, linked from Data), `scripts/backup.sh` (on-demand `wrangler d1 export`, keeps last 12), `.github/workflows/backup.yml` (weekly, dormant until repo has a remote + 2 secrets), `docs/backup.md` |
 | **Structure → Rollover** (`/admin/rollover`) | ✅ guided transfer flow — diffs the week's IMOS structure vs the crosswalk, proposes a canonical key per unmapped area (exact-match / CSV / new, with a confidence chip) and a stake per unmapped ward, "select suggested" + bulk **Apply effective `<week>`**. First-run seed button when no crosswalk exists. Pure planner in `src/pipeline/rollover.ts`, 3 tests |
 | **Structure → Areas & wards** (`/admin/areas`) | ✅ all 107 canonical areas, filterable; expand a row to rename it, retire/un-retire, see + close effective-dated IMOS id mappings, add a mapping, see + retire ward→stake rows, add a ward row. Stake-rename (updates every ward row under it) |
 | **Structure → Config** (`/admin/config`) | ✅ live knobs read from the `config` table on every request (no deploy): MLC positions (recomputed at read time, retro-applies), zone order, zones excluded from mission totals, colour bands |
@@ -61,25 +73,29 @@ covers stake reports), the weekly `d1 export → git` cron, and bundle polish.
 
 ## Not done yet
 
-- **Publish** — board PNG export and the stake-report draft. Design: render the
-  board component to canvas → `toBlob()` for PNG; stake report → formatted HTML
-  the operator pastes into Gmail. Recipients from `Stake President Reports
-  2.0.xlsx` → **`EMAILS`** sheet (per stake: To/CC/ZL/STL/AP/president) — so no
-  directory sync needed for v1.
-- **Historical KI backfill** (separate from the baptism backfill, which is done)
-  — `Key Indicator Reporting.xlsx` → **`RemoveDuplicates`** sheet: ~5000 rows,
-  2024-09-29 … 2026-08-31, one row per area per week, all 6 KIs goal + actual.
-  Would extend Trends/Month back to 2024 (area/zone/mission level; no ward, so
-  old-week stake reports stay blank). Plan: `POST /api/backfill` taking
-  normalised rows into a synthetic `import_run` marked `source='legacy'`.
+- **Arm the backup cron** — push the repo to a GitHub remote, add Actions
+  secrets `CLOUDFLARE_API_TOKEN` (Account › D1 › Edit) and
+  `CLOUDFLARE_ACCOUNT_ID`. `.github/workflows/backup.yml` then runs weekly. Until
+  then: run `scripts/backup.sh` by hand before any migration/bulk load.
 - **Directory sync** — optional now the EMAILS sheet covers stake reports. Would
   add leader name/phone to the Chase list.
-- **`wrangler d1 export` cron** — weekly SQL dump committed to git as the
-  off-box immutable backup. One GitHub Action.
 - **`All Units & Addresses`** (in `Baptisms (MLC).xlsx`) — authoritative unit id
   → ward/stake/address; could firm up `area_ward` and add addresses.
-- **Bundle** — code-split done (180 kB main); Recharts still lazy-loads on
+- **Bundle** — code-split done (181 kB main); Recharts still lazy-loads on
   Trends/Stakes. Fine.
+
+### Historical KI backfill — abandoned (2026-09-02)
+
+Attempted to extend Trends/Month back to 2024 from
+`resources/Key Indicator Reporting.xlsx`. The `RemoveDuplicates` / `Form
+Responses` sheets are keyed by **form-submission timestamp, not report week**,
+and only a rolling ~6-week transfer window is ever fully populated — so bucketing
+by `monday_of(timestamp)` produced 88 "weeks" with 1–13 areas each (vs the real
+~100). The `*Transfers Ago` snapshot sheets are single-week transfer-cycle dumps,
+some with `#REF!` corruption, all mid-2026. No clean multi-year weekly series
+exists in the workbook. Loaded then fully backed out
+(`DELETE … WHERE import_run_id >= 900000`); `scripts/load_ki_history.py` removed.
+Portal KI history correctly begins with the IMOS-paste era (2026-06-01).
 
 ## Reconciliation notes (unchanged from the old plan — settle in parallel week)
 

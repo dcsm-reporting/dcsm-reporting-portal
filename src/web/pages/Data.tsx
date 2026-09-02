@@ -15,6 +15,17 @@ export function DataPage() {
         change made in the portal.
       </p>
 
+      <div className="note">
+        <strong>Full backup.</strong> Every table as one JSON file — keep a copy somewhere safe
+        before big changes.{" "}
+        <a className="btn" href={api.exportUrl} style={{ marginLeft: ".4rem" }}>
+          Download full backup (JSON)
+        </a>
+        <div className="muted" style={{ fontSize: ".8rem", marginTop: ".4rem" }}>
+          For schema-level recovery use <code>scripts/backup.sh</code> (see <code>docs/backup.md</code>).
+        </div>
+      </div>
+
       <h3>Imported weeks ({data.imports.length})</h3>
       <div className="board-wrap">
         <table className="board">

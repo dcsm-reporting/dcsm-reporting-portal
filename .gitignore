@@ -9,3 +9,6 @@ coverage/
 
 .wrangler-dev.log
 .friends-sync-secret.txt
+
+# local backup dumps — commit deliberately with `git add -f` if wanted
+backups/

@@ -175,7 +175,19 @@ export const api = {
     ),
   reconcile: (month?: string) =>
     jget<ReconcileView>(`/api/reconcile${month ? `?month=${month}` : ""}`),
+  recordBaptism: (b: {
+    name: string;
+    baptismDate: string;
+    ward?: string;
+    stake?: string;
+    zone?: string;
+    missionaries?: string;
+    notes?: string;
+  }) => jpost<{ ok: true; id: string; duplicate: boolean }>("/api/friends/record", b),
+  deleteRecord: (id: string) =>
+    jsend<{ ok: true }>("DELETE", `/api/friends/record/${id}`, undefined),
   data: () => jget<DataView>("/api/data"),
+  exportUrl: "/api/export",
 
   // --- publish ---------------------------------------------------
   publish: (week: string) => jget<PublishView>(`/api/publish/${week}`),
@@ -289,6 +301,7 @@ export interface FriendRow {
   confidence: string | null;
   notes: string | null;
   dropped: boolean;
+  source: string;
 }
 export interface FriendsSummary {
   onDateTotal: number;
@@ -321,6 +334,13 @@ export interface ConsoleView {
     stakes: number;
     chase: number;
   };
+  friends?: {
+    onDate: number;
+    baptizedThisMonth: number;
+    lastSyncedAt: string | null;
+    syncAgeHours: number | null;
+  } | null;
+  reconcile?: { month: string; gap: number; stakesWithGap: number } | null;
   steps: ConsoleStep[];
   config: PortalConfig;
 }
