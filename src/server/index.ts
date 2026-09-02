@@ -408,9 +408,13 @@ app.get("/api/friends", async (c) => {
 });
 
 app.get("/api/friends/summary", async (c) => {
-  const week = c.req.query("week") || (await weeksAvailable(c.env.DB)).at(-1) || null;
+  // No ?week → measure "this week" / "this month" against today's calendar
+  // week and month (the STL sheet works in real time, not IMOS weeks). The
+  // date is in the cache key so "overdue" and the week window roll over daily.
+  const week = c.req.query("week") || null;
+  const keyDay = week ?? new Date().toISOString().slice(0, 10);
   return c.json(
-    await cached(c.env, `friends-summary:${week ?? ""}`, "friends", () =>
+    await cached(c.env, `friends-summary:${keyDay}`, "friends", () =>
       friendsSummary(c.env.DB, week),
     ),
   );

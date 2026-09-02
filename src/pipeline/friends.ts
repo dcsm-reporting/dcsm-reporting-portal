@@ -124,34 +124,59 @@ export function missionaryLastNames(s: string | null | undefined): string[] {
 export interface FriendsSummary {
   onDateTotal: number;
   onDateThisWeek: number;
+  /** on a date that has already passed and still not marked baptized */
+  overdueCount: number;
   baptizedThisMonth: number; // confirmed tier
   baptizedThisMonthUnverified: number; // Zone-Leader-form-only legacy
   calendarYes: number;
   calendarNo: number;
   church2xYes: number;
   church2xNo: number;
+  /** the window the "this week" / "this month" figures are measured over */
+  weekStart: string;
+  weekEnd: string;
+  month: string;
 }
 
 /** confirmed tier = sheet-sourced (null) or corroborated legacy. */
 const confirmedTier = (c: string | null) => c === null || c === "confirmed";
 
-export function summarise(
-  friends: Friend[],
-  weekStart: string | null,
-): FriendsSummary {
-  const wkEnd =
-    weekStart == null
-      ? null
-      : new Date(Date.parse(`${weekStart}T00:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
-  const month = weekStart?.slice(0, 7) ?? new Date().toISOString().slice(0, 7);
+/** Monday..Sunday (inclusive, so the weekend counts) of the week containing `d`. */
+export function calendarWeek(d = new Date()): { start: string; end: string } {
+  const dow = (d.getUTCDay() + 6) % 7; // 0 = Monday
+  const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow));
+  const sun = new Date(mon.getTime() + 6 * 86_400_000);
+  return { start: mon.toISOString().slice(0, 10), end: sun.toISOString().slice(0, 10) };
+}
+
+/**
+ * Summary cards for the Baptisms page.
+ *
+ * `weekStart == null` (the page's normal call) measures "this week" and "this
+ * month" against **today's** calendar week (Mon through Sun, weekend included)
+ * and today's calendar month — the STL sheet works in real time, not in IMOS
+ * reporting weeks. Pass an explicit `weekStart` only for a historical view.
+ */
+export function summarise(friends: Friend[], weekStart: string | null): FriendsSummary {
+  const today = new Date().toISOString().slice(0, 10);
+  let wkStart: string, wkEnd: string, month: string;
+  if (weekStart) {
+    wkStart = weekStart;
+    wkEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
+    month = weekStart.slice(0, 7);
+  } else {
+    const w = calendarWeek();
+    wkStart = w.start;
+    wkEnd = w.end;
+    month = today.slice(0, 7);
+  }
+  const horizon = weekStart ? wkStart : today;
 
   const onDate = friends.filter(isOnDate);
   return {
     onDateTotal: onDate.length,
-    onDateThisWeek:
-      weekStart == null
-        ? 0
-        : onDate.filter((f) => f.baptismDate! >= weekStart && f.baptismDate! <= wkEnd!).length,
+    onDateThisWeek: onDate.filter((f) => f.baptismDate! >= wkStart && f.baptismDate! <= wkEnd).length,
+    overdueCount: onDate.filter((f) => f.baptismDate! < horizon).length,
     baptizedThisMonth: friends.filter(
       (f) =>
         f.baptizedConfirmed &&
@@ -168,5 +193,8 @@ export function summarise(
     calendarNo: onDate.filter((f) => !f.onBaptismCalendar).length,
     church2xYes: onDate.filter((f) => f.attendedChurch2x).length,
     church2xNo: onDate.filter((f) => !f.attendedChurch2x).length,
+    weekStart: wkStart,
+    weekEnd: wkEnd,
+    month,
   };
 }

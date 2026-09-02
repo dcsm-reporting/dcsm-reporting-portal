@@ -104,4 +104,19 @@ describe("isOnDate / summarise", () => {
     expect(s.calendarYes).toBe(1);
     expect(s.church2xYes).toBe(1);
   });
+
+  it("null weekStart measures against the current calendar week + month", () => {
+    const today = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const friends = [
+      F({ baptismDate: iso(today) }), // on date, today, not overdue
+      F({ baptismDate: "2020-01-15" }), // on date, long overdue
+      F({ baptismDate: iso(today), baptizedConfirmed: true }), // baptised this month
+    ];
+    const s = summarise(friends, null);
+    expect(s.onDateTotal).toBe(2);
+    expect(s.overdueCount).toBe(1);
+    expect(s.baptizedThisMonth).toBe(1);
+    expect(s.month).toBe(iso(today).slice(0, 7));
+  });
 });

@@ -313,7 +313,8 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     buildChase(db, latest),
     buildStakeView(db, latest),
     buildRollover(db, latest, areaKey),
-    friendsSummary(db, latest).catch(() => null),
+    // null → current calendar week/month, not the last IMOS week
+    friendsSummary(db, null).catch(() => null),
     buildReconcile(db, latest.slice(0, 7)).catch(() => null),
   ]);
 
@@ -375,6 +376,15 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
             `${friends?.onDateTotal ?? 0} on date, ${friends?.baptizedThisMonth ?? 0} baptized this month.`,
     },
     {
+      id: "overdue",
+      label: "Baptism dates not overdue",
+      state: (friends?.overdueCount ?? 0) === 0 ? ("done" as const) : ("attention" as const),
+      detail:
+        (friends?.overdueCount ?? 0) === 0
+          ? "Every on-date baptism is still in the future."
+          : `${friends!.overdueCount} baptism(s) are past their date and not marked completed. See Baptisms.`,
+    },
+    {
       id: "reconcile",
       label: "Baptism reconciliation",
       state: reconcile === null
@@ -422,6 +432,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       ? {
           onDate: friends.onDateTotal,
           baptizedThisMonth: friends.baptizedThisMonth,
+          overdueCount: friends.overdueCount,
           lastSyncedAt: friends.lastSyncedAt,
           syncAgeHours: syncAgeH === null ? null : Math.round(syncAgeH),
         }

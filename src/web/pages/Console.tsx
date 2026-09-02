@@ -14,6 +14,7 @@ const LINK_FOR: Record<string, string> = {
   rollover: "/admin/rollover",
   chase: "/not-reported",
   friends: "/baptisms",
+  overdue: "/baptisms",
   reconcile: "/baptisms",
   boards: "/publish",
   stakes: "/publish",
@@ -54,7 +55,14 @@ export function ConsolePage() {
           <Stat
             k="Baptisms synced"
             v={data.friends.syncAgeHours === null ? "never" : `${data.friends.syncAgeHours} h ago`}
-            sub={`${data.friends.onDate} on date · ${data.friends.baptizedThisMonth} baptized`}
+            sub={`${data.friends.onDate} on date · ${data.friends.baptizedThisMonth} baptized this month`}
+          />
+        )}
+        {data.friends && data.friends.overdueCount > 0 && (
+          <Stat
+            k="Baptisms overdue"
+            v={data.friends.overdueCount}
+            sub="past date, not marked"
           />
         )}
         {data.reconcile && (

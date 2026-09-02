@@ -306,12 +306,16 @@ export interface FriendRow {
 export interface FriendsSummary {
   onDateTotal: number;
   onDateThisWeek: number;
+  overdueCount: number;
   baptizedThisMonth: number;
   baptizedThisMonthUnverified: number;
   calendarYes: number;
   calendarNo: number;
   church2xYes: number;
   church2xNo: number;
+  weekStart: string;
+  weekEnd: string;
+  month: string;
   lastSyncedAt: string | null;
 }
 
@@ -337,6 +341,7 @@ export interface ConsoleView {
   friends?: {
     onDate: number;
     baptizedThisMonth: number;
+    overdueCount: number;
     lastSyncedAt: string | null;
     syncAgeHours: number | null;
   } | null;

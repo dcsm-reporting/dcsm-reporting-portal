@@ -7,12 +7,20 @@ const ZONES = [
   "Langley", "Loudoun", "Woodbridge", "Manassas", "Potomac",
 ];
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const fmtShort = (iso: string) => {
+  const [, m, d] = iso.split("-").map((n) => parseInt(n, 10));
+  return `${MONTHS[m! - 1]!.slice(0, 3)} ${d}`;
+};
+
 export function FriendsPage() {
-  const { week } = useWeek();
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState<"on-date" | "baptized" | "all">("on-date");
 
-  const summary = useAsync(() => api.friendsSummary(week ?? undefined), [week]);
+  const summary = useAsync(() => api.friendsSummary(), []);
   const list = useAsync(
     () => api.friends({ zone: zone || undefined, status }),
     [zone, status],
@@ -22,11 +30,15 @@ export function FriendsPage() {
     summary.reload();
   };
 
-  const monthName = new Date().toLocaleString("en-US", { month: "long" });
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue =
+    status === "on-date" && list.data
+      ? list.data.friends.filter((f) => f.baptismDate && f.baptismDate < today)
+      : [];
 
   return (
     <>
-      <PageHead title="Baptisms" week />
+      <PageHead title="Baptisms" />
 
       {summary.data && (
         <div className="note">
@@ -50,14 +62,18 @@ export function FriendsPage() {
       {summary.data && (
         <div className="cards">
           <Stat k="On date" v={summary.data.onDateTotal} sub="have a baptismal date" />
-          <Stat k="On date this week" v={summary.data.onDateThisWeek} sub="dated in this week" />
+          <Stat
+            k="On date this week"
+            v={summary.data.onDateThisWeek}
+            sub={`${fmtShort(summary.data.weekStart)} to ${fmtShort(summary.data.weekEnd)}`}
+          />
           <Stat
             k="Baptized this month"
             v={summary.data.baptizedThisMonth}
             sub={
               summary.data.baptizedThisMonthUnverified > 0
-                ? `${monthName} · +${summary.data.baptizedThisMonthUnverified} unverified`
-                : monthName
+                ? `${MONTHS[parseInt(summary.data.month.slice(5), 10) - 1]} · +${summary.data.baptizedThisMonthUnverified} unverified`
+                : MONTHS[parseInt(summary.data.month.slice(5), 10) - 1]
             }
           />
           <Stat
@@ -70,6 +86,40 @@ export function FriendsPage() {
             v={`${summary.data.church2xYes} of ${summary.data.church2xYes + summary.data.church2xNo}`}
             sub="of those on date"
           />
+        </div>
+      )}
+
+      {summary.data && summary.data.overdueCount > 0 && (
+        <div className="note warn">
+          <strong>
+            {summary.data.overdueCount} baptism{summary.data.overdueCount === 1 ? "" : "s"} past{" "}
+            {summary.data.overdueCount === 1 ? "its date" : "their date"} and not marked completed.
+          </strong>{" "}
+          On the Baptisms (MLC) sheet, mark each one baptized or move it to a new date.
+          {overdue.length > 0 && (
+            <div className="board-wrap" style={{ marginTop: ".6rem" }}>
+              <table className="board">
+                <thead>
+                  <tr>
+                    <th className="row-head">Name</th>
+                    <th className="row-head">Ward · Zone</th>
+                    <th className="row-head">Was dated</th>
+                    <th className="row-head">Missionaries</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overdue.map((f) => (
+                    <tr key={f.id}>
+                      <td className="row-head">{f.name}</td>
+                      <td className="row-head muted">{[f.ward, f.zone].filter(Boolean).join(" · ")}</td>
+                      <td className="row-head mono">{fmtDate(f.baptismDate)}</td>
+                      <td className="row-head muted" style={{ fontSize: ".82rem" }}>{f.missionaries ?? "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
