@@ -106,18 +106,30 @@ describe("isOnDate / summarise", () => {
     expect(s.church2xYes).toBe(1);
   });
 
-  it("dedupeBaptized collapses name-order / parenthetical duplicates on the same date", () => {
+  it("dedupeBaptized collapses name-order / parenthetical / near-date duplicates", () => {
     const rows = [
       { name: "Li Ping Yan", baptismDate: "2026-03-07", source: "a+b+c" },
       { name: "Yan Li Ping(颜利平)", baptismDate: "2026-03-07", source: "a" },
       { name: "José Peña", baptismDate: "2026-03-07", source: "sheet" },
       { name: "Jose Pena", baptismDate: "2026-03-07", source: "legacy" },
-      { name: "Li Ping Yan", baptismDate: "2026-04-01", source: "a" }, // different date, kept
+      // same person, dates a few weeks apart (scheduled vs confirmed)
+      { name: "Maria Elizabeth Berrios Reyes", baptismDate: "2026-03-04", source: "a+b" },
+      { name: "Maria Elizabeth Berrios Reyes", baptismDate: "2026-03-11", source: "zl_form_response" },
+      // same name but 3+ months apart → treated as different people, both kept
+      { name: "Anna Kim", baptismDate: "2026-01-05", source: "a" },
+      { name: "Anna Kim", baptismDate: "2026-06-20", source: "a" },
     ];
     const out = dedupeBaptized(rows);
-    expect(out.map((r) => r.name)).toEqual(["Li Ping Yan", "José Peña", "Li Ping Yan"]);
-    expect(out[0]!.source).toBe("a+b+c"); // kept the multi-source row
-    expect(out[1]!.source).toBe("sheet"); // kept the sheet row over legacy
+    expect(out.map((r) => `${r.name}|${r.baptismDate}`)).toEqual([
+      "Li Ping Yan|2026-03-07",
+      "José Peña|2026-03-07",
+      "Maria Elizabeth Berrios Reyes|2026-03-04",
+      "Anna Kim|2026-01-05",
+      "Anna Kim|2026-06-20",
+    ]);
+    expect(out[0]!.source).toBe("a+b+c");
+    expect(out[1]!.source).toBe("sheet");
+    expect(out[2]!.source).toBe("a+b"); // kept the stronger, earlier Maria record
   });
 
   it("null weekStart measures against the current calendar week + month", () => {

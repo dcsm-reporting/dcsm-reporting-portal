@@ -158,19 +158,11 @@ function Boards({ data }: { data: PublishView }) {
 
 function Reports({ data }: { data: PublishView }) {
   const [sel, setSel] = useState(data.reports[0]?.stake ?? "");
-  const r = data.reports.find((x) => x.stake === sel) ?? data.reports[0];
   const ref = useRef<HTMLDivElement>(null);
   const [msg, setMsg] = useState("");
-  if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
-
   const [busy, setBusy] = useState(false);
-  const email = buildEmail({
-    stake: r.stake,
-    presidentName: r.presidentName,
-    weekStartIso: data.week,
-    weekLabel: data.weekLabel,
-    template: data.emailTemplate,
-  });
+
+  const r = data.reports.find((x) => x.stake === sel) ?? data.reports[0];
 
   const flash = (m: string) => {
     setMsg(m);
@@ -180,13 +172,23 @@ function Reports({ data }: { data: PublishView }) {
     if (!ref.current) return;
     setBusy(true);
     try {
-      await downloadPdf(ref.current, `${r.stake}-KIC-${data.week}`);
+      await downloadPdf(ref.current, `${r!.stake}-KIC-${data.week}`);
     } catch {
       flash("PDF failed. Try Copy full email instead.");
     } finally {
       setBusy(false);
     }
   };
+
+  if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
+
+  const email = buildEmail({
+    stake: r.stake,
+    presidentName: r.presidentName,
+    weekStartIso: data.week,
+    weekLabel: data.weekLabel,
+    template: data.emailTemplate,
+  });
 
   return (
     <>
@@ -196,9 +198,12 @@ function Reports({ data }: { data: PublishView }) {
             <option key={x.stake} value={x.stake}>{x.stake}</option>
           ))}
         </select>
+        <button className="btn primary" disabled={busy} onClick={savePdf}>
+          {busy ? "Building PDF…" : "Download PDF"}
+        </button>
         {r.toEmails.length > 0 && (
           <a
-            className="btn primary"
+            className="btn"
             href={gmailComposeUrl(r.toEmails, r.ccEmails, email.subject, email.bodyText)}
             target="_blank"
             rel="noopener noreferrer"
@@ -211,7 +216,7 @@ function Reports({ data }: { data: PublishView }) {
           onClick={async () => {
             if (!ref.current) return;
             const ok = await copyEmail(email.bodyHtml, email.bodyText, ref.current);
-            flash(ok ? "Letter + report copied. Paste into the email body." : "Copy failed; use Print.");
+            flash(ok ? "Letter + report copied. Paste into the email body." : "Copy failed.");
           }}
         >
           Copy full email
@@ -225,9 +230,6 @@ function Reports({ data }: { data: PublishView }) {
           }}
         >
           Copy report only
-        </button>
-        <button className="btn" disabled={busy} onClick={savePdf}>
-          {busy ? "Building PDF…" : "Download PDF"}
         </button>
         {msg && <span className="muted" style={{ fontSize: ".85rem" }}>{msg}</span>}
       </div>
@@ -245,10 +247,10 @@ function Reports({ data }: { data: PublishView }) {
           </div>
         )}
       </div>
-      <div className="no-print" style={{ fontSize: ".8rem", color: "var(--ink-faint)", marginTop: ".3rem", maxWidth: "72ch" }}>
-        <strong>Open in Gmail</strong> prefills the recipients, subject, and cover letter — then attach
-        the <strong>PDF</strong>, or use <strong>Copy full email</strong> to paste the letter + report
-        straight into the body.
+      <div className="no-print" style={{ fontSize: ".8rem", color: "var(--ink-faint)", marginTop: ".3rem", maxWidth: "76ch" }}>
+        Two ways to send: <strong>Copy full email</strong> then Open in Gmail and paste (one step, the
+        report lands inline) — or <strong>Download PDF</strong>, Open in Gmail, and attach the file
+        (Gmail can't attach it automatically from a link).
       </div>
 
       <div className="publish-preview print-target" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>

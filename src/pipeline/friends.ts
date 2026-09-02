@@ -142,41 +142,77 @@ export interface FriendsSummary {
 const confirmedTier = (c: string | null) => c === null || c === "confirmed";
 
 /**
- * A person key that ignores name order, accents, punctuation and any
- * parenthetical (e.g. a Chinese name): "Li Ping Yan" on 3/7 and
- * "Yan Li Ping(颜利平)" on 3/7 collapse to the same key. Used to drop
- * duplicate baptism records that the legacy backfill didn't catch.
+ * A name key that ignores order, accents, punctuation and any parenthetical
+ * (e.g. a Chinese name): "Li Ping Yan" and "Yan Li Ping(颜利平)" produce the
+ * same key.
  */
-export function personKey(name: string, date: string | null): string {
-  const tokens = String(name ?? "")
-    .replace(/\([^)]*\)/g, " ") // drop "(颜利平)"
+export function nameKey(name: string): string {
+  return String(name ?? "")
+    .replace(/\([^)]*\)/g, " ")
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "") // strip accents
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
     .filter(Boolean)
-    .sort();
-  return `${date ?? ""}|${tokens.join(" ")}`;
+    .sort()
+    .join(" ");
 }
 
+/** name + date key (kept for callers that want an exact person+date bucket). */
+export function personKey(name: string, date: string | null): string {
+  return `${date ?? ""}|${nameKey(name)}`;
+}
+
+const DUP_WINDOW_DAYS = 45;
+
 /**
- * Collapse duplicate baptism records for the same person + date. Keeps the row
- * with the most corroborating sources (a "+"-joined source string), then the
- * one already synced from the sheet.
+ * Collapse duplicate baptism records for the same person. Two records merge
+ * when the folded name matches AND the baptism dates are within ~6 weeks —
+ * that catches the legacy case where one source has the confirmation date and
+ * another the scheduled date. Keeps the row with the most corroborating
+ * sources, then the one synced from the sheet, then the earliest date.
  */
 export function dedupeBaptized<T extends { name: string; baptismDate: string | null; source: string }>(
   rows: T[],
 ): T[] {
-  const best = new Map<string, T>();
   const weight = (r: T) => (r.source === "sheet" ? 100 : r.source.split("+").length);
+  const dayNum = (d: string | null) => (d ? Date.parse(`${d}T00:00:00Z`) / 86_400_000 : NaN);
+
+  const byName = new Map<string, T[]>();
   for (const r of rows) {
-    const k = personKey(r.name, r.baptismDate);
-    const cur = best.get(k);
-    if (!cur || weight(r) > weight(cur)) best.set(k, r);
+    const k = nameKey(r.name);
+    const list = byName.get(k);
+    if (list) list.push(r);
+    else byName.set(k, [r]);
   }
-  // preserve original order
-  const kept = new Set(best.values());
+
+  const kept = new Set<T>();
+  for (const group of byName.values()) {
+    // cluster by near date; within a cluster keep the strongest record
+    const sorted = [...group].sort((a, b) => (a.baptismDate ?? "").localeCompare(b.baptismDate ?? ""));
+    let cluster: T[] = [];
+    let anchor = NaN;
+    const flush = () => {
+      if (!cluster.length) return;
+      cluster.sort(
+        (a, b) =>
+          weight(b) - weight(a) ||
+          (a.baptismDate ?? "").localeCompare(b.baptismDate ?? ""),
+      );
+      kept.add(cluster[0]!);
+      cluster = [];
+    };
+    for (const r of sorted) {
+      const d = dayNum(r.baptismDate);
+      if (cluster.length && !Number.isNaN(anchor) && !Number.isNaN(d) && d - anchor > DUP_WINDOW_DAYS) {
+        flush();
+      }
+      if (!cluster.length) anchor = d;
+      cluster.push(r);
+    }
+    flush();
+  }
   return rows.filter((r) => kept.has(r));
 }
 

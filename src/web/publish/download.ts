@@ -15,20 +15,48 @@ export async function downloadPng(node: HTMLElement, filename: string): Promise<
 }
 
 /**
- * Render a node straight to a downloaded PDF (no browser print dialog, which
- * mangled the layout). The node is rasterised exactly as it looks on screen and
- * dropped onto a single page sized to match — so the layout is identical to the
- * preview and to what "Copy full email" produces.
+ * Render a node to a downloaded PDF (no browser print dialog, which mangled the
+ * layout). The node is rasterised exactly as it looks on screen, then sliced
+ * across US-Letter pages — so the layout matches the preview and prints cleanly.
  */
 export async function downloadPdf(node: HTMLElement, filename: string): Promise<void> {
   const dataUrl = await Promise.race([
     toPng(node, { pixelRatio: 2, cacheBust: true, backgroundColor: "#ffffff" }),
     new Promise<never>((_, rej) => setTimeout(() => rej(new Error("render timed out")), 25_000)),
   ]);
-  const wPt = (node.offsetWidth || 780) * 0.75;
-  const hPt = (node.offsetHeight || 1000) * 0.75;
-  const pdf = new jsPDF({ unit: "pt", format: [wPt, hPt], orientation: wPt > hPt ? "l" : "p" });
-  pdf.addImage(dataUrl, "PNG", 0, 0, wPt, hPt);
+  const img = await new Promise<HTMLImageElement>((res, rej) => {
+    const el = new Image();
+    el.onload = () => res(el);
+    el.onerror = () => rej(new Error("image decode failed"));
+    el.src = dataUrl;
+  });
+
+  const pageW = 612; // US Letter, points
+  const pageH = 792;
+  const margin = 30;
+  const contentWpt = pageW - margin * 2;
+  const contentHpt = pageH - margin * 2;
+  const pxToPt = contentWpt / img.naturalWidth;
+  const sliceHpx = Math.floor(contentHpt / pxToPt);
+
+  const pdf = new jsPDF({ unit: "pt", format: "letter" });
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d")!;
+
+  let y = 0;
+  let page = 0;
+  while (y < img.naturalHeight) {
+    const hpx = Math.min(sliceHpx, img.naturalHeight - y);
+    canvas.width = img.naturalWidth;
+    canvas.height = hpx;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, y, img.naturalWidth, hpx, 0, 0, img.naturalWidth, hpx);
+    if (page > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, contentWpt, hpx * pxToPt);
+    y += hpx;
+    page += 1;
+  }
   pdf.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
 }
 
