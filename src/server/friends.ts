@@ -151,19 +151,23 @@ export interface SheetRow {
 }
 
 const norm = (s: unknown) => String(s ?? "").trim();
-/**
- * Zone is left out (renamed at transfers). Accents and inner whitespace are
- * folded so cosmetic edits to a name/ward in the sheet don't orphan the record.
- */
-export function syncKeyOf(ward: string, name: string): string {
-  const fold = (s: string) =>
-    String(s ?? "")
-      .normalize("NFKD")
-      .replace(/[̀-ͯ]/g, "") // strip combining accent marks
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  return `${fold(ward)}|${fold(name)}`;
+
+/** Fold accents + inner whitespace so cosmetic edits don't create a new key. */
+function fold(s: string): string {
+  return String(s ?? "")
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+/** ward|name — the reschedule-tolerant match key (date may change). */
+export function wnKeyOf(ward: string | null, name: string): string {
+  return `${fold(ward ?? "")}|${fold(name)}`;
+}
+/** ward|name|date — the exact match key. */
+export function fullKeyOf(ward: string | null, name: string, date: string | null): string {
+  return `${wnKeyOf(ward, name)}|${date ?? ""}`;
 }
 
 export async function syncFriends(
@@ -187,14 +191,16 @@ export async function syncFriends(
       const name = norm(r.name);
       const zone = norm(r.zone);
       const ward = norm(r.ward);
+      const baptismDate = toIsoDate(r.baptismDate);
       return {
-        key: syncKeyOf(ward, name),
+        wn: wnKeyOf(ward, name),
+        full: fullKeyOf(ward, name, baptismDate),
         name,
         zone: zone || null,
         ward: ward || null,
         stake: norm(r.stake) || null,
         missionaries: norm(r.missionaries) || null,
-        baptismDate: toIsoDate(r.baptismDate),
+        baptismDate,
         baptismTime: cleanTime(r.baptismTime),
         baptismAddress: norm(r.baptismAddress) || null,
         attendedChurch2x: yn(r.attendedChurch2x),
@@ -211,16 +217,28 @@ export async function syncFriends(
       return true;
     });
 
-  // dedupe within the snapshot (last wins)
-  const byKey = new Map<string, (typeof clean)[number]>();
-  for (const r of clean) byKey.set(r.key, r);
+  // dedupe the snapshot on the exact key (a true duplicate entry collapses)
+  const snap = new Map<string, (typeof clean)[number]>();
+  for (const r of clean) snap.set(r.full, r);
 
   const existing = await listFriends(db, { includeInactive: true });
-  const existingByKey = new Map(existing.filter((f) => f.syncKey).map((f) => [f.syncKey!, f]));
+  const sheetRows = existing.filter((f) => f.source === "sheet");
+
+  // Index existing sheet rows two ways
+  const byFull = new Map<string, StoredFriend>();
+  const byWn = new Map<string, StoredFriend[]>();
+  for (const f of sheetRows) {
+    byFull.set(fullKeyOf(f.ward, f.name, f.baptismDate), f);
+    const wn = wnKeyOf(f.ward, f.name);
+    const list = byWn.get(wn);
+    if (list) list.push(f);
+    else byWn.set(wn, [f]);
+  }
 
   let upserted = 0;
   let changed = 0;
   const stmts: D1PreparedStatement[] = [];
+  const claimed = new Set<string>(); // friend ids matched this run
 
   const differs = (a: (typeof clean)[number], b: StoredFriend) =>
     a.name !== b.name ||
@@ -237,27 +255,33 @@ export async function syncFriends(
     !b.active ||
     b.dropped;
 
-  for (const r of byKey.values()) {
-    const prev = existingByKey.get(r.key);
+  for (const r of snap.values()) {
+    // tier 1: exact ward|name|date; tier 2: the one unclaimed ward|name (a reschedule)
+    let prev = byFull.get(r.full);
+    if (prev && claimed.has(prev.id)) prev = undefined;
+    if (!prev) {
+      const cand = (byWn.get(r.wn) ?? []).filter((f) => !claimed.has(f.id));
+      if (cand.length === 1) prev = cand[0];
+    }
+
     if (prev) {
+      claimed.add(prev.id);
       if (differs(r, prev)) changed++;
       stmts.push(
         db
           .prepare(
-            // back in the sheet ⇒ active again and no longer "dropped";
-            // stamp confirmed_at the first time the box goes ticked
             `UPDATE friend SET name=?, zone=?, ward=?, stake=?, missionaries=?, baptism_date=?,
                baptism_time=?, baptism_address=?, attended_church_2x=?, on_baptism_calendar=?,
                baptized_confirmed=?,
                confirmed_at = CASE WHEN ? = 1 AND baptized_confirmed = 0 THEN ? ELSE confirmed_at END,
-               active=1, dropped=0, left_sheet_at=NULL, source='sheet',
+               active=1, dropped=0, left_sheet_at=NULL, source='sheet', sync_key=?,
                updated_at=?, updated_by='sheet-sync'
              WHERE id=?`,
           )
           .bind(
             r.name, r.zone, r.ward, r.stake, r.missionaries, r.baptismDate, r.baptismTime,
             r.baptismAddress, r.attendedChurch2x ? 1 : 0, r.onBaptismCalendar ? 1 : 0,
-            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? 1 : 0, now, now, prev.id,
+            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? 1 : 0, now, r.full, now, prev.id,
           ),
       );
     } else {
@@ -273,7 +297,7 @@ export async function syncFriends(
           .bind(
             crypto.randomUUID(), r.name, r.zone, r.ward, r.stake, r.missionaries, r.baptismDate,
             r.baptismTime, r.baptismAddress, r.attendedChurch2x ? 1 : 0, r.onBaptismCalendar ? 1 : 0,
-            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? now : null, r.key, now, now,
+            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? now : null, r.full, now, now,
           ),
       );
       changed++;
@@ -281,12 +305,9 @@ export async function syncFriends(
     upserted++;
   }
 
-  // Anyone sheet-sourced + active who dropped out of the snapshot: STLs cycle
-  // completed baptisms out each month, so keep those (just stamp when they left);
-  // an on-date friend that's removed is treated as no longer progressing.
-  const gone = existing.filter(
-    (f) => f.source === "sheet" && f.active && f.syncKey && !byKey.has(f.syncKey),
-  );
+  // sheet rows nobody claimed: STLs cycle completed baptisms out each month, so
+  // keep those (stamp when they left); an on-date friend removed = not progressing.
+  const gone = sheetRows.filter((f) => f.active && !claimed.has(f.id));
   let retained = 0;
   let deactivated = 0;
   for (const f of gone) {
@@ -318,8 +339,8 @@ export async function syncFriends(
 
   // weekly snapshot — only when something moved (idempotent UPSERT keyed by week)
   if (weekStart && (changed > 0 || deactivated > 0)) {
-    const active = await listFriends(db);
-    const snap = active.map((f) =>
+    const activeNow = await listFriends(db);
+    const weekStmts = activeNow.map((f) =>
       db
         .prepare(
           `INSERT INTO friend_week (friend_id, week_start, baptism_date, attended_church_2x,
@@ -336,7 +357,7 @@ export async function syncFriends(
           f.baptizedConfirmed ? 1 : 0, f.dropped ? 1 : 0, now,
         ),
     );
-    for (let i = 0; i < snap.length; i += 20) await db.batch(snap.slice(i, i + 20));
+    for (let i = 0; i < weekStmts.length; i += 20) await db.batch(weekStmts.slice(i, i + 20));
   }
 
   await db
