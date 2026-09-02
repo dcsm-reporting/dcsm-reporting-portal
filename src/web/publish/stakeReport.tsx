@@ -2,38 +2,63 @@ import { forwardRef } from "react";
 import { KI_IDS, KI_CODE, KI_NAME } from "@shared/ki";
 import type { StakeReport } from "../api.js";
 
+const INK = "#1c2530";
+const SOFT = "#53606b";
+const FAINT = "#8a95a0";
+const NAVY = "#24406b";
+const RULE = "#c7ccd3";
+const HAIR = "#e6e9ee";
+const WASH = "#eef2f7";
+
 const doc: React.CSSProperties = {
-  width: 760,
+  width: 780,
   background: "#fff",
-  color: "#1c2530",
+  color: INK,
   fontFamily: '"IBM Plex Sans", system-ui, sans-serif',
-  padding: "36px 44px 40px",
+  padding: "40px 46px 44px",
   boxSizing: "border-box",
-  fontSize: 13,
+  fontSize: 12.5,
   lineHeight: 1.5,
+  fontVariantNumeric: "tabular-nums",
 };
-const h2: React.CSSProperties = {
+
+const eyebrow: React.CSSProperties = {
+  fontFamily: '"IBM Plex Mono", monospace',
+  fontSize: 10.5,
+  letterSpacing: ".18em",
+  textTransform: "uppercase",
+  color: NAVY,
+};
+
+const sectionHead: React.CSSProperties = {
   fontFamily: '"IBM Plex Sans", sans-serif',
-  fontSize: 14,
-  fontWeight: 600,
-  margin: "24px 0 8px",
-  color: "#24406b",
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: ".04em",
+  textTransform: "uppercase",
+  color: NAVY,
+  margin: "26px 0 10px",
+  paddingLeft: 9,
+  borderLeft: `3px solid ${NAVY}`,
 };
+
 const th: React.CSSProperties = {
   fontFamily: '"IBM Plex Mono", monospace',
-  fontSize: 10,
+  fontSize: 9.5,
   letterSpacing: ".06em",
   textTransform: "uppercase",
-  color: "#53606b",
-  padding: "5px 8px",
+  color: SOFT,
+  padding: "6px 8px",
   textAlign: "right",
-  borderBottom: "1px solid #c3c9bd",
+  borderBottom: `1.5px solid ${RULE}`,
+  whiteSpace: "nowrap",
 };
 const td: React.CSSProperties = {
-  padding: "5px 8px",
+  padding: "6px 8px",
   textAlign: "right",
-  borderBottom: "1px solid #e6e9e3",
+  borderBottom: `1px solid ${HAIR}`,
 };
+const tdL: React.CSSProperties = { ...td, textAlign: "left" };
 
 function fmt(iso: string | null): string {
   if (!iso) return "–";
@@ -42,164 +67,215 @@ function fmt(iso: string | null): string {
   return y ? `${mon} ${d}` : iso;
 }
 
-function SparkRow({ label, values }: { label: string; values: number[] }) {
-  const max = Math.max(1, ...values);
+function StatTile({ n, label }: { n: number; label: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 3, margin: "2px 0" }}>
-      <div style={{ width: 34, fontSize: 10, fontFamily: '"IBM Plex Mono", monospace', color: "#53606b", textAlign: "right", paddingRight: 4 }}>
-        {label}
+    <div style={{ flex: 1, border: `1px solid ${HAIR}`, borderRadius: 8, padding: "12px 14px" }}>
+      <div style={{ fontSize: 26, fontWeight: 700, fontFamily: '"Spectral", Georgia, serif', lineHeight: 1 }}>
+        {n}
       </div>
-      {values.map((v, i) => (
-        <div
-          key={i}
-          title={String(v)}
-          style={{
-            width: 12,
-            height: Math.max(2, Math.round((v / max) * 40)),
-            background: i === values.length - 1 ? "#24406b" : "#9fb3cf",
-          }}
-        />
-      ))}
-      <div style={{ fontSize: 10, color: "#53606b", marginLeft: 4 }}>
-        {values[values.length - 1]}
+      <div
+        style={{
+          fontSize: 9.5,
+          color: SOFT,
+          fontFamily: '"IBM Plex Mono", monospace',
+          textTransform: "uppercase",
+          letterSpacing: ".05em",
+          marginTop: 5,
+        }}
+      >
+        {label}
       </div>
     </div>
   );
 }
 
-export const StakeReportDoc = forwardRef<HTMLDivElement, { r: StakeReport; weekLabel: string; generatedAt: string }>(
-  function StakeReportDoc({ r, weekLabel, generatedAt }, ref) {
-    const seriesByKi: Record<string, number[]> = {};
-    for (const ki of KI_IDS) seriesByKi[KI_CODE[ki]] = r.series.map((row) => row[KI_CODE[ki] as "NP"]);
+function SparkRow({ label, values }: { label: string; values: number[] }) {
+  const max = Math.max(1, ...values);
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 3, margin: "6px 0", breakInside: "avoid" }}>
+      <div
+        style={{
+          width: 30,
+          fontSize: 10,
+          fontFamily: '"IBM Plex Mono", monospace',
+          color: SOFT,
+          textAlign: "right",
+          paddingRight: 4,
+          paddingBottom: 2,
+        }}
+      >
+        {label}
+      </div>
+      {values.map((v, i) => (
+        <div
+          key={i}
+          style={{
+            width: 11,
+            height: Math.max(2, Math.round((v / max) * 38)),
+            background: i === values.length - 1 ? NAVY : "#a9bcd6",
+            borderRadius: 1,
+          }}
+        />
+      ))}
+      <div style={{ fontSize: 10, fontWeight: 600, color: SOFT, marginLeft: 5, paddingBottom: 1 }}>
+        {values[values.length - 1] ?? 0}
+      </div>
+    </div>
+  );
+}
 
-    return (
-      <div ref={ref} style={doc}>
-        <div style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: "#24406b" }}>
-          Washington DC South Mission
-        </div>
-        <div style={{ fontFamily: '"Spectral", Georgia, serif', fontSize: 26, fontWeight: 600 }}>
-          {r.stake} Stake
-        </div>
-        <div style={{ fontSize: 12, color: "#53606b" }}>
-          Key Indicators of Conversion · {weekLabel}
-        </div>
+export const StakeReportDoc = forwardRef<
+  HTMLDivElement,
+  { r: StakeReport; weekLabel: string; generatedAt: string }
+>(function StakeReportDoc({ r, weekLabel, generatedAt }, ref) {
+  const seriesByKi: Record<string, number[]> = {};
+  for (const ki of KI_IDS) seriesByKi[KI_CODE[ki]] = r.series.map((row) => row[KI_CODE[ki] as "NP"]);
 
-        <div style={{ display: "flex", gap: 28, marginTop: 16 }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{r.baptizedThisMonth}</div>
-            <div style={{ fontSize: 10, color: "#53606b", fontFamily: '"IBM Plex Mono", monospace', textTransform: "uppercase" }}>
-              baptized this month
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{r.baptizedYtd}</div>
-            <div style={{ fontSize: 10, color: "#53606b", fontFamily: '"IBM Plex Mono", monospace', textTransform: "uppercase" }}>
-              baptized year to date
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{r.onDate.length}</div>
-            <div style={{ fontSize: 10, color: "#53606b", fontFamily: '"IBM Plex Mono", monospace', textTransform: "uppercase" }}>
-              friends on date
-            </div>
-          </div>
-        </div>
+  return (
+    <div ref={ref} style={doc}>
+      {/* header */}
+      <div style={eyebrow}>Washington DC South Mission</div>
+      <div
+        style={{
+          fontFamily: '"Spectral", Georgia, serif',
+          fontSize: 28,
+          fontWeight: 600,
+          letterSpacing: "-.01em",
+          margin: "2px 0 1px",
+        }}
+      >
+        {r.stake} Stake
+      </div>
+      <div style={{ fontSize: 12, color: SOFT }}>Key Indicators of Conversion &middot; {weekLabel}</div>
+      <div style={{ borderBottom: `2px solid ${NAVY}`, margin: "14px 0 18px" }} />
 
-        <h2 style={h2}>This week by ward</h2>
+      {/* headline stats */}
+      <div style={{ display: "flex", gap: 12 }}>
+        <StatTile n={r.baptizedThisMonth} label="Baptized this month" />
+        <StatTile n={r.baptizedYtd} label="Baptized this year" />
+        <StatTile n={r.onDate.length} label="On a baptismal date" />
+      </div>
+
+      {/* ward KI table */}
+      <div style={sectionHead}>This week by ward</div>
+      <table style={{ borderCollapse: "collapse", width: "100%" }}>
+        <thead>
+          <tr>
+            <th style={{ ...th, textAlign: "left" }}>Ward</th>
+            {KI_IDS.map((ki) => (
+              <th key={ki} style={th} title={KI_NAME[ki]}>
+                {KI_CODE[ki]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {r.wardTable.map((w) => (
+            <tr key={w.ward}>
+              <td style={tdL}>{w.ward}</td>
+              {KI_IDS.map((ki) => (
+                <td key={ki} style={td}>{w.ki[ki] ?? 0}</td>
+              ))}
+            </tr>
+          ))}
+          <tr style={{ background: WASH }}>
+            <td style={{ ...tdL, fontWeight: 700, borderBottom: "none" }}>{r.stake} total</td>
+            {KI_IDS.map((ki) => (
+              <td key={ki} style={{ ...td, fontWeight: 700, borderBottom: "none" }}>
+                {r.total[ki] ?? 0}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+      <div style={{ fontSize: 9.5, color: FAINT, marginTop: 6, fontFamily: '"IBM Plex Mono", monospace' }}>
+        {KI_IDS.map((ki) => `${KI_CODE[ki]} ${KI_NAME[ki]}`).join("   ·   ")}
+      </div>
+
+      {/* trend */}
+      <div style={sectionHead}>12-week trend</div>
+      <div style={{ columns: 2, columnGap: 40 }}>
+        {KI_IDS.map((ki) => (
+          <SparkRow key={ki} label={KI_CODE[ki]} values={seriesByKi[KI_CODE[ki]] ?? []} />
+        ))}
+      </div>
+
+      {/* on date */}
+      <div style={sectionHead}>Friends with a baptismal date ({r.onDate.length})</div>
+      {r.onDate.length === 0 ? (
+        <div style={{ color: FAINT }}>None.</div>
+      ) : (
         <table style={{ borderCollapse: "collapse", width: "100%" }}>
           <thead>
             <tr>
+              <th style={{ ...th, textAlign: "left" }}>Name</th>
               <th style={{ ...th, textAlign: "left" }}>Ward</th>
-              {KI_IDS.map((ki) => (
-                <th key={ki} style={th} title={KI_NAME[ki]}>
-                  {KI_CODE[ki]}
-                </th>
-              ))}
+              <th style={{ ...th, textAlign: "left" }}>Date</th>
+              <th style={th}>Church 2×</th>
+              <th style={th}>Calendar</th>
             </tr>
           </thead>
           <tbody>
-            {r.wardTable.map((w) => (
-              <tr key={w.ward}>
-                <td style={{ ...td, textAlign: "left" }}>{w.ward}</td>
-                {KI_IDS.map((ki) => (
-                  <td key={ki} style={td}>
-                    {w.ki[ki] ?? 0}
-                  </td>
-                ))}
+            {r.onDate.map((f, i) => (
+              <tr key={i}>
+                <td style={tdL}>{f.name}</td>
+                <td style={tdL}>{f.ward ?? "–"}</td>
+                <td style={tdL}>{fmt(f.baptismDate)}</td>
+                <td style={{ ...td, color: f.attendedChurch2x ? "#1e7b45" : FAINT }}>
+                  {f.attendedChurch2x ? "✓" : "–"}
+                </td>
+                <td style={{ ...td, color: f.onBaptismCalendar ? "#1e7b45" : FAINT }}>
+                  {f.onBaptismCalendar ? "✓" : "–"}
+                </td>
               </tr>
             ))}
-            <tr style={{ background: "#e5eaf2" }}>
-              <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>{r.stake} total</td>
-              {KI_IDS.map((ki) => (
-                <td key={ki} style={{ ...td, fontWeight: 700 }}>
-                  {r.total[ki] ?? 0}
-                </td>
-              ))}
-            </tr>
           </tbody>
         </table>
+      )}
 
-        <h2 style={h2}>12-week trend</h2>
-        <div style={{ columns: 2, columnGap: 32 }}>
-          {KI_IDS.map((ki) => (
-            <SparkRow key={ki} label={KI_CODE[ki]} values={seriesByKi[KI_CODE[ki]] ?? []} />
-          ))}
-        </div>
-
-        <h2 style={h2}>Friends with a baptismal date ({r.onDate.length})</h2>
-        {r.onDate.length === 0 ? (
-          <div style={{ color: "#8a95a0" }}>None.</div>
-        ) : (
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
-            <thead>
-              <tr>
-                <th style={{ ...th, textAlign: "left" }}>Name</th>
-                <th style={{ ...th, textAlign: "left" }}>Ward</th>
-                <th style={{ ...th, textAlign: "left" }}>Date</th>
-                <th style={th}>Church 2×</th>
-                <th style={th}>Calendar</th>
+      {/* baptized 6mo */}
+      <div style={sectionHead}>Baptized in the last 6 months ({r.baptized6mo.length})</div>
+      {r.baptized6mo.length === 0 ? (
+        <div style={{ color: FAINT }}>None.</div>
+      ) : (
+        <table style={{ borderCollapse: "collapse", width: "100%" }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, textAlign: "left" }}>Name</th>
+              <th style={{ ...th, textAlign: "left" }}>Ward</th>
+              <th style={{ ...th, textAlign: "left" }}>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.baptized6mo.map((f, i) => (
+              <tr key={i}>
+                <td style={tdL}>
+                  {f.name}
+                  {f.confidence === "unverified" ? (
+                    <span style={{ color: "#c4881a", fontSize: 9.5 }}> (unverified)</span>
+                  ) : null}
+                </td>
+                <td style={tdL}>{f.ward ?? "–"}</td>
+                <td style={tdL}>{fmt(f.baptismDate)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {r.onDate.map((f, i) => (
-                <tr key={i}>
-                  <td style={{ ...td, textAlign: "left" }}>{f.name}</td>
-                  <td style={{ ...td, textAlign: "left" }}>{f.ward ?? "–"}</td>
-                  <td style={{ ...td, textAlign: "left" }}>{fmt(f.baptismDate)}</td>
-                  <td style={td}>{f.attendedChurch2x ? "✓" : ""}</td>
-                  <td style={td}>{f.onBaptismCalendar ? "✓" : ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
+      )}
 
-        <h2 style={h2}>Baptized in the last 6 months ({r.baptized6mo.length})</h2>
-        {r.baptized6mo.length === 0 ? (
-          <div style={{ color: "#8a95a0" }}>None.</div>
-        ) : (
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
-            <tbody>
-              {r.baptized6mo.map((f, i) => (
-                <tr key={i}>
-                  <td style={{ ...td, textAlign: "left" }}>
-                    {f.name}
-                    {f.confidence === "unverified" ? (
-                      <span style={{ color: "#97620f", fontSize: 10 }}> (unverified)</span>
-                    ) : null}
-                  </td>
-                  <td style={{ ...td, textAlign: "left" }}>{f.ward ?? "–"}</td>
-                  <td style={{ ...td, textAlign: "left" }}>{fmt(f.baptismDate)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        <div style={{ marginTop: 26, fontSize: 10, color: "#8a95a0", fontFamily: '"IBM Plex Mono", monospace' }}>
-          Generated {new Date(generatedAt).toLocaleString()} · DCSM Reporting
-        </div>
+      <div
+        style={{
+          marginTop: 30,
+          paddingTop: 10,
+          borderTop: `1px solid ${HAIR}`,
+          fontSize: 9.5,
+          color: FAINT,
+          fontFamily: '"IBM Plex Mono", monospace',
+        }}
+      >
+        Weekly numbers from IMOS. Baptism and on-date names from the Baptisms (MLC) sheet. Generated{" "}
+        {new Date(generatedAt).toLocaleString()} &middot; DCSM Reporting
       </div>
-    );
-  },
-);
+    </div>
+  );
+});

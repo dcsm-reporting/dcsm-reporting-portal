@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { api, type PublishView } from "../api.js";
 import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
-import { Board, MlcBlock } from "../publish/boards.js";
+import { Board, MlcBoard } from "../publish/boards.js";
 import { StakeReportDoc } from "../publish/stakeReport.js";
 import { copyRichHtml, downloadPng, gmailComposeUrl } from "../publish/download.js";
 import "../publish/publish.css";
@@ -37,13 +37,27 @@ export function PublishPage() {
   );
 }
 
+/** Scale the fixed-width board/report down to fit the preview box, and collapse
+ *  the box to the scaled height so there's no dead space below it. The scaled
+ *  node is always .publish-preview's first child; its natural width is either
+ *  its own (a fixed-width doc) or its child's (an unstyled wrapper). */
+function fit(el: HTMLElement) {
+  const wrap = el.firstElementChild as HTMLElement | null;
+  if (!wrap) return;
+  wrap.style.transform = "none";
+  const child = wrap.firstElementChild as HTMLElement | null;
+  const natW = Math.max(wrap.offsetWidth, child?.offsetWidth ?? 0) || 1;
+  const avail = el.clientWidth;
+  const scale = avail < natW ? (avail - 2) / natW : 1;
+  wrap.style.transform = scale === 1 ? "none" : `scale(${scale})`;
+  el.style.height = scale === 1 ? "" : `${Math.ceil(wrap.offsetHeight * scale)}px`;
+  el.style.overflow = scale === 1 ? "auto" : "hidden";
+}
 function scaleToFit(el: HTMLElement | null) {
   if (!el) return;
-  const child = el.firstElementChild as HTMLElement | null;
-  if (!child) return;
-  const w = child.getBoundingClientRect().width;
-  const avail = el.clientWidth;
-  child.style.transform = avail < w ? `scale(${(avail - 2) / w})` : "none";
+  requestAnimationFrame(() => fit(el));
+  // fonts / late layout — settle once more
+  setTimeout(() => fit(el), 350);
 }
 
 function Boards({ data }: { data: PublishView }) {
@@ -51,6 +65,7 @@ function Boards({ data }: { data: PublishView }) {
   const zones = b.zones.filter((z) => z !== "MISSION");
   const [zone, setZone] = useState(zones[0] ?? "");
   const missionRef = useRef<HTMLDivElement>(null);
+  const mlcRef = useRef<HTMLDivElement>(null);
   const zoneRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState("");
 
@@ -70,10 +85,22 @@ function Boards({ data }: { data: PublishView }) {
   return (
     <>
       <div className="row no-print">
-        <button className="btn primary" disabled={!!busy} onClick={() => dl(missionRef, `DCSM-board-${data.week}`)}>
-          {busy.startsWith("DCSM-board") ? "Rendering…" : "Download mission board PNG"}
+        <button
+          className="btn primary"
+          disabled={!!busy}
+          onClick={() => dl(missionRef, `DCSM-mission-${data.week}`)}
+        >
+          {busy === `DCSM-mission-${data.week}` ? "Rendering…" : "Download mission board"}
+        </button>
+        <button
+          className="btn primary"
+          disabled={!!busy}
+          onClick={() => dl(mlcRef, `DCSM-MLC-${data.week}`)}
+        >
+          {busy === `DCSM-MLC-${data.week}` ? "Rendering…" : "Download MLC board"}
         </button>
       </div>
+
       <div className="publish-preview" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
         <div ref={missionRef}>
           <Board
@@ -84,9 +111,12 @@ function Boards({ data }: { data: PublishView }) {
             totalKey="MISSION"
             bands={b.bands.goalPct}
           />
-          <div style={{ padding: "0 40px 30px", background: "#fff" }}>
-            <MlcBlock mlc={b.mlc} bands={b.bands.mlcShare} />
-          </div>
+        </div>
+      </div>
+
+      <div className="publish-preview" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
+        <div ref={mlcRef}>
+          <MlcBoard weekLabel={data.weekLabel} mlc={b.mlc} bands={b.bands.mlcShare} />
         </div>
       </div>
 
@@ -102,7 +132,7 @@ function Boards({ data }: { data: PublishView }) {
           disabled={!!busy}
           onClick={() => dl(zoneRef, `DCSM-${ZONE_ABBR[zone] ?? zone}-${data.week}`)}
         >
-          {busy.startsWith("DCSM-" + (ZONE_ABBR[zone] ?? zone)) ? "Rendering…" : `Download ${zone} PNG`}
+          {busy === `DCSM-${ZONE_ABBR[zone] ?? zone}-${data.week}` ? "Rendering…" : `Download ${zone} board`}
         </button>
       </div>
       <div className="publish-preview" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
