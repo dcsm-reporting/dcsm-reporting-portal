@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../api.js";
 import {
   ErrorNote,
@@ -15,23 +16,35 @@ import {
 
 export function ThisWeekPage() {
   const { week } = useWeek();
+  const [params, setParams] = useSearchParams();
+  const view = params.get("window") === "month" ? "month" : "week";
+  const setView = (v: "week" | "month") => {
+    const next = new URLSearchParams(params);
+    if (v === "month") next.set("window", "month");
+    else next.delete("window");
+    setParams(next, { replace: true });
+  };
+
   const { data, err, loading } = useAsync(() => api.week(week!), [week]);
   const [open, setOpen] = useState<string | null>(null);
 
   if (!week) return <p className="muted">No weeks imported yet. Go to <strong>Import</strong>.</p>;
-  if (loading) return <Loading what="this week" />;
+  if (loading) return <Loading what="the board" />;
   if (err) return <ErrorNote err={err} />;
   if (!data) return null;
 
   const zoneRows = data.zones.filter((z) => z !== "MISSION");
-  const mission = data.byZone.MISSION;
 
   return (
     <>
-      <PageHead title={data.weekLabel} week>
-        <span className="muted mono" style={{ fontSize: ".78rem" }}>
-          {data.resolve.resolvedCount} areas resolved
-          {data.resolve.unmapped.length > 0 && ` · ${data.resolve.unmapped.length} unmapped`}
+      <PageHead title={view === "month" ? data.month.label : data.weekLabel} week>
+        <span className="seg">
+          <button className={view === "week" ? "on" : ""} onClick={() => setView("week")}>
+            This week
+          </button>
+          <button className={view === "month" ? "on" : ""} onClick={() => setView("month")}>
+            Last 4 weeks
+          </button>
         </span>
       </PageHead>
 
@@ -42,87 +55,131 @@ export function ThisWeekPage() {
         </div>
       )}
 
-      <div className="board-wrap">
-        <table className="board">
-          <thead>
-            <tr>
-              <th className="row-head">Zone</th>
-              <KiHeadCells />
-            </tr>
-          </thead>
-          <tbody>
-            {zoneRows.map((z) => {
-              const isOpen = open === z;
-              const areas = data.byArea[z] ?? {};
-              const areaNames = Object.keys(areas).filter((n) => n !== z.toUpperCase());
-              return (
-                <Fragment key={z}>
-                  <tr className="zone-row">
-                    <td className="row-head">
-                      <a href="#" onClick={(e) => (e.preventDefault(), setOpen(isOpen ? null : z))}>
-                        {isOpen ? "▾" : "▸"} {z}
-                      </a>
-                    </td>
-                    <KiCells row={data.byZone[z]!} bands={data.bands.goalPct} />
-                  </tr>
-                  {isOpen &&
-                    areaNames.map((a) => (
-                      <tr key={z + a} style={{ fontSize: ".82rem" }}>
-                        <td className="row-head" style={{ paddingLeft: "1.8rem" }} title={a}>
-                          {a}
-                        </td>
-                        <KiCells row={areas[a]!} bands={data.bands.goalPct} />
-                      </tr>
-                    ))}
-                </Fragment>
-              );
-            })}
-            {mission && (
-              <tr className="mission">
-                <td className="row-head">MISSION</td>
-                <KiCells row={mission} bands={data.bands.goalPct} />
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <h3>MLC share: this week vs last</h3>
-      <div className="board-wrap">
-        <table className="board">
-          <thead>
-            <tr>
-              <th className="row-head">Indicator</th>
-              <th>Mission</th>
-              <th>MLC areas</th>
-              <th>Share</th>
-              <th>Last wk share</th>
-            </tr>
-          </thead>
-          <tbody>
-            {KI_IDS.map((ki) => {
-              const t = data.mlc.this[ki]!;
-              const l = data.mlc.last?.[ki] ?? null;
-              return (
-                <tr key={ki}>
-                  <td className="row-head">{KI_CODE[ki]}</td>
-                  <td>{t.mission}</td>
-                  <td>{t.mlc}</td>
-                  <td>
-                    <span className={`pct ${bandClass(t.share, data.bands.mlcShare.low, data.bands.mlcShare.mid)}`}>
-                      {t.share === null ? "–" : `${t.share}%`}
-                    </span>
-                  </td>
-                  <td className="muted">{l && l.share !== null ? `${l.share}%` : "–"}</td>
+      {view === "month" ? (
+        <>
+          <p className="muted mono" style={{ fontSize: ".78rem" }}>
+            Sum of {data.month.window.length} weeks: {data.month.window.join(", ")}
+          </p>
+          <div className="board-wrap">
+            <table className="board">
+              <thead>
+                <tr>
+                  <th className="row-head">Zone</th>
+                  <KiHeadCells />
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="muted" style={{ fontSize: ".78rem" }}>
-        Generated {new Date(data.generatedAt).toLocaleString()} · goal % bands {data.bands.goalPct.low} / {data.bands.goalPct.mid} · MLC share bands {data.bands.mlcShare.low} / {data.bands.mlcShare.mid}
-      </p>
+              </thead>
+              <tbody>
+                {zoneRows.map((z) => (
+                  <tr key={z}>
+                    <td className="row-head">{z}</td>
+                    <KiCells row={data.month.byZone[z]!} bands={data.bands.goalPct} />
+                  </tr>
+                ))}
+                {data.month.byZone.MISSION && (
+                  <tr className="mission">
+                    <td className="row-head">MISSION</td>
+                    <KiCells row={data.month.byZone.MISSION} bands={data.bands.goalPct} />
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="muted" style={{ fontSize: ".78rem" }}>
+            Adds the four most recent stored weeks straight across. Import a missing week and this
+            recomputes.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="muted mono" style={{ fontSize: ".78rem" }}>
+            {data.resolve.resolvedCount} areas resolved
+            {data.resolve.unmapped.length > 0 && ` · ${data.resolve.unmapped.length} unmapped`}
+          </p>
+          <div className="board-wrap">
+            <table className="board">
+              <thead>
+                <tr>
+                  <th className="row-head">Zone</th>
+                  <KiHeadCells />
+                </tr>
+              </thead>
+              <tbody>
+                {zoneRows.map((z) => {
+                  const isOpen = open === z;
+                  const areas = data.byArea[z] ?? {};
+                  const areaNames = Object.keys(areas).filter((n) => n !== z.toUpperCase());
+                  return (
+                    <Fragment key={z}>
+                      <tr className="zone-row">
+                        <td className="row-head">
+                          <a href="#" onClick={(e) => (e.preventDefault(), setOpen(isOpen ? null : z))}>
+                            {isOpen ? "▾" : "▸"} {z}
+                          </a>
+                        </td>
+                        <KiCells row={data.byZone[z]!} bands={data.bands.goalPct} />
+                      </tr>
+                      {isOpen &&
+                        areaNames.map((a) => (
+                          <tr key={z + a} style={{ fontSize: ".82rem" }}>
+                            <td className="row-head" style={{ paddingLeft: "1.8rem" }} title={a}>
+                              {a}
+                            </td>
+                            <KiCells row={areas[a]!} bands={data.bands.goalPct} />
+                          </tr>
+                        ))}
+                    </Fragment>
+                  );
+                })}
+                {data.byZone.MISSION && (
+                  <tr className="mission">
+                    <td className="row-head">MISSION</td>
+                    <KiCells row={data.byZone.MISSION} bands={data.bands.goalPct} />
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>MLC share: this week vs last</h3>
+          <div className="board-wrap">
+            <table className="board">
+              <thead>
+                <tr>
+                  <th className="row-head">Indicator</th>
+                  <th>Mission</th>
+                  <th>MLC areas</th>
+                  <th>Share</th>
+                  <th>Last wk share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {KI_IDS.map((ki) => {
+                  const t = data.mlc.this[ki]!;
+                  const l = data.mlc.last?.[ki] ?? null;
+                  return (
+                    <tr key={ki}>
+                      <td className="row-head">{KI_CODE[ki]}</td>
+                      <td>{t.mission}</td>
+                      <td>{t.mlc}</td>
+                      <td>
+                        <span className={`pct ${bandClass(t.share, data.bands.mlcShare.low, data.bands.mlcShare.mid)}`}>
+                          {t.share === null ? "–" : `${t.share}%`}
+                        </span>
+                      </td>
+                      <td className="muted">{l && l.share !== null ? `${l.share}%` : "–"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="muted" style={{ fontSize: ".78rem" }}>
+            Generated {new Date(data.generatedAt).toLocaleString()} · goal % bands{" "}
+            {data.bands.goalPct.low} / {data.bands.goalPct.mid} · MLC share bands{" "}
+            {data.bands.mlcShare.low} / {data.bands.mlcShare.mid}
+          </p>
+        </>
+      )}
     </>
   );
 }

@@ -148,6 +148,13 @@ textarea.paste { width: 100%; min-height: 220px; font-family: "IBM Plex Mono", m
 .wk-inline { display: flex; align-items: center; gap: 0.4rem; }
 .wk-inline .k { font-size: 0.7rem; color: var(--ink-soft); }
 
+/* segmented control ------------------------------------------- */
+.seg { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: 7px; overflow: hidden; }
+.seg button { font: inherit; font-size: 0.82rem; border: none; background: var(--surface); color: var(--ink-soft); padding: 0.35rem 0.8rem; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule-strong); }
+.seg button:hover { background: var(--surface-sunk); }
+.seg button.on { background: var(--accent-wash); color: var(--accent-ink); font-weight: 600; }
+
 /* collapsible sections ----------------------------------------- */
 details { margin: 1rem 0; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
 details > summary { cursor: pointer; padding: 0.7rem 1rem; font-weight: 600; font-size: 0.9rem; list-style: none; }

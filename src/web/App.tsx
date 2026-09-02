@@ -6,7 +6,6 @@ import { ThisWeekPage } from "./pages/ThisWeek.js";
 // Route-level code splitting – Recharts (Trends, Stakes) and the admin section
 // are the heavy chunks; keep them off the first paint.
 const ConsolePage = lazy(() => import("./pages/Console.js").then((m) => ({ default: m.ConsolePage })));
-const MonthPage = lazy(() => import("./pages/Month.js").then((m) => ({ default: m.MonthPage })));
 const StakesPage = lazy(() => import("./pages/Stakes.js").then((m) => ({ default: m.StakesPage })));
 const FriendsPage = lazy(() => import("./pages/Friends.js").then((m) => ({ default: m.FriendsPage })));
 const TrendsPage = lazy(() => import("./pages/Trends.js").then((m) => ({ default: m.TrendsPage })));
@@ -23,17 +22,15 @@ const CrosswalkRawPage = lazy(() =>
   import("./pages/admin/CrosswalkRaw.js").then((m) => ({ default: m.CrosswalkRawPage })),
 );
 
+/** grouped: review · produce · run · configure */
 const TABS: [string, string][] = [
   ["/", "This Week"],
-  ["/weekly", "Weekly console"],
-  ["/month", "Month"],
   ["/stakes", "Stakes"],
   ["/baptisms", "Baptisms"],
   ["/trends", "Trends"],
-  ["/not-reported", "Not reported"],
   ["/publish", "Publish"],
   ["/import", "Import"],
-  ["/data", "Data"],
+  ["/weekly", "Console"],
   ["/admin", "Structure"],
 ];
 
@@ -108,7 +105,7 @@ export function App() {
               <Routes>
                 <Route path="/" element={<ThisWeekPage />} />
                 <Route path="/weekly" element={<ConsolePage />} />
-                <Route path="/month" element={<MonthPage />} />
+                <Route path="/month" element={<Navigate to="/?window=month" replace />} />
                 <Route path="/stakes" element={<StakesPage />} />
                 <Route path="/baptisms" element={<FriendsPage />} />
                 <Route path="/friends" element={<Navigate to="/baptisms" replace />} />
@@ -117,13 +114,14 @@ export function App() {
                 <Route path="/chase" element={<Navigate to="/not-reported" replace />} />
                 <Route path="/publish" element={<PublishPage />} />
                 <Route path="/import" element={<ImportPage />} />
-                <Route path="/data" element={<DataPage />} />
+                <Route path="/data" element={<Navigate to="/admin/data" replace />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<Navigate to="rollover" replace />} />
                   <Route path="rollover" element={<RolloverPage />} />
                   <Route path="areas" element={<AreasPage />} />
                   <Route path="recipients" element={<RecipientsPage />} />
+                  <Route path="data" element={<DataPage />} />
                   <Route path="config" element={<Navigate to="/settings" replace />} />
                   <Route path="crosswalk" element={<CrosswalkRawPage />} />
                 </Route>

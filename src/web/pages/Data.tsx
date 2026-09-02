@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { ErrorNote, Loading, PageHead, useAsync } from "../lib.js";
+import { ErrorNote, Loading, useAsync } from "../lib.js";
 
 export function DataPage() {
   const { data, err, loading } = useAsync(() => api.data(), []);
@@ -12,7 +12,7 @@ export function DataPage() {
 
   return (
     <>
-      <PageHead title="Data" />
+      <h3 style={{ margin: 0 }}>Data &amp; logs</h3>
       <p className="muted" style={{ maxWidth: "70ch" }}>
         Read-only. Every raw IMOS payload is kept exactly as imported; the audit log records every
         change made in the portal.

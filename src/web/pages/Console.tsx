@@ -103,12 +103,12 @@ export function ConsolePage() {
 
       <h3>Jump to</h3>
       <div className="row">
-        <Link className="btn" to="/">This Week board</Link>
-        <Link className="btn" to="/month">Month</Link>
-        <Link className="btn" to="/stakes">Stake reports</Link>
-        <Link className="btn" to="/trends">Trends</Link>
+        <Link className="btn" to="/import">Import</Link>
+        <Link className="btn" to="/">This Week</Link>
+        <Link className="btn" to="/not-reported">Not reported</Link>
+        <Link className="btn" to="/stakes">Stakes</Link>
+        <Link className="btn" to="/publish">Publish</Link>
         <Link className="btn" to="/admin/rollover">Structure</Link>
-        <Link className="btn" to="/settings">Settings</Link>
       </div>
     </>
   );
