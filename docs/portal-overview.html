@@ -164,15 +164,20 @@
   <header class="masthead">
     <p class="eyebrow">Architecture &amp; build status</p>
     <h1>DCSM KI Portal</h1>
-    <p class="standfirst">A clean rebuild of the Washington DC South Mission's Key Indicators reporting — one web app, owned by a role account, $0 to run, operable by a missionary with no technical background. This supersedes the Google&nbsp;Apps&nbsp;Script proposal: same principles, a platform that's actually pleasant to run.</p>
+    <p class="standfirst">A clean rebuild of the Washington DC South Mission's Key Indicators reporting — one web app, owned by a role account, operable by a missionary with no technical background. It supersedes the Google&nbsp;Apps&nbsp;Script proposal: same principles, a platform that's actually pleasant to run.</p>
     <div class="meta-row">
-      <span><b>Stack</b> React SPA · Cloudflare Worker · D1</span>
-      <span><b>Auth</b> Cloudflare Access</span>
-      <span><b>Cost</b> $0, no card</span>
-      <span><b>Repo</b> <code>dcsm-ki-portal/</code></span>
-      <span><b>Status</b> pipeline verified, UI running</span>
+      <span><b>Live</b> <code>dcsm-ki-portal.dcsm-reporting.workers.dev</code></span>
+      <span><b>Stack</b> React SPA · Cloudflare Worker · D1 · KV</span>
+      <span><b>Auth</b> Cloudflare Access (missionary.org · churchofjesuschrist.org)</span>
+      <span><b>Cost</b> $0 free tier (paid on for Sept as a cushion)</span>
+      <span><b>Status</b> deployed &amp; in use</span>
     </div>
   </header>
+
+  <div class="note ok">
+    <span class="tag">Deployed 2026-09-01</span>
+    <p>Owned by the <code>dcsm.reporting@gmail.com</code> Cloudflare account. Remote D1 holds 12 real IMOS weeks, the crosswalk, and 563 friend records (137 live from the Baptisms&nbsp;(MLC) sheet, 416 historical baptisms backfilled). The Baptisms sheet syncs every 15&nbsp;min via a bound Apps Script.</p>
+  </div>
 
   <nav class="toc" aria-label="Contents">
     <ol>
@@ -319,8 +324,11 @@ ward_fact           week × org × KI: actual only  (stake reports)
 missionary_snapshot week × missionary: position, area
 area_history        week × area: updated_this_week   → the Chase list
 canonical_area / area_crosswalk / area_ward          the identity spine, effective-dated
-friend / friend_status   STL-entered on-date names + weekly carry-forward   (schema only, so far)
-directory_person    last DCSM Contacts sync                                 (not wired yet)
+friend              one row per person: on a baptismal date or baptized. source
+                    ('sheet' | 'portal' | legacy list), confidence
+                    ('confirmed' | 'unverified' | null), confirmed_at, left_sheet_at
+friend_week         weekly snapshot of each friend  →  stake-report trends
+friend_sync         one row per sheet sync  (rows in / upserted / deactivated)
 config              mlc_positions, zone order/exclude, colour bands, baselines
 audit_log           who did what in the portal</code></pre>
       </div>
@@ -348,9 +356,12 @@ audit_log           who did what in the portal</code></pre>
             <tr><td><strong>Month</strong></td><td>Mission at a Glance — the four most recent stored weeks summed per zone + MISSION.</td></tr>
             <tr><td><strong>Stakes</strong></td><td>Per stake: ward table + stake totals (actual counts), 12-week mini bar charts per KI. This is the reengineered stake report.</td></tr>
             <tr><td><strong>Trends</strong></td><td>Line charts: scope (mission / any zone / MLC-only), per-KI toggles, window 4–52 weeks.</td></tr>
-            <tr><td><strong>Chase list</strong></td><td>Active areas with no IMOS <code>history[]</code> entry for the week — replaces the old Sunday-night form nudge.</td></tr>
-            <tr><td><strong>Admin</strong></td><td>Crosswalk stats, the seed action, and the unmapped-area attach control.</td></tr>
-            <tr><td class="todo">Friends · Publish · Data</td><td>Planned — see §10.</td></tr>
+            <tr><td><strong>Chase list</strong></td><td>Active areas with no IMOS <code>history[]</code> entry for the week — replaces the old Sunday-night form nudge. Flags areas that are new this transfer (a blank first week is expected, not a missed report).</td></tr>
+            <tr><td><strong>Weekly console</strong></td><td>Landing dashboard — the weekly routine as a checklist (import · crosswalk clean · structure current · chase · boards · stake reports) with jump links.</td></tr>
+            <tr><td><strong>Friends</strong></td><td>Mirrors the Baptisms&nbsp;(MLC) sheet (read-only). On-date + baptized lists, per-stake on the Stakes page. A monthly reconciliation: authoritative named count vs. the KI-feed aggregate as a gap to close, plus a "disappeared near their date" list.</td></tr>
+            <tr><td><strong>Structure</strong></td><td>Rollover (guided transfer), Areas &amp; wards editor, live Config (MLC positions, zone order, colour bands), raw crosswalk view.</td></tr>
+            <tr><td><strong>Data</strong></td><td>Read-only: imported weeks with raw-payload download, the friends-sync log, the audit log.</td></tr>
+            <tr><td class="todo">Publish</td><td>Board PNGs + stake-report draft — see §10.</td></tr>
           </tbody>
         </table>
       </div>
@@ -358,37 +369,35 @@ audit_log           who did what in the portal</code></pre>
 
     <section id="built">
       <h2>What's built</h2>
-      <p>The whole pipeline is ported and <strong>verified against the Python on all 12 real sample weeks — 78 automated tests</strong> — and running end to end on a local Cloudflare stack seeded with 12 weeks of history.</p>
+      <p>The whole pipeline is ported and <strong>verified against the Python on all 12 real sample weeks — 88 automated tests</strong> — and deployed, running against a remote D1 database.</p>
       <div class="tbl-scroll wide">
         <table>
           <thead><tr><th>Piece</th><th></th><th>State</th></tr></thead>
           <tbody>
-            <tr><td>Pipeline core (ingest, identity, crosswalk seed, 7 rollups, resolve)</td><td><span class="status-key done">●</span></td><td>ported, pure, no platform deps</td></tr>
-            <tr><td>Oracle test — TS output diffed against Python across 12 weeks</td><td><span class="status-key done">●</span></td><td>54 assertions green</td></tr>
-            <tr><td>Unit tests — ports of <code>test_pipeline.py</code></td><td><span class="status-key done">●</span></td><td>24 green</td></tr>
-            <tr><td>D1 schema + migrations</td><td><span class="status-key done">●</span></td><td>applied local</td></tr>
-            <tr><td>Worker API — import / week / trends / stakes / chase / crosswalk / seed</td><td><span class="status-key done">●</span></td><td>running</td></tr>
-            <tr><td>This Week · Month · Stakes · Trends · Chase · Import · Admin</td><td><span class="status-key done">●</span></td><td>live against real data</td></tr>
-            <tr><td>Local run: 12 weeks + crosswalk seeded, 11 stakes, 0 unmapped</td><td><span class="status-key done">●</span></td><td>verified</td></tr>
+            <tr><td>Pipeline core (ingest, identity, crosswalk seed, 7 rollups, resolve, rollover planner)</td><td><span class="status-key done">●</span></td><td>ported, pure, no platform deps</td></tr>
+            <tr><td>Oracle test — TS output diffed against Python across 12 weeks</td><td><span class="status-key done">●</span></td><td>green</td></tr>
+            <tr><td>D1 schema — migrations 0001–0008, applied to remote</td><td><span class="status-key done">●</span></td><td>live</td></tr>
+            <tr><td>Worker API + KV response cache (version-counter invalidation)</td><td><span class="status-key done">●</span></td><td>under the free-tier read limit</td></tr>
+            <tr><td>This Week · Month · Stakes · Trends · Chase · Weekly console · Import · Structure · Data</td><td><span class="status-key done">●</span></td><td>deployed</td></tr>
+            <tr><td>Friends — Baptisms&nbsp;(MLC) sheet mirror + monthly reconciliation</td><td><span class="status-key done">●</span></td><td>syncing every 15&nbsp;min</td></tr>
+            <tr><td>Historical baptism backfill — 416 records, 2025-09 … 2026-08, 5 sources</td><td><span class="status-key done">●</span></td><td>loaded (284 confirmed / 132 unverified)</td></tr>
+            <tr><td>Cloudflare Access + role-account ownership + first deploy</td><td><span class="status-key done">●</span></td><td>done</td></tr>
           </tbody>
         </table>
       </div>
       <div class="note ok">
         <span class="tag">Cross-checked</span>
-        <p>MISSION NP for 2026-08-24 = <strong>443 / 549 → 81%</strong>, exactly matching the Python. MLC NP share = 30%. Month (August, last four weeks) MISSION NP = 2081 / 2398. Stake resolution: 11 stakes, nothing unmapped. The 12-week mission series matches row for row.</p>
+        <p>MISSION NP for 2026-08-24 = <strong>443 / 549 → 81%</strong>, exactly matching the Python. MLC NP share = 30%. Month MISSION NP = 2081 / 2398. Stake resolution: 11 stakes, nothing unmapped. The friends sync is idempotent — three consecutive runs change nothing.</p>
       </div>
     </section>
 
     <section id="left">
       <h2>What's left</h2>
       <ul>
-        <li><strong>Friends / on-date module</strong> — the schema tables exist; no UI or routes yet. STL-entered investigator names with weekly carry-forward. Next-biggest piece.</li>
-        <li><strong>Publish</strong> — board PNG export (render the board component to canvas → <code>toBlob()</code>), and the stake-report draft as formatted HTML the operator pastes into Gmail. No email infrastructure, no credentials.</li>
-        <li><strong>Directory sync</strong> — <code>/api/directory/sync</code> reading DCSM Contacts, once it's shared to the role account. The Chase list then shows the leader to call, not just the area.</li>
-        <li><strong>Data page</strong> — read-only browse of stored weeks + raw payload download.</li>
-        <li><strong>Transfer-rollover screen</strong> — a guided wrapper over the unmapped-area list and attach control that already exist in Admin.</li>
-        <li><strong>Weekly <code>d1 export</code> → git</strong> — one GitHub Action for the off-box audit dump.</li>
-        <li><strong>Bundle split</strong> — 583&nbsp;kB (Recharts); lazy-load Trends and Stakes.</li>
+        <li><strong>Publish</strong> — board PNG export (render the board component to canvas → <code>toBlob()</code>), and the stake-report draft as formatted HTML the operator pastes into Gmail. Recipients come from the <em>Stake President Reports 2.0</em> <code>EMAILS</code> sheet, so no directory sync is needed for v1.</li>
+        <li><strong>Historical KI backfill</strong> — the <code>RemoveDuplicates</code> sheet (~5,000 rows, 2024-09 … 2026-08) would extend Trends and Month back to 2024 at area/zone/mission level. <code>POST /api/backfill</code> into a synthetic <code>import_run</code> marked <code>legacy</code>.</li>
+        <li><strong>Directory sync</strong> — optional now the <code>EMAILS</code> sheet covers stake reports; would add leader name/phone to the Chase list.</li>
+        <li><strong>Weekly <code>d1 export</code> → git</strong> — one GitHub Action for the off-box immutable backup.</li>
       </ul>
     </section>
 
@@ -404,22 +413,17 @@ audit_log           who did what in the portal</code></pre>
     </section>
 
     <section id="setup">
-      <h2>Setup</h2>
-      <p>About twenty minutes, plus creating the account.</p>
-      <ol>
-        <li><strong>Make the role Google account</strong> (<code>dcsm-reporting@gmail.com</code> or similar), 2FA on, credentials into the mission vault.</li>
-        <li><strong>Cloudflare</strong> — sign up free with that account (no card). Then from the repo:
-          <pre><code>npx wrangler login
-npx wrangler d1 create dcsm_ki          # paste the printed database_id into wrangler.toml
-npx wrangler d1 migrations apply dcsm_ki --remote
-npm run deploy</code></pre>
-        </li>
-        <li><strong>Cloudflare Access</strong> (Zero Trust dashboard, free plan) — add an application in front of the Worker URL, policy = the leader email list or the mission Workspace domain. That's the entire auth story; no code.</li>
-        <li><strong>Seed production</strong> — import each week on the Import page (or point <code>BASE</code> at the deployed URL and run <code>npm run seed:local</code> once), then Admin → "Seed crosswalk from 2026-08-24".</li>
-      </ol>
+      <h2>Operating it</h2>
+      <p>The one-time setup (role account, Cloudflare, Access, first deploy) is done. Day to day:</p>
+      <ul>
+        <li><strong>Weekly</strong> — the Import page shows the exact IMOS URL for the week and an "Open in IMOS" button. Sign in to a missionary account, copy the JSON, paste, commit. The Weekly console tracks the rest.</li>
+        <li><strong>Baptisms</strong> — STLs keep editing the Baptisms&nbsp;(MLC) sheet exactly as before. A bound Apps Script pushes it to the portal every 15&nbsp;minutes; the Friends page and stake reports follow.</li>
+        <li><strong>Transfers</strong> — <em>Structure → Rollover</em>: pick the first week of the new transfer, review the proposed area/ward mappings, apply. The bridge auto-discovers any new zone tabs.</li>
+        <li><strong>Ship an update</strong> — <code>npm run deploy</code> from the repo.</li>
+      </ul>
       <div class="note">
-        <span class="tag">Run it now</span>
-        <p><code>npm install</code> · <code>npm run db:migrate:local</code> · <code>npm run build</code> · <code>npm run dev:api</code> · <code>npm run seed:local</code> — then open <code>localhost:8787</code>. Full detail in the repo's <code>STATUS.md</code> and <code>ARCHITECTURE.md</code>.</p>
+        <span class="tag">Run locally</span>
+        <p><code>npm install</code> · <code>npm run db:migrate:local</code> · <code>npm run build</code> · <code>npm run dev:api</code> · <code>npm run seed:local</code>. Full detail in the repo's <code>STATUS.md</code>, <code>ARCHITECTURE.md</code>, <code>docs/how-mapping-works.md</code>, and <code>docs/friends-sheet-bridge.md</code>.</p>
       </div>
     </section>
 

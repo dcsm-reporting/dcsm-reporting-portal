@@ -1,22 +1,27 @@
 # Build status — DCSM KI Portal
 
-_Last updated: 2026-09-01 — structure-management + weekly console added._
+_Last updated: 2026-09-02 — deployed; Friends + reconciliation + historical backfill._
 
 ## TL;DR
 
-The whole reporting pipeline is ported to TypeScript, **verified byte-for-byte
-against the Python reference on all 12 real sample weeks** (81 automated tests),
-and running end to end on a local Cloudflare stack. Import a week, see the
-boards, drill into zones, view the month, stakes, trends, and the chase list —
-all live against a real D1 database seeded with 12 weeks of history. The Admin
-area is now a full **structure manager**: a guided transfer Rollover flow, a
-canonical-area/ward editor, and live Config knobs (MLC positions, zone order,
-colour bands) that take effect without a deploy. Plus a **Weekly console**
-landing page that tracks the weekly routine as a checklist.
+**Live at `https://dcsm-ki-portal.dcsm-reporting.workers.dev`**, owned by the
+`dcsm.reporting@gmail.com` Cloudflare account, gated by Cloudflare Access
+(`@missionary.org` + `@churchofjesuschrist.org`). Remote D1 holds 12 real IMOS
+weeks + the crosswalk + 563 friend records (137 from the live Baptisms (MLC)
+sheet, 416 historical baptisms backfilled from five legacy sources).
 
-What's left: the Friends module, Publish (board PNGs + stake-report email
-draft), historical backfill (needs your old export files), directory sync, and
-the one-time cloud account setup.
+The reporting pipeline is ported to TypeScript and **verified byte-for-byte
+against the Python reference on all 12 sample weeks** (88 tests). Boards, month,
+stakes, trends, chase list, weekly console, a full transfer/structure manager,
+a read-only Data page, and a Friends module that mirrors the Baptisms (MLC)
+sheet with a monthly baptism-reconciliation view.
+
+D1 read cost is kept under the free-tier daily limit by a KV response cache +
+query fixes; a paid plan is on for this month as a cushion, not a dependency.
+
+What's left: **Publish** (board PNGs + stake-report email draft — recipients
+from the EMAILS sheet), **directory sync** (optional now the EMAILS sheet
+covers stake reports), the weekly `d1 export → git` cron, and bundle polish.
 
 ## Done and verified
 
@@ -38,7 +43,13 @@ the one-time cloud account setup.
 | **Structure → Areas & wards** (`/admin/areas`) | ✅ all 107 canonical areas, filterable; expand a row to rename it, retire/un-retire, see + close effective-dated IMOS id mappings, add a mapping, see + retire ward→stake rows, add a ward row. Stake-rename (updates every ward row under it) |
 | **Structure → Config** (`/admin/config`) | ✅ live knobs read from the `config` table on every request (no deploy): MLC positions (recomputed at read time, retro-applies), zone order, zones excluded from mission totals, colour bands |
 | **Structure → Crosswalk (raw)** | ✅ read-only table view for debugging |
-| **Local run** | ✅ `wrangler dev` + local D1, 12 weeks + crosswalk seeded (`npm run seed:local`) — 107 areas, 112 ward rows, 11 stakes, 0 unmapped |
+| **Friends** (`/friends`) | ✅ mirrors the Baptisms (MLC) sheet via `apps_script/baptisms-sync.gs` (auto-discovers tabs, 15-min trigger, bearer secret, Access-bypassed path). Read-only. Summary cards, zone/status filter, per-stake on-date + last-6-months baptized lists on the Stakes page. Portal **retains confirmed baptisms** after STLs cycle them out. Stable two-tier sync match (ward\|name\|date + reschedule fallback) — verified idempotent |
+| **Friends → Monthly reconciliation** | ✅ per stake, the authoritative named count vs the KI-feed/Mission-Portal aggregate as a gap to close, plus a "disappeared near their date" list. Unverified (ZL-form-only legacy) tier excluded from the count and flagged |
+| **Historical backfill** | ✅ 416 completed baptisms 2025-09…2026-08, reconstructed by a separate thread from five sources into `resources/wdcs_legacy_baptisms.csv`; `scripts/load_backfill.py` loads it. 284 confirmed / 132 unverified |
+| **Data page** (`/data`) | ✅ read-only: imported weeks (+ raw payload download), friends-sync log, audit log |
+| **Perf** | ✅ KV response cache (`src/server/cache.ts`, `CACHE` namespace) invalidated by version counters on write; route-level code splitting (main bundle 609 kB → 180 kB); error boundary; "signed in as" chip |
+| **Deploy** | ✅ `npx wrangler deploy` from the repo. Migrations 0001–0008 applied to remote D1. `FRIENDS_SYNC_SECRET` set |
+| **Local run** | ✅ `wrangler dev` + local D1, `npm run seed:local` — or `$env:BASE=<url>; npm run seed:local` against the deployed instance |
 
 ### Numbers cross-checked against the Python oracle
 
@@ -50,43 +61,25 @@ the one-time cloud account setup.
 
 ## Not done yet
 
-- **Friends / on-date module** — ✅ built. `friend` + `friend_week` +
-  `friend_sync` (migration 0003). `/friends` page (summary cards + filterable
-  read-only table), on-date + baptism lists wired into `/stakes`. Source of
-  truth stays the **Baptisms (MLC) Google Sheet**: `apps_script/baptisms-sync.gs`
-  pushes a snapshot to `POST /api/friends/sync` (bearer secret, Access-bypassed
-  path). 137 records seeded into production. Setup: `docs/friends-sheet-bridge.md`.
-  _Remaining: the Apps Script + Access bypass rule are Elder Lake's to wire (2 steps)._
-- **Publish** — board PNG export and the stake-report email draft. Design: render
-  the board component to canvas → `toBlob()` for PNG; stake report → formatted
-  HTML the operator pastes into Gmail (no email infra, no credentials).
-- **Historical backfill from the old system** — files received (`~/Downloads/`):
-  - `Key Indicator Reporting.xlsx` → sheet **`RemoveDuplicates`**: ~5000 rows,
-    **2024-09-29 … 2026-08-31**, one row per area per week with all 6 KI
-    goals + actuals + "People On Date". This is ~2 years of clean area-level
-    history — the backfill source for `ki_fact` (mission/zone/area rollups +
-    Trends back to 2024). No ward level, so old-week stake reports won't work.
-    Sheet **`LeadershipAreas`** = the hand-maintained MLC area list per transfer
-    (settles reconciliation #1).
-  - `Baptisms (MLC).xlsx` → **`All Units & Addresses`** (unit id → ward / stake /
-    address — authoritative, better than the fuzzy CSV); per-zone sheets =
-    on-date/baptism friend records to seed the Friends module.
-  - `Stake President Reports 2.0.xlsx` → **`EMAILS`** sheet = per-stake report
-    recipients (To/CC/ZL/STL/AP/stake-president) — feeds Publish without needing
-    DCSM Contacts.
-  Plan: a `/api/backfill` that takes normalised `{weekStart, zone, area, goals,
-  actuals}` rows (synthetic `import_run`, marked `source='legacy'`) + a parser
-  script for `RemoveDuplicates`. Then load `All Units & Addresses` to firm up
-  `area_ward`. **Next build.**
-- **Directory sync** — `/api/directory/sync` reading DCSM Contacts. Needs the
-  sheet shared to the role account and a small CSV/Sheets read. Chase list shows
-  area + zone now; add the leader name/phone once the directory loads.
-- **Data page** — read-only browse of stored weeks + raw payload download.
+- **Publish** — board PNG export and the stake-report draft. Design: render the
+  board component to canvas → `toBlob()` for PNG; stake report → formatted HTML
+  the operator pastes into Gmail. Recipients from `Stake President Reports
+  2.0.xlsx` → **`EMAILS`** sheet (per stake: To/CC/ZL/STL/AP/president) — so no
+  directory sync needed for v1.
+- **Historical KI backfill** (separate from the baptism backfill, which is done)
+  — `Key Indicator Reporting.xlsx` → **`RemoveDuplicates`** sheet: ~5000 rows,
+  2024-09-29 … 2026-08-31, one row per area per week, all 6 KIs goal + actual.
+  Would extend Trends/Month back to 2024 (area/zone/mission level; no ward, so
+  old-week stake reports stay blank). Plan: `POST /api/backfill` taking
+  normalised rows into a synthetic `import_run` marked `source='legacy'`.
+- **Directory sync** — optional now the EMAILS sheet covers stake reports. Would
+  add leader name/phone to the Chase list.
 - **`wrangler d1 export` cron** — weekly SQL dump committed to git as the
-  immutable audit trail. One GitHub Action.
-- **Code-split the bundle** — 583 kB (Recharts). Lazy-load Trends/Stakes.
-- **Auth polish** — `ALLOWED_EMAILS` env works; production uses Cloudflare
-  Access (no code). Add a tiny "who am I" chip in the masthead.
+  off-box immutable backup. One GitHub Action.
+- **`All Units & Addresses`** (in `Baptisms (MLC).xlsx`) — authoritative unit id
+  → ward/stake/address; could firm up `area_ward` and add addresses.
+- **Bundle** — code-split done (180 kB main); Recharts still lazy-loads on
+  Trends/Stakes. Fine.
 
 ## Reconciliation notes (unchanged from the old plan — settle in parallel week)
 
