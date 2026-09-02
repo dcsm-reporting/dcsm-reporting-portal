@@ -63,6 +63,7 @@ import {
 import { buildReconcile } from "./reconcile.js";
 import { buildPublish } from "./publish.js";
 import { getConfig, getStakeRecipients, upsertStakeRecipient } from "./db.js";
+import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import stakeRecipientsSeed from "../../resources/stake_recipients.json";
 
 /** Parsed once — the Area To Ward Key is bundled as text. */
@@ -564,8 +565,27 @@ app.get("/api/recipients", async (c) =>
   c.json({
     recipients: await getStakeRecipients(c.env.DB),
     ccAll: await getConfig<string[]>(c.env.DB, "report_cc_all", []),
+    emailTemplate: await getConfig<EmailTemplate>(
+      c.env.DB,
+      "report_email_template",
+      DEFAULT_EMAIL_TEMPLATE,
+    ),
+    defaultEmailTemplate: DEFAULT_EMAIL_TEMPLATE,
   }),
 );
+
+/** The editable cover-letter template ({stake} {president} {date} {weekLabel}). */
+app.post("/api/recipients/template", async (c) => {
+  const b = await c.req.json<{ subject?: string; body?: string }>();
+  const t: EmailTemplate = {
+    subject: String(b.subject ?? "").trim() || DEFAULT_EMAIL_TEMPLATE.subject,
+    body: String(b.body ?? "").trim() || DEFAULT_EMAIL_TEMPLATE.body,
+  };
+  await setConfig(c.env.DB, "report_email_template", t);
+  await audit(c.env.DB, c.get("user"), "recipients.template", {});
+  await bumpData(c.env);
+  return c.json({ ok: true, emailTemplate: t });
+});
 
 app.post("/api/recipients", async (c) => {
   const b = await c.req.json<{

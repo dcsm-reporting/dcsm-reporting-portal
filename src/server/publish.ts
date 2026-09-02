@@ -8,6 +8,7 @@
  */
 
 import { dedupeBaptized, isOnDate } from "../pipeline/friends.js";
+import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import { getAreaWardRows, weeksAvailable } from "./db.js";
 import { wardMapForWeek } from "../pipeline/resolve.js";
 import { listFriends } from "./friends.js";
@@ -38,12 +39,13 @@ export interface StakeReport {
 }
 
 export async function buildPublish(db: D1Database, week: string) {
-  const [weekView, stakeView, areaWard, friends, ccAll] = await Promise.all([
+  const [weekView, stakeView, areaWard, friends, ccAll, emailTemplate] = await Promise.all([
     buildWeekView(db, week),
     buildStakeView(db, week),
     getAreaWardRows(db),
     listFriends(db, { includeInactive: true }),
     getConfig<string[]>(db, "report_cc_all", []),
+    getConfig<EmailTemplate>(db, "report_email_template", DEFAULT_EMAIL_TEMPLATE),
   ]);
   const recipients = await getStakeRecipients(db);
   const recByStake = new Map(recipients.map((r) => [r.stake, r]));
@@ -106,6 +108,7 @@ export async function buildPublish(db: D1Database, week: string) {
     weekLabel: weekLabel(week),
     generatedAt: new Date().toISOString(),
     hasPriorWeek: all.filter((w) => w < week).length > 0,
+    emailTemplate: emailTemplate ?? DEFAULT_EMAIL_TEMPLATE,
     board: {
       zones: weekView.zones,
       byZone: weekView.byZone,

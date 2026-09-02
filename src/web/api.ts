@@ -4,6 +4,9 @@ import type {
   StakeGrid,
   ZoneGrid,
 } from "@pipeline/types";
+import type { EmailTemplate } from "@shared/emailTemplate";
+
+export type { EmailTemplate };
 
 async function jget<T>(url: string): Promise<T> {
   const r = await fetch(url, { headers: { accept: "application/json" } });
@@ -206,11 +209,19 @@ export const api = {
 
   // --- publish ---------------------------------------------------
   publish: (week: string) => jget<PublishView>(`/api/publish/${week}`),
-  recipients: () => jget<{ recipients: StakeRecipient[]; ccAll: string[] }>("/api/recipients"),
+  recipients: () =>
+    jget<{
+      recipients: StakeRecipient[];
+      ccAll: string[];
+      emailTemplate: EmailTemplate;
+      defaultEmailTemplate: EmailTemplate;
+    }>("/api/recipients"),
   setRecipient: (r: { stake: string; presidentName: string | null; toEmails: string | null }) =>
     jpost<{ ok: true }>("/api/recipients", r),
   setReportCc: (ccAll: string[]) =>
     jpost<{ ok: true; ccAll: string[] }>("/api/recipients/cc", { ccAll }),
+  setReportTemplate: (t: EmailTemplate) =>
+    jpost<{ ok: true; emailTemplate: EmailTemplate }>("/api/recipients/template", t),
   seedRecipients: () => jpost<{ ok: true; seeded: number }>("/api/recipients/seed", {}),
 };
 
@@ -264,6 +275,7 @@ export interface PublishView {
     monthByZone: ZoneGrid;
   };
   reports: StakeReport[];
+  emailTemplate: EmailTemplate;
 }
 
 export interface DataView {

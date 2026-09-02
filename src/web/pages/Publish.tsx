@@ -164,7 +164,13 @@ function Reports({ data }: { data: PublishView }) {
   if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
 
   const [busy, setBusy] = useState(false);
-  const email = buildEmail({ stake: r.stake, presidentName: r.presidentName, weekStartIso: data.week });
+  const email = buildEmail({
+    stake: r.stake,
+    presidentName: r.presidentName,
+    weekStartIso: data.week,
+    weekLabel: data.weekLabel,
+    template: data.emailTemplate,
+  });
 
   const flash = (m: string) => {
     setMsg(m);
