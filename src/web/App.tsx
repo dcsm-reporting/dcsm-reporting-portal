@@ -18,6 +18,9 @@ const AdminLayout = lazy(() => import("./pages/admin/AdminLayout.js").then((m) =
 const RolloverPage = lazy(() => import("./pages/admin/Rollover.js").then((m) => ({ default: m.RolloverPage })));
 const AreasPage = lazy(() => import("./pages/admin/Areas.js").then((m) => ({ default: m.AreasPage })));
 const RecipientsPage = lazy(() => import("./pages/admin/Recipients.js").then((m) => ({ default: m.RecipientsPage })));
+const ReportingConfigPage = lazy(() =>
+  import("./pages/admin/ReportingConfig.js").then((m) => ({ default: m.ReportingConfigPage })),
+);
 const CrosswalkRawPage = lazy(() =>
   import("./pages/admin/CrosswalkRaw.js").then((m) => ({ default: m.CrosswalkRawPage })),
 );
@@ -121,8 +124,8 @@ export function App() {
                   <Route path="rollover" element={<RolloverPage />} />
                   <Route path="areas" element={<AreasPage />} />
                   <Route path="recipients" element={<RecipientsPage />} />
+                  <Route path="config" element={<ReportingConfigPage />} />
                   <Route path="data" element={<DataPage />} />
-                  <Route path="config" element={<Navigate to="/settings" replace />} />
                   <Route path="crosswalk" element={<CrosswalkRawPage />} />
                 </Route>
               </Routes>

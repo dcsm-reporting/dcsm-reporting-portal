@@ -4,6 +4,7 @@ const SUB: [string, string][] = [
   ["/admin/rollover", "Rollover"],
   ["/admin/areas", "Areas & wards"],
   ["/admin/recipients", "Recipients"],
+  ["/admin/config", "Reporting settings"],
   ["/admin/data", "Data"],
   ["/admin/crosswalk", "Crosswalk (raw)"],
 ];
