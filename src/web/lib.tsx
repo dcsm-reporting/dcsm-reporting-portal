@@ -28,6 +28,21 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   return { ...state, reload: run };
 }
 
+/** Current user + whether they can edit admin settings. Cached for the session. */
+let mePromise: Promise<{ user: string; isAdmin: boolean }> | null = null;
+export function useMe() {
+  const [me, setMe] = useState<{ user: string; isAdmin: boolean } | null>(null);
+  useEffect(() => {
+    if (!mePromise) mePromise = api.me().catch(() => ({ user: "", isAdmin: true }));
+    let live = true;
+    mePromise.then((m) => live && setMe(m));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return me;
+}
+
 export function Loading({ what }: { what?: string }) {
   return (
     <p className="muted">

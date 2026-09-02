@@ -13,4 +13,6 @@ export interface Env {
 
 export interface Vars {
   user: string;
+  /** true when `admin_emails` config is empty (everyone) or lists this user. */
+  isAdmin: boolean;
 }

@@ -47,7 +47,7 @@ export interface WeekView {
   byZone: ZoneGrid;
   byArea: Record<string, ZoneGrid>;
   mlc: { this: MlcGrid; last: MlcGrid | null; lastWeekStart: string | null };
-  month: { byZone: ZoneGrid; window: string[]; label: string };
+  month: { byZone: ZoneGrid; mlc: MlcGrid; window: string[]; label: string };
   resolve: { resolvedCount: number; unmapped: { imosAreaId: number; imosAreaName: string }[] };
 }
 
@@ -95,6 +95,10 @@ export interface ChaseView {
 }
 
 export const api = {
+  me: () => jget<{ user: string; isAdmin: boolean }>("/api/me"),
+  admins: () => jget<{ admins: string[] }>("/api/admins"),
+  setAdmins: (admins: string[]) =>
+    jpost<{ ok: true; admins: string[] }>("/api/admins", { admins }),
   weeks: () => jget<WeeksResponse>("/api/weeks"),
   week: (w: string) => jget<WeekView>(`/api/week/${w}`),
   trends: (q: { upTo?: string; n?: number; zone?: string | null; mlcOnly?: boolean }) => {

@@ -41,17 +41,10 @@ When it's worth an hour:
 - Cap `audit_log` to the last ~2,000 rows.
 - A `docs/retention.md` describing what grows and the yearly prune.
 
-## 3. Roles / read-only users — only if view access is ever handed out
+## 3. Roles — DONE (2026-09-02)
 
-Right now Cloudflare Access lets in `@missionary.org` + `@churchofjesuschrist.org`
-and everyone who gets in can edit. That's fine for the ~3 people who use it.
-
-If the mission president, APs, or stake folks ever get **view** access, add
-authorisation (not a whole user system — Access already handles who you are):
-
-- An `admin_emails` list in the `config` table.
-- Server: mutation routes 403 for callers not on the list (the verified email is
-  already in `Cf-Access-Authenticated-User-Email`).
-- Client: hide / disable edit controls when `/api/me` isn't an admin.
-
-~1-2 hours, self-contained, no new infra. Don't build it pre-emptively.
+Admin access is now an `admin_emails` allowlist, edited at **Admin → Admin
+access**. Empty = everyone who signs in is an admin. A non-empty list hides the
+Admin tab for others and 403s the structure/config/crosswalk/recipients write
+routes; Import, Publish, and the weekly workflow stay open to any signed-in
+user.

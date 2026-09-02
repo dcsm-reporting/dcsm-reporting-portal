@@ -133,6 +133,7 @@ export async function buildWeekView(db: D1Database, weekStart: string) {
     },
     month: {
       byZone: monthByZone(monthWeekFacts, exclude),
+      mlc: mlc(monthWeekFacts.flat(), exclude),
       window,
       label: periodLabel(window),
     },

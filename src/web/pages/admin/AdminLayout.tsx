@@ -5,6 +5,7 @@ const SUB: [string, string][] = [
   ["/admin/areas", "Areas & wards"],
   ["/admin/recipients", "Recipients"],
   ["/admin/config", "Reporting settings"],
+  ["/admin/access", "Admin access"],
   ["/admin/data", "Data"],
   ["/admin/crosswalk", "Crosswalk (raw)"],
 ];
@@ -12,7 +13,7 @@ const SUB: [string, string][] = [
 export function AdminLayout() {
   return (
     <>
-      <h2>Structure &amp; admin</h2>
+      <h2>Admin</h2>
       <nav className="subnav">
         {SUB.map(([to, label]) => (
           <NavLink key={to} to={to} className={({ isActive }) => (isActive ? "active" : "")}>

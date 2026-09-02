@@ -53,7 +53,9 @@ export async function downloadPdf(node: HTMLElement, filename: string): Promise<
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, y, img.naturalWidth, hpx, 0, 0, img.naturalWidth, hpx);
     if (page > 0) pdf.addPage();
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, contentWpt, hpx * pxToPt);
+    // JPEG, not PNG: a mostly-white text page compresses ~10x smaller and stays
+    // perfectly readable — some stake reports were topping 25 MB as PNG.
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.82), "JPEG", margin, margin, contentWpt, hpx * pxToPt);
     y += hpx;
     page += 1;
   }

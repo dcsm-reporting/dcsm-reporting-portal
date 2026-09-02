@@ -84,6 +84,38 @@ export function ThisWeekPage() {
               </tbody>
             </table>
           </div>
+          <h3>MLC share: last 4 weeks</h3>
+          <div className="board-wrap">
+            <table className="board">
+              <thead>
+                <tr>
+                  <th className="row-head">Indicator</th>
+                  <th>Mission</th>
+                  <th>MLC areas</th>
+                  <th>Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {KI_IDS.map((ki) => {
+                  const t = data.month.mlc?.[ki];
+                  if (!t) return null;
+                  return (
+                    <tr key={ki}>
+                      <td className="row-head">{KI_CODE[ki]}</td>
+                      <td>{t.mission}</td>
+                      <td>{t.mlc}</td>
+                      <td>
+                        <span className={`pct ${bandClass(t.share, data.bands.mlcShare.low, data.bands.mlcShare.mid)}`}>
+                          {t.share === null ? "–" : `${t.share}%`}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
           <p className="muted" style={{ fontSize: ".78rem" }}>
             Adds the four most recent stored weeks straight across. Import a missing week and this
             recomputes.

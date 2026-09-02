@@ -1,6 +1,6 @@
-import { Component, type ReactNode, Suspense, lazy, useEffect, useState } from "react";
+import { Component, type ReactNode, Suspense, lazy } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import { WeekProvider } from "./lib.js";
+import { WeekProvider, useMe } from "./lib.js";
 import { ThisWeekPage } from "./pages/ThisWeek.js";
 
 // Route-level code splitting – Recharts (Trends, Stakes) and the admin section
@@ -21,12 +21,14 @@ const RecipientsPage = lazy(() => import("./pages/admin/Recipients.js").then((m)
 const ReportingConfigPage = lazy(() =>
   import("./pages/admin/ReportingConfig.js").then((m) => ({ default: m.ReportingConfigPage })),
 );
+const AccessPage = lazy(() => import("./pages/admin/Access.js").then((m) => ({ default: m.AccessPage })));
 const CrosswalkRawPage = lazy(() =>
   import("./pages/admin/CrosswalkRaw.js").then((m) => ({ default: m.CrosswalkRawPage })),
 );
 
-/** grouped: review · produce · run · configure */
-const TABS: [string, string][] = [
+/** grouped: review · produce · run · configure. `admin` is true only for the
+ *  Admin tab, which is hidden for non-admins. */
+const TABS: [string, string, boolean?][] = [
   ["/", "This Week"],
   ["/stakes", "Stakes"],
   ["/baptisms", "Baptisms"],
@@ -34,7 +36,7 @@ const TABS: [string, string][] = [
   ["/publish", "Publish"],
   ["/import", "Import"],
   ["/weekly", "Console"],
-  ["/admin", "Structure"],
+  ["/admin", "Admin", true],
 ];
 
 class Boundary extends Component<{ children: ReactNode }, { err: Error | null }> {
@@ -59,26 +61,23 @@ class Boundary extends Component<{ children: ReactNode }, { err: Error | null }>
   }
 }
 
-function WhoAmI() {
-  const [user, setUser] = useState<string | null>(null);
-  useEffect(() => {
-    fetch("/api/me")
-      .then((r) => (r.ok ? (r.json() as Promise<{ user?: string }>) : null))
-      .then((d) => d?.user && setUser(d.user))
-      .catch(() => {});
-  }, []);
+function WhoAmI({ user }: { user: string | null }) {
   return (
     <NavLink
       to="/settings"
       className={({ isActive }) => `pill whoami${isActive ? " active" : ""}`}
-      title="Settings"
+      title="Your preferences"
     >
-      <span aria-hidden="true">⚙</span> {user ?? "Settings"}
+      <span aria-hidden="true">⚙</span> {user || "Preferences"}
     </NavLink>
   );
 }
 
 export function App() {
+  const me = useMe();
+  const isAdmin = me?.isAdmin ?? true; // optimistic until /api/me resolves
+  const tabs = TABS.filter(([, , adminOnly]) => !adminOnly || isAdmin);
+
   return (
     <WeekProvider>
       <div className="app">
@@ -88,7 +87,7 @@ export function App() {
             <small>Washington DC South Mission</small>
           </div>
           <nav className="tabs">
-            {TABS.map(([to, label]) => (
+            {tabs.map(([to, label]) => (
               <NavLink
                 key={to}
                 to={to}
@@ -100,7 +99,7 @@ export function App() {
             ))}
           </nav>
           <span className="spacer" />
-          <WhoAmI />
+          <WhoAmI user={me?.user ?? null} />
         </header>
         <main>
           <Boundary>
@@ -119,12 +118,16 @@ export function App() {
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/data" element={<Navigate to="/admin/data" replace />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/admin" element={<AdminLayout />}>
+                <Route
+                  path="/admin"
+                  element={isAdmin ? <AdminLayout /> : <Navigate to="/" replace />}
+                >
                   <Route index element={<Navigate to="rollover" replace />} />
                   <Route path="rollover" element={<RolloverPage />} />
                   <Route path="areas" element={<AreasPage />} />
                   <Route path="recipients" element={<RecipientsPage />} />
                   <Route path="config" element={<ReportingConfigPage />} />
+                  <Route path="access" element={<AccessPage />} />
                   <Route path="data" element={<DataPage />} />
                   <Route path="crosswalk" element={<CrosswalkRawPage />} />
                 </Route>

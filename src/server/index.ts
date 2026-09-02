@@ -71,6 +71,30 @@ const areaKey = loadAreaKey(areaKeyCsv);
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
+/** Empty `admin_emails` = everyone can edit (no lock-out risk on first setup). */
+async function computeIsAdmin(db: D1Database, email: string): Promise<boolean> {
+  const list = await getConfig<string[]>(db, "admin_emails", []);
+  if (!Array.isArray(list) || list.length === 0) return true;
+  return list.map((s) => s.trim().toLowerCase()).includes(email.toLowerCase());
+}
+
+/** Path prefixes that change mission structure/config — admin-only. Weekly
+ *  workflow (import, friends record, chase ack, publish, all GETs) stays open
+ *  to any authenticated user. */
+const ADMIN_WRITE_PREFIXES = [
+  "/api/config",
+  "/api/crosswalk",
+  "/api/seed",
+  "/api/stake/",
+  "/api/recipients",
+  "/api/admins",
+];
+function needsAdmin(method: string, path: string): boolean {
+  if (method === "GET" || method === "HEAD") return false;
+  if (/^\/api\/rollover\/[^/]+\/apply$/.test(path)) return true;
+  return ADMIN_WRITE_PREFIXES.some((p) => path.startsWith(p));
+}
+
 // --- auth ---------------------------------------------------------------
 app.use("/api/*", async (c, next) => {
   // health check and the sheet-sync webhook do their own thing
@@ -85,6 +109,11 @@ app.use("/api/*", async (c, next) => {
     if (!ok.includes(email.toLowerCase())) throw new HTTPException(403, { message: "not allowed" });
   }
   c.set("user", email);
+  const isAdmin = await computeIsAdmin(c.env.DB, email);
+  c.set("isAdmin", isAdmin);
+  if (!isAdmin && needsAdmin(c.req.method, c.req.path)) {
+    throw new HTTPException(403, { message: "admin access required" });
+  }
   await next();
 });
 
@@ -97,7 +126,32 @@ app.onError((err, c) => {
 
 // --- meta -------------------------------------------------------------
 app.get("/api/health", (c) => c.json({ ok: true }));
-app.get("/api/me", (c) => c.json({ user: c.get("user") }));
+app.get("/api/me", (c) => c.json({ user: c.get("user"), isAdmin: c.get("isAdmin") }));
+
+/** The admin allowlist. Empty ⇒ every authenticated user is an admin. */
+app.get("/api/admins", async (c) =>
+  c.json({ admins: await getConfig<string[]>(c.env.DB, "admin_emails", []) }),
+);
+app.post("/api/admins", async (c) => {
+  const b = await c.req.json<{ admins?: string[] }>();
+  const list = [
+    ...new Set(
+      (Array.isArray(b.admins) ? b.admins : [])
+        .map((s) => String(s).trim().toLowerCase())
+        .filter((s) => s.includes("@")),
+    ),
+  ];
+  // guard against locking everyone out: a non-empty list must include the setter
+  if (list.length > 0 && !list.includes(c.get("user").toLowerCase())) {
+    throw new HTTPException(400, {
+      message: "the list must include your own address, or you'd lock yourself out",
+    });
+  }
+  await setConfig(c.env.DB, "admin_emails", list);
+  await audit(c.env.DB, c.get("user"), "admins.set", { count: list.length });
+  await bumpData(c.env);
+  return c.json({ ok: true, admins: list });
+});
 
 app.get("/api/weeks", async (c) =>
   c.json(
@@ -164,7 +218,7 @@ app.post("/api/import", async (c) => {
 app.get("/api/week/:week", async (c) => {
   const week = c.req.param("week");
   try {
-    return c.json(await cached(c.env, `week:${week}`, "ki", () => buildWeekView(c.env.DB, week)));
+    return c.json(await cached(c.env, `week:v2:${week}`, "ki", () => buildWeekView(c.env.DB, week)));
   } catch (e) {
     throw new HTTPException(404, { message: String((e as Error).message) });
   }
