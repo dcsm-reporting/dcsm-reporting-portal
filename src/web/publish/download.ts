@@ -16,21 +16,19 @@ export async function downloadPng(node: HTMLElement, filename: string): Promise<
 
 /**
  * Render a node straight to a downloaded PDF (no browser print dialog, which
- * mangled the layout). Uses jsPDF's html2canvas path, which draws text directly
- * and paginates automatically.
+ * mangled the layout). The node is rasterised exactly as it looks on screen and
+ * dropped onto a single page sized to match — so the layout is identical to the
+ * preview and to what "Copy full email" produces.
  */
 export async function downloadPdf(node: HTMLElement, filename: string): Promise<void> {
-  const pdf = new jsPDF({ unit: "pt", format: "letter" });
-  const margin = 28;
-  const pageW = pdf.internal.pageSize.getWidth();
-  await pdf.html(node, {
-    x: margin,
-    y: margin,
-    width: pageW - margin * 2,
-    windowWidth: node.offsetWidth || 780,
-    autoPaging: "text",
-    html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true },
-  });
+  const dataUrl = await Promise.race([
+    toPng(node, { pixelRatio: 2, cacheBust: true, backgroundColor: "#ffffff" }),
+    new Promise<never>((_, rej) => setTimeout(() => rej(new Error("render timed out")), 25_000)),
+  ]);
+  const wPt = (node.offsetWidth || 780) * 0.75;
+  const hPt = (node.offsetHeight || 1000) * 0.75;
+  const pdf = new jsPDF({ unit: "pt", format: [wPt, hPt], orientation: wPt > hPt ? "l" : "p" });
+  pdf.addImage(dataUrl, "PNG", 0, 0, wPt, hPt);
   pdf.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
 }
 
