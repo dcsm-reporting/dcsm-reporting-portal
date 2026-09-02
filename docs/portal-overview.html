@@ -290,7 +290,7 @@
       <h3>Platform mechanics</h3>
       <ul>
         <li><strong>Worker</strong>: Hono router. <code>POST /api/import</code> validates, offers a dry-run, then commits. Read endpoints assemble the boards from stored facts.</li>
-        <li><strong>D1</strong>: bound as <code>DB</code>; bulk inserts are chunked to D1's 100-parameter limit. A weekly <code>wrangler d1 export</code> dump, committed to the repo, is the immutable off-box backup.</li>
+        <li><strong>D1</strong>: bound as <code>DB</code>; bulk inserts are chunked to D1's 100-parameter limit. Recovery has three layers: Cloudflare's built-in 30-day time-travel, an on-demand <code>wrangler d1 export</code> SQL dump (<code>scripts/backup.sh</code>), and a dormant weekly GitHub Action that commits that dump to the repo.</li>
         <li><strong>Auth</strong>: Cloudflare Access sits in front in production. The Worker reads the injected email header for attribution; <code>DEV_USER</code> stands in locally.</li>
         <li><strong>Directory</strong>: <em>DCSM Contacts</em> shared read-only to the role account, synced to <code>directory_person</code> on demand, cached. The only spreadsheet the app ever touches.</li>
       </ul>
@@ -357,11 +357,11 @@ audit_log           who did what in the portal</code></pre>
             <tr><td><strong>Stakes</strong></td><td>Per stake: ward table + stake totals (actual counts), 12-week mini bar charts per KI. This is the reengineered stake report.</td></tr>
             <tr><td><strong>Trends</strong></td><td>Line charts: scope (mission / any zone / MLC-only), per-KI toggles, window 4–52 weeks.</td></tr>
             <tr><td><strong>Chase list</strong></td><td>Active areas with no IMOS <code>history[]</code> entry for the week — replaces the old Sunday-night form nudge. Flags areas that are new this transfer (a blank first week is expected, not a missed report).</td></tr>
-            <tr><td><strong>Weekly console</strong></td><td>Landing dashboard — the weekly routine as a checklist (import · crosswalk clean · structure current · chase · boards · stake reports) with jump links.</td></tr>
-            <tr><td><strong>Friends</strong></td><td>Mirrors the Baptisms&nbsp;(MLC) sheet (read-only). On-date + baptized lists, per-stake on the Stakes page. A monthly reconciliation: authoritative named count vs. the KI-feed aggregate as a gap to close, plus a "disappeared near their date" list.</td></tr>
-            <tr><td><strong>Structure</strong></td><td>Rollover (guided transfer), Areas &amp; wards editor, live Config (MLC positions, zone order, colour bands), raw crosswalk view.</td></tr>
-            <tr><td><strong>Data</strong></td><td>Read-only: imported weeks with raw-payload download, the friends-sync log, the audit log.</td></tr>
-            <tr><td class="todo">Publish</td><td>Board PNGs + stake-report draft — see §10.</td></tr>
+            <tr><td><strong>Weekly console</strong></td><td>Operations cockpit — the weekly routine as a checklist (import · crosswalk clean · structure current · chase · friends sync · reconciliation · boards · stake reports) with jump links, plus freshness stats for the sheet sync and the reconciliation gap.</td></tr>
+            <tr><td><strong>Friends</strong></td><td>Mirrors the Baptisms&nbsp;(MLC) sheet (read-only). On-date + baptized lists, per-stake on the Stakes page. A monthly reconciliation: authoritative named count vs. the KI-feed aggregate as a gap to close, plus a "disappeared near their date" list, plus a form to record a completed baptism the sheet is missing.</td></tr>
+            <tr><td><strong>Structure</strong></td><td>Rollover (guided transfer), Areas &amp; wards editor, Recipients (per-stake report To/CC), live Config (MLC positions, zone order, colour bands), raw crosswalk view.</td></tr>
+            <tr><td><strong>Data</strong></td><td>Read-only: imported weeks with raw-payload download, a one-click full-database JSON backup, the friends-sync log, the audit log.</td></tr>
+            <tr><td><strong>Publish</strong></td><td>Mission + per-zone KI board PNGs, and a per-stake president report (ward table, totals, 12-week sparkbars, on-date + last-6-months baptized) with Print / Save-PDF, "Copy for email", and an "Open in Gmail" deep link that pre-fills the stake's recipients.</td></tr>
           </tbody>
         </table>
       </div>
@@ -376,11 +376,13 @@ audit_log           who did what in the portal</code></pre>
           <tbody>
             <tr><td>Pipeline core (ingest, identity, crosswalk seed, 7 rollups, resolve, rollover planner)</td><td><span class="status-key done">●</span></td><td>ported, pure, no platform deps</td></tr>
             <tr><td>Oracle test — TS output diffed against Python across 12 weeks</td><td><span class="status-key done">●</span></td><td>green</td></tr>
-            <tr><td>D1 schema — migrations 0001–0008, applied to remote</td><td><span class="status-key done">●</span></td><td>live</td></tr>
+            <tr><td>D1 schema — migrations 0001–0009, applied to remote</td><td><span class="status-key done">●</span></td><td>live</td></tr>
             <tr><td>Worker API + KV response cache (version-counter invalidation)</td><td><span class="status-key done">●</span></td><td>under the free-tier read limit</td></tr>
-            <tr><td>This Week · Month · Stakes · Trends · Chase · Weekly console · Import · Structure · Data</td><td><span class="status-key done">●</span></td><td>deployed</td></tr>
-            <tr><td>Friends — Baptisms&nbsp;(MLC) sheet mirror + monthly reconciliation</td><td><span class="status-key done">●</span></td><td>syncing every 15&nbsp;min</td></tr>
-            <tr><td>Historical baptism backfill — 416 records, 2025-09 … 2026-08, 5 sources</td><td><span class="status-key done">●</span></td><td>loaded (284 confirmed / 132 unverified)</td></tr>
+            <tr><td>This Week · Month · Stakes · Trends · Chase · Weekly console · Import · Structure · Data · Publish</td><td><span class="status-key done">●</span></td><td>deployed</td></tr>
+            <tr><td>Friends — Baptisms&nbsp;(MLC) sheet mirror + monthly reconciliation + portal-native baptism records</td><td><span class="status-key done">●</span></td><td>syncing every 15&nbsp;min</td></tr>
+            <tr><td>Historical baptism backfill — 370 records, 2025-09 … 2026-07, 5 sources</td><td><span class="status-key done">●</span></td><td>loaded (confirmed / unverified tiers)</td></tr>
+            <tr><td>Publish — mission + zone board PNGs, per-stake president reports, Gmail hand-off</td><td><span class="status-key done">●</span></td><td>deployed</td></tr>
+            <tr><td>Backup — full JSON export, on-demand SQL dump script, D1 time-travel documented</td><td><span class="status-key done">●</span></td><td>done; weekly git cron dormant until the repo has a remote</td></tr>
             <tr><td>Cloudflare Access + role-account ownership + first deploy</td><td><span class="status-key done">●</span></td><td>done</td></tr>
           </tbody>
         </table>
@@ -394,10 +396,9 @@ audit_log           who did what in the portal</code></pre>
     <section id="left">
       <h2>What's left</h2>
       <ul>
-        <li><strong>Publish</strong> — board PNG export (render the board component to canvas → <code>toBlob()</code>), and the stake-report draft as formatted HTML the operator pastes into Gmail. Recipients come from the <em>Stake President Reports 2.0</em> <code>EMAILS</code> sheet, so no directory sync is needed for v1.</li>
-        <li><strong>Historical KI backfill</strong> — the <code>RemoveDuplicates</code> sheet (~5,000 rows, 2024-09 … 2026-08) would extend Trends and Month back to 2024 at area/zone/mission level. <code>POST /api/backfill</code> into a synthetic <code>import_run</code> marked <code>legacy</code>.</li>
+        <li><strong>Arm the backup cron</strong> — push the repo to a GitHub remote and set two Actions secrets (<code>CLOUDFLARE_API_TOKEN</code>, <code>CLOUDFLARE_ACCOUNT_ID</code>); <code>.github/workflows/backup.yml</code> then commits a weekly <code>wrangler d1 export</code> dump. Until then, run <code>scripts/backup.sh</code> by hand before any migration or bulk load. Cloudflare's own 30-day time-travel covers the rest.</li>
         <li><strong>Directory sync</strong> — optional now the <code>EMAILS</code> sheet covers stake reports; would add leader name/phone to the Chase list.</li>
-        <li><strong>Weekly <code>d1 export</code> → git</strong> — one GitHub Action for the off-box immutable backup.</li>
+        <li><strong>Historical KI backfill — abandoned.</strong> The legacy workbook's <code>RemoveDuplicates</code> / <code>Form Responses</code> sheets are keyed by form-submission timestamp, not report week, and only a rolling transfer window is ever fully populated — there is no clean pre-IMOS weekly series to load. Trends and Month begin with the IMOS-paste era (2026-06).</li>
       </ul>
     </section>
 
