@@ -1,6 +1,38 @@
 import { useEffect, useState } from "react";
 import { api, type PortalConfig } from "../../api.js";
 import { ErrorNote, Loading, useAsync } from "../../lib.js";
+import { getTheme, setTheme, type Theme } from "../../theme.js";
+
+function AppearanceSection() {
+  const [theme, setThemeState] = useState<Theme>(getTheme());
+  const opts: [Theme, string][] = [
+    ["light", "Light"],
+    ["dark", "Dark"],
+    ["system", "Match device"],
+  ];
+  return (
+    <>
+      <h3>Appearance</h3>
+      <p className="muted" style={{ fontSize: ".85rem" }}>
+        Stored in this browser only.
+      </p>
+      <div className="row">
+        {opts.map(([t, label]) => (
+          <button
+            key={t}
+            className={`btn${theme === t ? " primary" : ""}`}
+            onClick={() => {
+              setTheme(t);
+              setThemeState(t);
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
 
 export function ConfigPage() {
   const cfgReq = useAsync(() => api.config(), []);
@@ -38,9 +70,11 @@ export function ConfigPage() {
 
   return (
     <>
-      <p className="muted" style={{ maxWidth: "68ch" }}>
-        These are read on every request, so a change takes effect on the next page load, no deploy.
-        Defaults come from the code; edits are stored in the database.
+      <AppearanceSection />
+
+      <p className="muted" style={{ maxWidth: "68ch", marginTop: "2rem" }}>
+        The settings below are read on every request, so a change takes effect on the next page load,
+        no deploy. Defaults come from the code; edits are stored in the database.
       </p>
 
       <h3>MLC positions {saved === "mlc_positions" && <span className="chip high">saved</span>}</h3>

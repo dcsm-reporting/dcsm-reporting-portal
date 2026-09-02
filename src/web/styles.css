@@ -1,37 +1,39 @@
+/* Neutral is a clean, faintly cool gray that harmonises with the navy accent —
+   no green tint. Light is the base; dark redefines only the tokens. */
 :root {
-  --ground: #f5f6f4;
+  --ground: #f6f7f9;
   --surface: #ffffff;
-  --surface-sunk: #ecefe9;
-  --ink: #1c2530;
-  --ink-soft: #53606b;
-  --ink-faint: #8a95a0;
-  --rule: #dbdfd9;
-  --rule-strong: #c3c9bd;
+  --surface-sunk: #f0f2f5;
+  --ink: #1b2430;
+  --ink-soft: #566373;
+  --ink-faint: #8b95a2;
+  --rule: #e3e6ea;
+  --rule-strong: #cfd4db;
   --accent: #24406b;
   --accent-ink: #1c3557;
-  --accent-wash: #e5eaf2;
+  --accent-wash: #e8edf5;
   --band-lo: #9a3b34;
-  --band-lo-wash: #f3e3e1;
-  --band-mid: #97620f;
-  --band-mid-wash: #f5ecdc;
+  --band-lo-wash: #f5e4e2;
+  --band-mid: #8a5a10;
+  --band-mid-wash: #f6eede;
   --band-hi: #2f6b46;
-  --band-hi-wash: #e2efe6;
-  --shadow: 0 1px 2px rgba(20, 30, 42, 0.05), 0 8px 24px -12px rgba(20, 30, 42, 0.12);
+  --band-hi-wash: #e5f0ea;
+  --shadow: 0 1px 2px rgba(20, 30, 42, 0.04), 0 8px 24px -14px rgba(20, 30, 42, 0.1);
   --measure: 78ch;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #12161a;
-    --surface: #171c21;
-    --surface-sunk: #1e242b;
-    --ink: #e4e8ec;
-    --ink-soft: #a2acb6;
-    --ink-faint: #717b85;
-    --rule: #29313a;
-    --rule-strong: #3b444e;
+    --ground: #12161b;
+    --surface: #181d23;
+    --surface-sunk: #212831;
+    --ink: #e5e9ee;
+    --ink-soft: #a3adb8;
+    --ink-faint: #717c87;
+    --rule: #2a323c;
+    --rule-strong: #3c4650;
     --accent: #8fb0e0;
     --accent-ink: #aecaf0;
-    --accent-wash: #182231;
+    --accent-wash: #1a2432;
     --band-lo: #d67d75;
     --band-lo-wash: #2c1a18;
     --band-mid: #d29a52;
@@ -42,10 +44,10 @@
   }
 }
 :root[data-theme="dark"] {
-  --ground: #12161a; --surface: #171c21; --surface-sunk: #1e242b;
-  --ink: #e4e8ec; --ink-soft: #a2acb6; --ink-faint: #717b85;
-  --rule: #29313a; --rule-strong: #3b444e;
-  --accent: #8fb0e0; --accent-ink: #aecaf0; --accent-wash: #182231;
+  --ground: #12161b; --surface: #181d23; --surface-sunk: #212831;
+  --ink: #e5e9ee; --ink-soft: #a3adb8; --ink-faint: #717c87;
+  --rule: #2a323c; --rule-strong: #3c4650;
+  --accent: #8fb0e0; --accent-ink: #aecaf0; --accent-wash: #1a2432;
   --band-lo: #d67d75; --band-lo-wash: #2c1a18;
   --band-mid: #d29a52; --band-mid-wash: #2a2416;
   --band-hi: #74b98f; --band-hi-wash: #16241c;
@@ -111,8 +113,9 @@ table.board thead th {
   border-bottom: 1px solid var(--rule-strong); position: sticky; top: 0;
 }
 table.board th.row-head, table.board td.row-head { text-align: left; font-weight: 500; }
-table.board tr, table.board tbody tr:hover td { background: var(--surface-sunk); }
-table.board tbody { background: transparent; }
+table.board tbody tr { background: var(--surface); }
+table.board tbody tr:nth-child(even) { background: var(--surface-sunk); }
+table.board tbody tr:hover { background: var(--accent-wash); }
 table.board tr.mission td { font-weight: 700; border-top: 2px solid var(--rule-strong); background: var(--accent-wash); }
 table.board tr.zone-row td.row-head a { text-decoration: none; color: var(--accent-ink); }
 table.board .ki-group { border-left: 1px solid var(--rule); }

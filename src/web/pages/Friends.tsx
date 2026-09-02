@@ -157,13 +157,18 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
   const [nonce, setNonce] = useState(0);
   const { data, err, loading } = useAsync(() => api.reconcile(month), [month, nonce]);
 
+  const monthLabel = (m: string) => {
+    const [y, mm] = m.split("-").map((n) => parseInt(n, 10));
+    return `${MONTHS[mm! - 1]} ${y}`;
+  };
+
   return (
     <>
-      <h3 style={{ marginTop: "2.4rem" }}>Monthly baptism reconciliation</h3>
-      <p className="muted" style={{ maxWidth: "72ch", fontSize: ".88rem" }}>
-        The named count of completed baptisms is the authoritative total. This is the pre-report
-        cross-check: where the named records and the Mission Portal count disagree, and anyone who
-        dropped off the sheet near their baptism date without being confirmed.
+      <h3 style={{ marginTop: "2.4rem" }}>Monthly baptism check</h3>
+      <p className="muted" style={{ maxWidth: "74ch", fontSize: ".88rem" }}>
+        Before the month’s baptism report goes out, make sure every baptism the Mission Portal
+        counted has a name on our list. If the Portal counted more than we have names for, those
+        baptisms need to be tracked down with the STLs (or added here).
       </p>
       <div className="row">
         <label className="field" style={{ margin: 0 }}>
@@ -172,115 +177,164 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
         </label>
       </div>
 
-      {loading && <Loading what="reconciliation" />}
+      {loading && <Loading what="the check" />}
       {err && <ErrorNote err={err} />}
-      {data && (
-        <>
-          <div className="cards">
-            <div className="card">
-              <div className="k">Named baptisms</div>
-              <div className="v">{data.mission.namedCount}</div>
-              <div className="sub">authoritative</div>
-            </div>
-            <div className="card">
-              <div className="k">Mission Portal count</div>
-              <div className="v">{data.mission.kiFeedBC}</div>
-              <div className="sub">cross-check only</div>
-            </div>
-            {data.mission.unverifiedCount > 0 && (
-              <div className="card">
-                <div className="k">Unverified (legacy)</div>
-                <div className="v">{data.mission.unverifiedCount}</div>
-                <div className="sub">ZL-form only, not counted</div>
+      {data && (() => {
+        const unmapped = data.byStake.find((r) => r.stake === "(unmapped)");
+        const stakes = data.byStake
+          .filter((r) => r.stake !== "(unmapped)")
+          .map((r) => ({ ...r, missing: Math.max(0, r.kiFeedBC - r.namedCount) }));
+        const missionMissing = Math.max(0, data.mission.kiFeedBC - data.mission.namedCount);
+        const stakesToChase = stakes.filter((r) => r.missing > 0);
+        const stakesOk = stakes.filter((r) => r.missing === 0 && (r.kiFeedBC > 0 || r.namedCount > 0));
+
+        return (
+          <>
+            {missionMissing === 0 ? (
+              <div className="note ok">
+                <strong>Everything the Mission Portal counted for {monthLabel(data.month)} has a name.</strong>{" "}
+                {data.mission.namedCount > data.mission.kiFeedBC
+                  ? `Our list has ${data.mission.namedCount - data.mission.kiFeedBC} more than the Portal, which is normal — our list is the more complete one.`
+                  : "Nothing to track down."}
+              </div>
+            ) : (
+              <div className="note warn">
+                <strong>
+                  {missionMissing} baptism{missionMissing === 1 ? "" : "s"} the Mission Portal counted
+                  {missionMissing === 1 ? " is" : " are"} not on our list yet.
+                </strong>{" "}
+                Get the name{missionMissing === 1 ? "" : "s"} from the STLs and add {missionMissing === 1 ? "it" : "them"} below.
               </div>
             )}
-            <div className="card">
-              <div className="k">Gap to close</div>
-              <div className="v" style={{ color: data.mission.gap === 0 ? "var(--band-hi)" : "var(--band-mid)" }}>
-                {data.mission.gap > 0 ? `+${data.mission.gap}` : data.mission.gap}
+
+            <div className="cards">
+              <div className="card">
+                <div className="k">On our list</div>
+                <div className="v">{data.mission.namedCount}</div>
+                <div className="sub">names for {monthLabel(data.month)}</div>
               </div>
-              <div className="sub">{data.mission.gap > 0 ? "names likely missing" : data.mission.gap < 0 ? "ahead of the Portal count" : "reconciled"}</div>
+              <div className="card">
+                <div className="k">Mission Portal</div>
+                <div className="v">{data.mission.kiFeedBC}</div>
+                <div className="sub">their aggregate count</div>
+              </div>
+              <div className="card">
+                <div className="k">Names to find</div>
+                <div
+                  className="v"
+                  style={{ color: missionMissing === 0 ? "var(--band-hi)" : "var(--band-mid)" }}
+                >
+                  {missionMissing}
+                </div>
+                <div className="sub">{missionMissing === 0 ? "all accounted for" : "on the Portal, not our list"}</div>
+              </div>
+              {data.mission.unverifiedCount > 0 && (
+                <div className="card">
+                  <div className="k">Old unverified names</div>
+                  <div className="v">{data.mission.unverifiedCount}</div>
+                  <div className="sub">not counted — need a source</div>
+                </div>
+              )}
             </div>
-          </div>
 
-          {data.byStake.some((r) => r.gap !== 0) && (
-            <div className="board-wrap">
-              <table className="board">
-                <thead>
-                  <tr>
-                    <th className="row-head">Stake</th>
-                    <th>Named</th>
-                    <th>Portal</th>
-                    <th>Gap</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.byStake
-                    .filter((r) => r.gap !== 0)
-                    .map((r) => (
-                      <tr key={r.stake}>
-                        <td className="row-head">{r.stake}</td>
-                        <td>{r.namedCount}</td>
-                        <td>{r.kiFeedBC}</td>
-                        <td>
-                          <span className={`pct ${r.gap === 0 ? "hi" : "mid"}`}>
-                            {r.gap > 0 ? `+${r.gap}` : r.gap}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <RecordBaptism
-            onRecorded={() => {
-              setNonce((n) => n + 1);
-              onChange();
-            }}
-          />
-
-          <h4 style={{ marginTop: "1.6rem", fontFamily: "IBM Plex Sans", fontWeight: 600 }}>
-            Disappeared near their date ({data.disappeared.length})
-          </h4>
-          {data.disappeared.length === 0 ? (
-            <div className="note ok">Nobody dropped off the sheet unconfirmed near a past baptism date.</div>
-          ) : (
-            <>
-              <div className="note warn">
-                These friends had a baptism date that has now passed and were removed from the sheet
-                without being marked baptized. Verify each: if they were baptized, the STL re-adds
-                them to the sheet.
+            {unmapped && unmapped.kiFeedBC > 0 && (
+              <div className="note">
+                {unmapped.kiFeedBC} of the Mission Portal’s baptisms this month are in areas not yet
+                mapped to a stake, so the per-stake breakdown below is incomplete. Map those areas in{" "}
+                <strong>Structure → Rollover</strong>.
               </div>
-              <div className="board-wrap">
-                <table className="board">
-                  <thead>
-                    <tr>
-                      <th className="row-head">Name</th>
-                      <th className="row-head">Ward · Stake</th>
-                      <th className="row-head">Baptism date</th>
-                      <th className="row-head">Left sheet</th>
-                      <th className="row-head">Missionaries</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.disappeared.map((d) => (
-                      <tr key={d.id}>
-                        <td className="row-head">{d.name}</td>
-                        <td className="row-head muted">{[d.ward, d.stake].filter(Boolean).join(" · ")}</td>
-                        <td className="row-head mono">{fmtDate(d.baptismDate)}</td>
-                        <td className="row-head mono muted">{d.leftAt.slice(0, 10)}</td>
-                        <td className="row-head muted" style={{ fontSize: ".82rem" }}>{d.missionaries ?? "–"}</td>
+            )}
+
+            {stakesToChase.length > 0 ? (
+              <>
+                <h4 style={{ marginTop: "1.4rem", fontWeight: 600 }}>Stakes with names to find</h4>
+                <div className="board-wrap">
+                  <table className="board">
+                    <thead>
+                      <tr>
+                        <th className="row-head">Stake</th>
+                        <th>On our list</th>
+                        <th>Mission Portal</th>
+                        <th>Names to find</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {stakesToChase.map((r) => (
+                        <tr key={r.stake}>
+                          <td className="row-head">{r.stake}</td>
+                          <td>{r.namedCount}</td>
+                          <td>{r.kiFeedBC}</td>
+                          <td><span className="pct mid">{r.missing}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              stakes.length > 0 && (
+                <div className="note ok" style={{ marginTop: "1rem" }}>
+                  Every stake’s named list covers what the Mission Portal counted.
+                </div>
+              )
+            )}
+            {stakesOk.length > 0 && stakesToChase.length > 0 && (
+              <p className="muted" style={{ fontSize: ".82rem" }}>
+                {stakesOk.length} other stake{stakesOk.length === 1 ? "" : "s"} fully accounted for.
+              </p>
+            )}
+
+            <RecordBaptism
+              onRecorded={() => {
+                setNonce((n) => n + 1);
+                onChange();
+              }}
+            />
+
+            <h4 style={{ marginTop: "1.8rem", fontWeight: 600 }}>
+              Removed from the sheet near their date ({data.disappeared.length})
+            </h4>
+            {data.disappeared.length === 0 ? (
+              <div className="note ok">
+                No one dropped off the Baptisms (MLC) sheet near a past baptism date without being
+                marked baptized.
               </div>
-            </>
-          )}
-        </>
-      )}
+            ) : (
+              <>
+                <div className="note warn">
+                  These friends had a baptism date that has now passed, then disappeared from the
+                  sheet without being marked baptized. Either the baptism happened and wasn’t
+                  recorded, or the date slipped. Check each with the STL.
+                </div>
+                <div className="board-wrap">
+                  <table className="board">
+                    <thead>
+                      <tr>
+                        <th className="row-head">Name</th>
+                        <th className="row-head">Ward · Stake</th>
+                        <th className="row-head">Was dated</th>
+                        <th className="row-head">Last seen</th>
+                        <th className="row-head">Missionaries</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.disappeared.map((d) => (
+                        <tr key={d.id}>
+                          <td className="row-head">{d.name}</td>
+                          <td className="row-head muted">{[d.ward, d.stake].filter(Boolean).join(" · ")}</td>
+                          <td className="row-head mono">{fmtDate(d.baptismDate)}</td>
+                          <td className="row-head mono muted">{d.leftAt.slice(0, 10)}</td>
+                          <td className="row-head muted" style={{ fontSize: ".82rem" }}>{d.missionaries ?? "–"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </>
+        );
+      })()}
     </>
   );
 }
