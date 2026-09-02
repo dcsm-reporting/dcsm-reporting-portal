@@ -176,7 +176,66 @@ export const api = {
   reconcile: (month?: string) =>
     jget<ReconcileView>(`/api/reconcile${month ? `?month=${month}` : ""}`),
   data: () => jget<DataView>("/api/data"),
+
+  // --- publish ---------------------------------------------------
+  publish: (week: string) => jget<PublishView>(`/api/publish/${week}`),
+  recipients: () => jget<{ recipients: StakeRecipient[] }>("/api/recipients"),
+  setRecipient: (r: StakeRecipient) => jpost<{ ok: true }>("/api/recipients", r),
+  seedRecipients: () => jpost<{ ok: true; seeded: number }>("/api/recipients/seed", {}),
 };
+
+export interface StakeRecipient {
+  stake: string;
+  presidentName: string | null;
+  toEmails: string | null;
+  ccEmails: string | null;
+}
+
+export interface StakeReport {
+  stake: string;
+  presidentName: string | null;
+  toEmails: string[];
+  ccEmails: string[];
+  wardTable: { ward: string; ki: Record<number, number> }[];
+  total: Record<number, number>;
+  series: {
+    label: string;
+    weekStart: string;
+    BC: number;
+    BD: number;
+    SA: number;
+    NP: number;
+    LMP: number;
+    NMS: number;
+  }[];
+  onDate: {
+    name: string;
+    ward: string | null;
+    baptismDate: string | null;
+    attendedChurch2x: boolean;
+    onBaptismCalendar: boolean;
+  }[];
+  baptized6mo: { name: string; ward: string | null; baptismDate: string | null; confidence: string | null }[];
+  baptizedThisMonth: number;
+  baptizedYtd: number;
+}
+
+export interface PublishView {
+  week: string;
+  weekLabel: string;
+  generatedAt: string;
+  hasPriorWeek: boolean;
+  board: {
+    zones: string[];
+    byZone: ZoneGrid;
+    byArea: Record<string, ZoneGrid>;
+    mlc: { this: MlcGrid; last: MlcGrid | null; lastWeekStart: string | null };
+    bands: { goalPct: { low: number; mid: number }; mlcShare: { low: number; mid: number } };
+    monthLabel: string;
+    monthByZone: ZoneGrid;
+  };
+  reports: StakeReport[];
+}
 
 export interface DataView {
   imports: {

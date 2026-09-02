@@ -514,6 +514,53 @@ export async function getRawPayload(db: D1Database, weekStart: string): Promise<
   return r?.raw_json ?? null;
 }
 
+// --- stake report recipients ---------------------------------------
+export interface StakeRecipient {
+  stake: string;
+  presidentName: string | null;
+  toEmails: string | null;
+  ccEmails: string | null;
+}
+
+export async function getStakeRecipients(db: D1Database): Promise<StakeRecipient[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT stake, president_name, to_emails, cc_emails FROM stake_recipients ORDER BY stake",
+    )
+    .all<Record<string, string | null>>();
+  return (results ?? []).map((r) => ({
+    stake: r.stake as string,
+    presidentName: r.president_name ?? null,
+    toEmails: r.to_emails ?? null,
+    ccEmails: r.cc_emails ?? null,
+  }));
+}
+
+export async function upsertStakeRecipient(
+  db: D1Database,
+  r: StakeRecipient,
+  actor: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO stake_recipients (stake, president_name, to_emails, cc_emails, updated_at, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (stake) DO UPDATE SET
+         president_name = excluded.president_name, to_emails = excluded.to_emails,
+         cc_emails = excluded.cc_emails, updated_at = excluded.updated_at,
+         updated_by = excluded.updated_by`,
+    )
+    .bind(
+      r.stake,
+      r.presidentName,
+      r.toEmails,
+      r.ccEmails,
+      new Date().toISOString(),
+      actor,
+    )
+    .run();
+}
+
 // --- MLC recompute (config-driven, at read time) -----------------------
 /** Area ids that hold one of `positions` in the week's missionary snapshot. */
 export async function mlcAreaIdsForWeek(

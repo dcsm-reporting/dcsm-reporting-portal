@@ -1,0 +1,20 @@
+.publish-preview {
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  max-width: 100%;
+}
+.publish-preview > * { transform-origin: top left; }
+
+.recipient-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.5rem 0; }
+.recipient-chips .to { border-color: var(--accent); color: var(--accent-ink); }
+
+@media print {
+  body.printing .no-print { display: none !important; }
+  body.printing .masthead { display: none !important; }
+  body.printing main { padding: 0 !important; max-width: none !important; }
+  body.printing .publish-preview { border: none; box-shadow: none; overflow: visible; }
+  body.printing .print-target > * { box-shadow: none !important; }
+}

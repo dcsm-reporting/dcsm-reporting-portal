@@ -57,6 +57,9 @@ import {
   type SheetRow,
 } from "./friends.js";
 import { buildReconcile } from "./reconcile.js";
+import { buildPublish } from "./publish.js";
+import { getStakeRecipients, upsertStakeRecipient } from "./db.js";
+import stakeRecipientsSeed from "../../resources/stake_recipients.json";
 
 /** Parsed once — the Area To Ward Key is bundled as text. */
 const areaKey = loadAreaKey(areaKeyCsv);
@@ -441,6 +444,82 @@ app.get("/api/data/raw/:week", async (c) => {
       "content-disposition": `attachment; filename="imos-${c.req.param("week")}.json"`,
     },
   });
+});
+
+/** Full database dump as JSON — a portable, self-serve backup. */
+app.get("/api/export", async (c) => {
+  const tables = [
+    "import_run", "ki_fact", "ward_fact", "missionary_snapshot", "area_history",
+    "canonical_area", "area_crosswalk", "area_ward", "friend", "friend_week",
+    "friend_sync", "stake_recipients", "config", "audit_log",
+  ];
+  const dump: Record<string, unknown[]> = {};
+  for (const t of tables) {
+    const { results } = await c.env.DB.prepare(`SELECT * FROM ${t}`).all();
+    dump[t] = results ?? [];
+  }
+  const body = JSON.stringify(
+    { exportedAt: new Date().toISOString(), tables: dump },
+    null,
+    0,
+  );
+  return new Response(body, {
+    headers: {
+      "content-type": "application/json",
+      "content-disposition": `attachment; filename="dcsm-ki-portal-${new Date()
+        .toISOString()
+        .slice(0, 10)}.json"`,
+    },
+  });
+});
+
+// --- publish (boards + stake reports) ---------------------------
+app.get("/api/publish/:week", async (c) => {
+  const week = c.req.param("week");
+  return c.json(await cached(c.env, `publish:${week}`, "both", () => buildPublish(c.env.DB, week)));
+});
+
+app.get("/api/recipients", async (c) => c.json({ recipients: await getStakeRecipients(c.env.DB) }));
+
+app.post("/api/recipients", async (c) => {
+  const b = await c.req.json<{
+    stake: string;
+    presidentName?: string;
+    toEmails?: string;
+    ccEmails?: string;
+  }>();
+  if (!b.stake) throw new HTTPException(400, { message: "stake is required" });
+  await upsertStakeRecipient(
+    c.env.DB,
+    {
+      stake: b.stake,
+      presidentName: b.presidentName ?? null,
+      toEmails: b.toEmails ?? null,
+      ccEmails: b.ccEmails ?? null,
+    },
+    c.get("user"),
+  );
+  await audit(c.env.DB, c.get("user"), "recipients.set", { stake: b.stake });
+  await bumpData(c.env);
+  return c.json({ ok: true });
+});
+
+app.post("/api/recipients/seed", async (c) => {
+  const seed = stakeRecipientsSeed as {
+    stake: string;
+    to: string;
+    cc: string;
+    president: string;
+  }[];
+  for (const r of seed) {
+    await upsertStakeRecipient(
+      c.env.DB,
+      { stake: r.stake, presidentName: r.president || null, toEmails: r.to || null, ccEmails: r.cc || null },
+      "recipients-seed",
+    );
+  }
+  await bumpData(c.env);
+  return c.json({ ok: true, seeded: seed.length });
 });
 
 app.get("/api/reconcile", async (c) => {

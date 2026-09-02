@@ -12,10 +12,12 @@ const FriendsPage = lazy(() => import("./pages/Friends.js").then((m) => ({ defau
 const TrendsPage = lazy(() => import("./pages/Trends.js").then((m) => ({ default: m.TrendsPage })));
 const ChasePage = lazy(() => import("./pages/Chase.js").then((m) => ({ default: m.ChasePage })));
 const ImportPage = lazy(() => import("./pages/Import.js").then((m) => ({ default: m.ImportPage })));
+const PublishPage = lazy(() => import("./pages/Publish.js").then((m) => ({ default: m.PublishPage })));
 const DataPage = lazy(() => import("./pages/Data.js").then((m) => ({ default: m.DataPage })));
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout.js").then((m) => ({ default: m.AdminLayout })));
 const RolloverPage = lazy(() => import("./pages/admin/Rollover.js").then((m) => ({ default: m.RolloverPage })));
 const AreasPage = lazy(() => import("./pages/admin/Areas.js").then((m) => ({ default: m.AreasPage })));
+const RecipientsPage = lazy(() => import("./pages/admin/Recipients.js").then((m) => ({ default: m.RecipientsPage })));
 const ConfigPage = lazy(() => import("./pages/admin/ConfigPage.js").then((m) => ({ default: m.ConfigPage })));
 const CrosswalkRawPage = lazy(() =>
   import("./pages/admin/CrosswalkRaw.js").then((m) => ({ default: m.CrosswalkRawPage })),
@@ -29,6 +31,7 @@ const TABS: [string, string][] = [
   ["/friends", "Friends"],
   ["/trends", "Trends"],
   ["/chase", "Chase list"],
+  ["/publish", "Publish"],
   ["/import", "Import"],
   ["/data", "Data"],
   ["/admin", "Structure"],
@@ -108,12 +111,14 @@ export function App() {
                 <Route path="/friends" element={<FriendsPage />} />
                 <Route path="/trends" element={<TrendsPage />} />
                 <Route path="/chase" element={<ChasePage />} />
+                <Route path="/publish" element={<PublishPage />} />
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/data" element={<DataPage />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<Navigate to="rollover" replace />} />
                   <Route path="rollover" element={<RolloverPage />} />
                   <Route path="areas" element={<AreasPage />} />
+                  <Route path="recipients" element={<RecipientsPage />} />
                   <Route path="config" element={<ConfigPage />} />
                   <Route path="crosswalk" element={<CrosswalkRawPage />} />
                 </Route>
