@@ -108,7 +108,7 @@ export function ConsolePage() {
         <Link className="btn" to="/stakes">Stake reports</Link>
         <Link className="btn" to="/trends">Trends</Link>
         <Link className="btn" to="/admin/rollover">Structure</Link>
-        <Link className="btn" to="/admin/config">Config</Link>
+        <Link className="btn" to="/settings">Settings</Link>
       </div>
     </>
   );

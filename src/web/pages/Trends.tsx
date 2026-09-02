@@ -45,9 +45,10 @@ export function TrendsPage() {
   );
 
   const chartData = useMemo(() => {
-    if (!data) return [];
-    return data.rows.map((row, i) => {
-      const g = data.goals[i];
+    const rows = data?.rows ?? [];
+    const goals = data?.goals ?? [];
+    return rows.map((row, i) => {
+      const g = goals[i];
       const point: Record<string, number | string | null> = { label: row.label };
       for (const code of KI_CODES) {
         const a = row[code as "NP"];

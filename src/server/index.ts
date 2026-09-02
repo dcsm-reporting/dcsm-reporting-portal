@@ -171,7 +171,8 @@ app.get("/api/week/:week", async (c) => {
 
 app.get("/api/trends", async (c) => {
   const q = c.req.query();
-  const key = `trends:${q.upTo ?? ""}:${q.n ?? ""}:${q.zone ?? ""}:${q.mlcOnly ?? ""}`;
+  // key prefix bumped when the payload shape changes (was SeriesRow[]; now {rows,goals})
+  const key = `trends:v2:${q.upTo ?? ""}:${q.n ?? ""}:${q.zone ?? ""}:${q.mlcOnly ?? ""}`;
   const out = await cached(c.env, key, "ki", () =>
     buildTrends(c.env.DB, {
       upTo: q.upTo || undefined,
