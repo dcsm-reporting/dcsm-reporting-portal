@@ -17,6 +17,7 @@ import { byStake } from "../pipeline/rollup.js";
 import { wardMapForWeek } from "../pipeline/resolve.js";
 import { getAreaWardRows, loadWardFacts, weeksAvailable } from "./db.js";
 import { listFriends } from "./friends.js";
+import { dedupeBaptized } from "../pipeline/friends.js";
 
 const BC = 20; // "People Who Are Baptized and Confirmed"
 
@@ -74,8 +75,10 @@ export async function buildReconcile(db: D1Database, month: string): Promise<Rec
   const unverifiedByStake = new Map<string, number>();
   let namedMission = 0;
   let unverifiedMission = 0;
-  for (const f of friends) {
-    if (!f.baptizedConfirmed || !(f.baptismDate ?? "").startsWith(month)) continue;
+  const monthBaptized = dedupeBaptized(
+    friends.filter((f) => f.baptizedConfirmed && (f.baptismDate ?? "").startsWith(month)),
+  );
+  for (const f of monthBaptized) {
     const stake = f.stake || stakeOfWard.get((f.ward ?? "").toLowerCase()) || "(unassigned)";
     if (isConfirmedTier(f.confidence)) {
       namedByStake.set(stake, (namedByStake.get(stake) ?? 0) + 1);

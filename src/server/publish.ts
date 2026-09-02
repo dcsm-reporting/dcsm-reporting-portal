@@ -7,7 +7,7 @@
  * (stake reports) client-side.
  */
 
-import { isOnDate } from "../pipeline/friends.js";
+import { dedupeBaptized, isOnDate } from "../pipeline/friends.js";
 import { getAreaWardRows, weeksAvailable } from "./db.js";
 import { wardMapForWeek } from "../pipeline/resolve.js";
 import { listFriends } from "./friends.js";
@@ -65,6 +65,7 @@ export async function buildPublish(db: D1Database, week: string) {
     const g = stakeView.byStake[stake] ?? { wards: {}, total: {} };
     const rec = recByStake.get(stake);
     const mine = friends.filter((f) => f.active && stakeFor(f) === stake);
+    const myBaptized = dedupeBaptized(mine.filter((f) => f.baptizedConfirmed));
 
     return {
       stake,
@@ -87,23 +88,15 @@ export async function buildPublish(db: D1Database, week: string) {
           attendedChurch2x: f.attendedChurch2x,
           onBaptismCalendar: f.onBaptismCalendar,
         })),
-      baptized6mo: friends
-        .filter((f) => f.baptizedConfirmed && (f.baptismDate ?? "") >= cutoff && stakeFor(f) === stake)
+      baptized6mo: myBaptized
+        .filter((f) => (f.baptismDate ?? "") >= cutoff)
         .sort((a, b) => (b.baptismDate ?? "").localeCompare(a.baptismDate ?? ""))
         .map((f) => ({ name: f.name, ward: f.ward, baptismDate: f.baptismDate, confidence: f.confidence })),
-      baptizedThisMonth: friends.filter(
-        (f) =>
-          f.baptizedConfirmed &&
-          confirmedTier(f.confidence) &&
-          (f.baptismDate ?? "").startsWith(month) &&
-          stakeFor(f) === stake,
+      baptizedThisMonth: myBaptized.filter(
+        (f) => confirmedTier(f.confidence) && (f.baptismDate ?? "").startsWith(month),
       ).length,
-      baptizedYtd: friends.filter(
-        (f) =>
-          f.baptizedConfirmed &&
-          confirmedTier(f.confidence) &&
-          (f.baptismDate ?? "").startsWith(year) &&
-          stakeFor(f) === stake,
+      baptizedYtd: myBaptized.filter(
+        (f) => confirmedTier(f.confidence) && (f.baptismDate ?? "").startsWith(year),
       ).length,
     };
   });

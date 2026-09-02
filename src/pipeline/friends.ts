@@ -141,6 +141,45 @@ export interface FriendsSummary {
 /** confirmed tier = sheet-sourced (null) or corroborated legacy. */
 const confirmedTier = (c: string | null) => c === null || c === "confirmed";
 
+/**
+ * A person key that ignores name order, accents, punctuation and any
+ * parenthetical (e.g. a Chinese name): "Li Ping Yan" on 3/7 and
+ * "Yan Li Ping(颜利平)" on 3/7 collapse to the same key. Used to drop
+ * duplicate baptism records that the legacy backfill didn't catch.
+ */
+export function personKey(name: string, date: string | null): string {
+  const tokens = String(name ?? "")
+    .replace(/\([^)]*\)/g, " ") // drop "(颜利平)"
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip accents
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort();
+  return `${date ?? ""}|${tokens.join(" ")}`;
+}
+
+/**
+ * Collapse duplicate baptism records for the same person + date. Keeps the row
+ * with the most corroborating sources (a "+"-joined source string), then the
+ * one already synced from the sheet.
+ */
+export function dedupeBaptized<T extends { name: string; baptismDate: string | null; source: string }>(
+  rows: T[],
+): T[] {
+  const best = new Map<string, T>();
+  const weight = (r: T) => (r.source === "sheet" ? 100 : r.source.split("+").length);
+  for (const r of rows) {
+    const k = personKey(r.name, r.baptismDate);
+    const cur = best.get(k);
+    if (!cur || weight(r) > weight(cur)) best.set(k, r);
+  }
+  // preserve original order
+  const kept = new Set(best.values());
+  return rows.filter((r) => kept.has(r));
+}
+
 /** Monday..Sunday (inclusive, so the weekend counts) of the week containing `d`. */
 export function calendarWeek(d = new Date()): { start: string; end: string } {
   const dow = (d.getUTCDay() + 6) % 7; // 0 = Monday
@@ -173,22 +212,15 @@ export function summarise(friends: Friend[], weekStart: string | null): FriendsS
   const horizon = weekStart ? wkStart : today;
 
   const onDate = friends.filter(isOnDate);
+  const baptizedThisMonthAll = dedupeBaptized(
+    friends.filter((f) => f.baptizedConfirmed && (f.baptismDate ?? "").startsWith(month)),
+  );
   return {
     onDateTotal: onDate.length,
     onDateThisWeek: onDate.filter((f) => f.baptismDate! >= wkStart && f.baptismDate! <= wkEnd).length,
     overdueCount: onDate.filter((f) => f.baptismDate! < horizon).length,
-    baptizedThisMonth: friends.filter(
-      (f) =>
-        f.baptizedConfirmed &&
-        confirmedTier(f.confidence) &&
-        (f.baptismDate ?? "").startsWith(month),
-    ).length,
-    baptizedThisMonthUnverified: friends.filter(
-      (f) =>
-        f.baptizedConfirmed &&
-        !confirmedTier(f.confidence) &&
-        (f.baptismDate ?? "").startsWith(month),
-    ).length,
+    baptizedThisMonth: baptizedThisMonthAll.filter((f) => confirmedTier(f.confidence)).length,
+    baptizedThisMonthUnverified: baptizedThisMonthAll.filter((f) => !confirmedTier(f.confidence)).length,
     calendarYes: onDate.filter((f) => f.onBaptismCalendar).length,
     calendarNo: onDate.filter((f) => !f.onBaptismCalendar).length,
     church2xYes: onDate.filter((f) => f.attendedChurch2x).length,

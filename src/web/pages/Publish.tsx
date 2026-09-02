@@ -1,9 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type PublishView } from "../api.js";
 import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 import { Board, MlcBoard } from "../publish/boards.js";
 import { StakeReportDoc } from "../publish/stakeReport.js";
-import { copyEmail, copyRichHtml, downloadPng, gmailComposeUrl } from "../publish/download.js";
+import { copyEmail, copyRichHtml, downloadPdf, downloadPng, gmailComposeUrl } from "../publish/download.js";
 import { buildEmail } from "../publish/email.js";
 import "../publish/publish.css";
 
@@ -65,6 +65,10 @@ function Boards({ data }: { data: PublishView }) {
   const b = data.board;
   const zones = b.zones.filter((z) => z !== "MISSION");
   const [zone, setZone] = useState(zones[0] ?? "");
+  // the selected zone may not exist in a different week — snap back to the first
+  useEffect(() => {
+    if (!zones.includes(zone)) setZone(zones[0] ?? "");
+  }, [data.week]); // eslint-disable-line react-hooks/exhaustive-deps
   const missionRef = useRef<HTMLDivElement>(null);
   const mlcRef = useRef<HTMLDivElement>(null);
   const zoneRef = useRef<HTMLDivElement>(null);
@@ -159,20 +163,23 @@ function Reports({ data }: { data: PublishView }) {
   const [msg, setMsg] = useState("");
   if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
 
+  const [busy, setBusy] = useState(false);
   const email = buildEmail({ stake: r.stake, presidentName: r.presidentName, weekStartIso: data.week });
 
-  const printReport = () => {
-    document.body.classList.add("printing");
-    const done = () => {
-      document.body.classList.remove("printing");
-      window.removeEventListener("afterprint", done);
-    };
-    window.addEventListener("afterprint", done);
-    setTimeout(() => window.print(), 50);
-  };
   const flash = (m: string) => {
     setMsg(m);
     setTimeout(() => setMsg(""), 3000);
+  };
+  const savePdf = async () => {
+    if (!ref.current) return;
+    setBusy(true);
+    try {
+      await downloadPdf(ref.current, `${r.stake}-KIC-${data.week}`);
+    } catch {
+      flash("PDF failed. Try Copy full email instead.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -208,12 +215,14 @@ function Reports({ data }: { data: PublishView }) {
           onClick={async () => {
             if (!ref.current) return;
             const ok = await copyRichHtml(ref.current);
-            flash(ok ? "Report copied." : "Copy failed; use Print.");
+            flash(ok ? "Report copied." : "Copy failed.");
           }}
         >
           Copy report only
         </button>
-        <button className="btn" onClick={printReport}>Print / Save PDF</button>
+        <button className="btn" disabled={busy} onClick={savePdf}>
+          {busy ? "Building PDF…" : "Download PDF"}
+        </button>
         {msg && <span className="muted" style={{ fontSize: ".85rem" }}>{msg}</span>}
       </div>
 
@@ -230,9 +239,10 @@ function Reports({ data }: { data: PublishView }) {
           </div>
         )}
       </div>
-      <div className="no-print" style={{ fontSize: ".8rem", color: "var(--ink-faint)", marginTop: ".3rem" }}>
-        <strong>Open in Gmail</strong> prefills the recipients, subject, and cover letter.{" "}
-        <strong>Copy full email</strong> puts the letter + report on your clipboard to paste into the body.
+      <div className="no-print" style={{ fontSize: ".8rem", color: "var(--ink-faint)", marginTop: ".3rem", maxWidth: "72ch" }}>
+        <strong>Open in Gmail</strong> prefills the recipients, subject, and cover letter — then attach
+        the <strong>PDF</strong>, or use <strong>Copy full email</strong> to paste the letter + report
+        straight into the body.
       </div>
 
       <div className="publish-preview print-target" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>

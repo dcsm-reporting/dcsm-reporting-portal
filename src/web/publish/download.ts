@@ -1,4 +1,5 @@
 import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
 
 /** Render a DOM node to a PNG and trigger a download. 2× for crisp phone display. */
 export async function downloadPng(node: HTMLElement, filename: string): Promise<void> {
@@ -11,6 +12,26 @@ export async function downloadPng(node: HTMLElement, filename: string): Promise<
   a.href = dataUrl;
   a.download = filename.endsWith(".png") ? filename : `${filename}.png`;
   a.click();
+}
+
+/**
+ * Render a node straight to a downloaded PDF (no browser print dialog, which
+ * mangled the layout). Uses jsPDF's html2canvas path, which draws text directly
+ * and paginates automatically.
+ */
+export async function downloadPdf(node: HTMLElement, filename: string): Promise<void> {
+  const pdf = new jsPDF({ unit: "pt", format: "letter" });
+  const margin = 28;
+  const pageW = pdf.internal.pageSize.getWidth();
+  await pdf.html(node, {
+    x: margin,
+    y: margin,
+    width: pageW - margin * 2,
+    windowWidth: node.offsetWidth || 780,
+    autoPaging: "text",
+    html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true },
+  });
+  pdf.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
 }
 
 async function writeClipboard(html: string, text: string): Promise<boolean> {

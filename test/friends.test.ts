@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cleanTime,
+  dedupeBaptized,
   isOnDate,
   missionaryLastNames,
   summarise,
@@ -103,6 +104,20 @@ describe("isOnDate / summarise", () => {
     expect(s.baptizedThisMonth).toBe(1);
     expect(s.calendarYes).toBe(1);
     expect(s.church2xYes).toBe(1);
+  });
+
+  it("dedupeBaptized collapses name-order / parenthetical duplicates on the same date", () => {
+    const rows = [
+      { name: "Li Ping Yan", baptismDate: "2026-03-07", source: "a+b+c" },
+      { name: "Yan Li Ping(颜利平)", baptismDate: "2026-03-07", source: "a" },
+      { name: "José Peña", baptismDate: "2026-03-07", source: "sheet" },
+      { name: "Jose Pena", baptismDate: "2026-03-07", source: "legacy" },
+      { name: "Li Ping Yan", baptismDate: "2026-04-01", source: "a" }, // different date, kept
+    ];
+    const out = dedupeBaptized(rows);
+    expect(out.map((r) => r.name)).toEqual(["Li Ping Yan", "José Peña", "Li Ping Yan"]);
+    expect(out[0]!.source).toBe("a+b+c"); // kept the multi-source row
+    expect(out[1]!.source).toBe("sheet"); // kept the sheet row over legacy
   });
 
   it("null weekStart measures against the current calendar week + month", () => {

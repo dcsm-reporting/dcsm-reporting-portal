@@ -89,10 +89,18 @@ function StatTile({ n, label }: { n: number; label: string }) {
   );
 }
 
+/* Inline SVG, not flex divs: Gmail strips `align-items: flex-end` when a
+   message is sent, which flipped the CSS-height bars upside down. SVG rects
+   are positioned absolutely from a baseline and survive that. */
 function SparkRow({ label, values }: { label: string; values: number[] }) {
   const max = Math.max(1, ...values);
+  const barW = 11;
+  const gap = 2;
+  const chartH = 40;
+  const w = values.length * (barW + gap);
+  const last = values[values.length - 1] ?? 0;
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 3, margin: "6px 0", breakInside: "avoid" }}>
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 6, margin: "6px 0", breakInside: "avoid" }}>
       <div
         style={{
           width: 30,
@@ -100,26 +108,26 @@ function SparkRow({ label, values }: { label: string; values: number[] }) {
           fontFamily: '"IBM Plex Mono", monospace',
           color: SOFT,
           textAlign: "right",
-          paddingRight: 4,
-          paddingBottom: 2,
         }}
       >
         {label}
       </div>
-      {values.map((v, i) => (
-        <div
-          key={i}
-          style={{
-            width: 11,
-            height: Math.max(2, Math.round((v / max) * 38)),
-            background: i === values.length - 1 ? NAVY : "#a9bcd6",
-            borderRadius: 1,
-          }}
-        />
-      ))}
-      <div style={{ fontSize: 10, fontWeight: 600, color: SOFT, marginLeft: 5, paddingBottom: 1 }}>
-        {values[values.length - 1] ?? 0}
-      </div>
+      <svg width={w} height={chartH} viewBox={`0 0 ${w} ${chartH}`} style={{ display: "block" }}>
+        {values.map((v, i) => {
+          const h = Math.max(2, Math.round((v / max) * (chartH - 2)));
+          return (
+            <rect
+              key={i}
+              x={i * (barW + gap)}
+              y={chartH - h}
+              width={barW}
+              height={h}
+              fill={i === values.length - 1 ? NAVY : "#a9bcd6"}
+            />
+          );
+        })}
+      </svg>
+      <div style={{ fontSize: 10, fontWeight: 600, color: SOFT }}>{last}</div>
     </div>
   );
 }

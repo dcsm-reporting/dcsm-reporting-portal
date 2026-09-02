@@ -9,6 +9,7 @@
 
 import {
   cleanTime,
+  dedupeBaptized,
   isOnDate,
   summarise,
   toIsoDate,
@@ -130,7 +131,9 @@ export async function friendsByStake(db: D1Database, weekStart: string) {
   }
   for (const g of Object.values(byStake)) {
     g.onDate.sort((a, b) => (a.baptismDate ?? "").localeCompare(b.baptismDate ?? ""));
-    g.baptized.sort((a, b) => (b.baptismDate ?? "").localeCompare(a.baptismDate ?? ""));
+    g.baptized = dedupeBaptized(g.baptized).sort((a, b) =>
+      (b.baptismDate ?? "").localeCompare(a.baptismDate ?? ""),
+    );
   }
   return byStake;
 }
@@ -152,21 +155,29 @@ export async function monthlyBaptisms(
   const earliest = keys[0]!;
   const { results } = await db
     .prepare(
-      `SELECT substr(baptism_date,1,7) AS m,
-              sum(CASE WHEN confidence IS NULL OR confidence='confirmed' THEN 1 ELSE 0 END) AS c,
-              sum(CASE WHEN confidence='unverified' THEN 1 ELSE 0 END) AS u
-       FROM friend
-       WHERE baptized_confirmed = 1 AND baptism_date >= ?
-       GROUP BY m`,
+      `SELECT name, baptism_date, confidence, source
+       FROM friend WHERE baptized_confirmed = 1 AND baptism_date >= ?`,
     )
     .bind(`${earliest}-01`)
-    .all<{ m: string; c: number; u: number }>();
-  const byMonth = new Map((results ?? []).map((r) => [r.m, r]));
-  return keys.map((month) => ({
-    month,
-    confirmed: byMonth.get(month)?.c ?? 0,
-    unverified: byMonth.get(month)?.u ?? 0,
-  }));
+    .all<{ name: string; baptism_date: string; confidence: string | null; source: string }>();
+
+  const rows = dedupeBaptized(
+    (results ?? []).map((r) => ({
+      name: r.name,
+      baptismDate: r.baptism_date,
+      confidence: r.confidence,
+      source: r.source,
+    })),
+  );
+  const conf = (c: string | null) => c === null || c === "confirmed";
+  return keys.map((month) => {
+    const inM = rows.filter((r) => (r.baptismDate ?? "").startsWith(month));
+    return {
+      month,
+      confirmed: inM.filter((r) => conf(r.confidence)).length,
+      unverified: inM.filter((r) => !conf(r.confidence)).length,
+    };
+  });
 }
 
 // --- portal-native record (close-the-gap on reconciliation) --------------
