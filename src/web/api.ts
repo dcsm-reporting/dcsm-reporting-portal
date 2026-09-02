@@ -131,6 +131,8 @@ export const api = {
 
   // --- weekly console -----------------------------------------------
   console: () => jget<ConsoleView>("/api/console"),
+  checkStep: (stepId: string, checked: boolean) =>
+    jpost<{ ok: true }>("/api/console/check", { stepId, checked }),
 
   // --- config ------------------------------------------------------
   config: () => jget<ConfigResponse>("/api/config"),
@@ -358,6 +360,7 @@ export interface ConsoleStep {
   label: string;
   state: "done" | "attention" | "todo";
   detail: string;
+  checked?: boolean;
 }
 export interface ConsoleView {
   weeksStored: number;

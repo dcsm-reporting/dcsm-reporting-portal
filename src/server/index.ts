@@ -62,7 +62,7 @@ import {
 } from "./friends.js";
 import { buildReconcile } from "./reconcile.js";
 import { buildPublish } from "./publish.js";
-import { getConfig, getStakeRecipients, upsertStakeRecipient } from "./db.js";
+import { getConfig, getStakeRecipients, setConsoleCheck, upsertStakeRecipient } from "./db.js";
 import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import stakeRecipientsSeed from "../../resources/stake_recipients.json";
 
@@ -366,6 +366,17 @@ app.post("/api/seed", async (c) => {
 app.get("/api/console", async (c) =>
   c.json(await cached(c.env, "console", "both", () => buildConsole(c.env.DB, areaKey))),
 );
+
+/** Tick / untick a checklist step for the latest week. */
+app.post("/api/console/check", async (c) => {
+  const b = await c.req.json<{ stepId: string; checked: boolean }>();
+  if (!b.stepId) throw new HTTPException(400, { message: "stepId is required" });
+  const latest = (await weeksAvailable(c.env.DB)).at(-1);
+  if (!latest) throw new HTTPException(400, { message: "no weeks imported" });
+  await setConsoleCheck(c.env.DB, latest, b.stepId, !!b.checked, c.get("user"));
+  await bumpData(c.env);
+  return c.json({ ok: true });
+});
 
 // --- config ------------------------------------------------------
 app.get("/api/config", async (c) =>

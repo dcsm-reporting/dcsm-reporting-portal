@@ -290,6 +290,39 @@ export async function loadAreaHistory(
   }));
 }
 
+// --- weekly console check-offs -----------------------------------
+export async function getConsoleChecks(db: D1Database, weekStart: string): Promise<Set<string>> {
+  const { results } = await db
+    .prepare("SELECT step_id FROM console_check WHERE week_start = ?")
+    .bind(weekStart)
+    .all<{ step_id: string }>();
+  return new Set((results ?? []).map((r) => r.step_id));
+}
+
+export async function setConsoleCheck(
+  db: D1Database,
+  weekStart: string,
+  stepId: string,
+  checked: boolean,
+  actor: string,
+): Promise<void> {
+  if (checked) {
+    await db
+      .prepare(
+        `INSERT INTO console_check (week_start, step_id, checked_at, checked_by)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT (week_start, step_id) DO UPDATE SET checked_at = excluded.checked_at, checked_by = excluded.checked_by`,
+      )
+      .bind(weekStart, stepId, new Date().toISOString(), actor)
+      .run();
+  } else {
+    await db
+      .prepare("DELETE FROM console_check WHERE week_start = ? AND step_id = ?")
+      .bind(weekStart, stepId)
+      .run();
+  }
+}
+
 // --- "not reported" acknowledgements ------------------------------
 export interface NotReportedAck {
   imosAreaId: number;

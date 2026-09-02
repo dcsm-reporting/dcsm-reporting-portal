@@ -34,6 +34,7 @@ import {
   distinctZonesForWeek,
   getAreaWardRows,
   getCanonicalRows,
+  getConsoleChecks,
   getCrosswalkRows,
   getNotReportedAcks,
   loadAreaHistory,
@@ -341,7 +342,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     };
   }
   const latest = all[all.length - 1]!;
-  const [week, chase, stake, rollover, friends, reconcile] = await Promise.all([
+  const [week, chase, stake, rollover, friends, reconcile, checks] = await Promise.all([
     buildWeekView(db, latest),
     buildChase(db, latest),
     buildStakeView(db, latest),
@@ -349,6 +350,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     // null → current calendar week/month, not the last IMOS week
     friendsSummary(db, null).catch(() => null),
     buildReconcile(db, latest.slice(0, 7)).catch(() => null),
+    getConsoleChecks(db, latest),
   ]);
 
   // friends sheet sync freshness — the STL sheet should land at least weekly
@@ -440,14 +442,14 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     },
     {
       id: "stakes",
-      label: "Draft stake reports",
+      label: "Draft & send stake reports",
       state: stake.wardMapSize > 0 ? ("todo" as const) : ("attention" as const),
       detail:
         stake.wardMapSize > 0
           ? `${stake.stakes.length} stakes ready. Publish → Stake reports.`
           : "No ward→stake rows for this week; seed the crosswalk.",
     },
-  ];
+  ].map((s) => ({ ...s, checked: checks.has(s.id) }));
 
   return {
     weeksStored: all.length,

@@ -37,7 +37,11 @@ export function ConsolePage() {
     );
   }
 
-  const attention = data.steps.filter((s) => s.state === "attention");
+  const attention = data.steps.filter((s) => s.state === "attention" && !s.checked);
+  const check = async (id: string, checked: boolean) => {
+    await api.checkStep(id, checked);
+    reload();
+  };
 
   return (
     <>
@@ -85,16 +89,33 @@ export function ConsolePage() {
       )}
 
       <h3>This week’s checklist</h3>
-      <ol className="steps">
+      <p className="muted" style={{ fontSize: ".82rem", marginTop: "-.3rem" }}>
+        The ✓ / ! marks come from live data. Tick a box as you finish each step; the list resets when
+        the next week is imported.
+      </p>
+      <ol className="steps checklist">
         {data.steps.map((s) => {
           const m = MARK[s.state]!;
           const to = LINK_FOR[s.id];
           return (
-            <li key={s.id}>
-              <span className={`pct ${m.cls}`} style={{ minWidth: "2ch", textAlign: "center" }}>{m.sym}</span>
+            <li key={s.id} className={s.checked ? "checked" : ""}>
+              <input
+                type="checkbox"
+                checked={!!s.checked}
+                onChange={(e) => check(s.id, e.target.checked)}
+                title="Mark done for this week"
+              />
               <span>
                 <b>{to ? <Link to={to}>{s.label}</Link> : s.label}</b>
+                {!s.checked && (
+                  <span className={`pct ${m.cls}`} style={{ marginLeft: ".5rem", fontSize: ".7rem" }}>
+                    {m.sym} {s.state}
+                  </span>
+                )}
                 <span className="hint"> {s.detail}</span>
+                {s.checked && s.state === "attention" && (
+                  <span className="hint" style={{ color: "var(--band-mid)" }}> (still flagged)</span>
+                )}
               </span>
             </li>
           );

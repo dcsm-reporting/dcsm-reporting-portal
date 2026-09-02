@@ -180,8 +180,12 @@ table.grid input, table.grid select { width: 100%; }
 ol.steps { list-style: none; padding: 0; margin: 0 0 1.4rem; max-width: 760px; }
 ol.steps li { display: grid; grid-template-columns: auto 1fr; gap: 0.7rem; align-items: start; padding: 0.55rem 0.2rem; border-bottom: 1px solid var(--rule); }
 ol.steps li:last-child { border-bottom: none; }
-ol.steps b { display: block; font-weight: 600; }
+ol.steps b { display: inline; font-weight: 600; }
 ol.steps .hint { font-size: 0.85rem; color: var(--ink-soft); }
+ol.steps.checklist li { align-items: center; }
+ol.steps.checklist input[type="checkbox"] { width: 1.05rem; height: 1.05rem; margin-top: 0.15rem; cursor: pointer; }
+ol.steps.checklist li.checked b { color: var(--ink-faint); text-decoration: line-through; }
+ol.steps.checklist li.checked .hint { color: var(--ink-faint); }
 
 /* admin sub-nav -------------------------------------------------- */
 nav.subnav { display: flex; gap: 0.15rem; flex-wrap: wrap; margin: 0 0 1.4rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.6rem; }
