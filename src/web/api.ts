@@ -70,18 +70,25 @@ export interface StakeView {
   stakeSeries: Record<string, SeriesRow[]>;
 }
 
+export interface NotReportedArea {
+  imosAreaId: number;
+  areaName: string;
+  zoneName: string;
+  lastModified: string | null;
+  newThisWeek: boolean;
+  ackReason?: string | null;
+  ackedBy?: string | null;
+}
 export interface ChaseView {
   weekStart: string;
   weekLabel: string;
   count: number;
   newCount: number;
-  areas: {
-    imosAreaId: number;
-    areaName: string;
-    zoneName: string;
-    lastModified: string | null;
-    newThisWeek: boolean;
-  }[];
+  ackCount: number;
+  open: NotReportedArea[];
+  newThisTransfer: NotReportedArea[];
+  acknowledged: NotReportedArea[];
+  areas: NotReportedArea[];
 }
 
 export const api = {
@@ -97,6 +104,10 @@ export const api = {
   },
   stakes: (w: string) => jget<StakeView>(`/api/stakes/${w}`),
   chase: (w: string) => jget<ChaseView>(`/api/chase/${w}`),
+  ackNotReported: (w: string, imosAreaId: number, reason: string) =>
+    jpost<{ ok: true }>(`/api/chase/${w}/ack`, { imosAreaId, reason }),
+  unackNotReported: (w: string, imosAreaId: number) =>
+    jsend<{ ok: true }>("DELETE", `/api/chase/${w}/ack/${imosAreaId}`, undefined),
   importPreview: (rawJson: string) =>
     jpost<{ dryRun: true; summary: ImportSummary }>("/api/import", { rawJson, dryRun: true }),
   importCommit: (rawJson: string) =>

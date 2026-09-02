@@ -290,6 +290,61 @@ export async function loadAreaHistory(
   }));
 }
 
+// --- "not reported" acknowledgements ------------------------------
+export interface NotReportedAck {
+  imosAreaId: number;
+  reason: string | null;
+  ackedAt: string;
+  ackedBy: string | null;
+}
+
+export async function getNotReportedAcks(
+  db: D1Database,
+  weekStart: string,
+): Promise<NotReportedAck[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT imos_area_id, reason, acked_at, acked_by FROM not_reported_ack WHERE week_start = ?",
+    )
+    .bind(weekStart)
+    .all<Record<string, string | number | null>>();
+  return (results ?? []).map((r) => ({
+    imosAreaId: r.imos_area_id as number,
+    reason: (r.reason as string | null) ?? null,
+    ackedAt: r.acked_at as string,
+    ackedBy: (r.acked_by as string | null) ?? null,
+  }));
+}
+
+export async function setNotReportedAck(
+  db: D1Database,
+  weekStart: string,
+  imosAreaId: number,
+  reason: string | null,
+  actor: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO not_reported_ack (week_start, imos_area_id, reason, acked_at, acked_by)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (week_start, imos_area_id) DO UPDATE SET
+         reason = excluded.reason, acked_at = excluded.acked_at, acked_by = excluded.acked_by`,
+    )
+    .bind(weekStart, imosAreaId, reason, new Date().toISOString(), actor)
+    .run();
+}
+
+export async function clearNotReportedAck(
+  db: D1Database,
+  weekStart: string,
+  imosAreaId: number,
+): Promise<void> {
+  await db
+    .prepare("DELETE FROM not_reported_ack WHERE week_start = ? AND imos_area_id = ?")
+    .bind(weekStart, imosAreaId)
+    .run();
+}
+
 // --- crosswalk reads ------------------------------------------------
 export async function getCrosswalkRows(db: D1Database): Promise<AreaCrosswalkRow[]> {
   const { results } = await db

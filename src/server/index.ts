@@ -19,9 +19,11 @@ import {
   addWard,
   attachArea,
   audit,
+  clearNotReportedAck,
   closeMapping,
   closeWard,
   createCanonicalArea,
+  setNotReportedAck,
   getAreaWardRows,
   getAuditLog,
   getCanonicalRows,
@@ -188,6 +190,28 @@ app.get("/api/stakes/:week", async (c) => {
 app.get("/api/chase/:week", async (c) => {
   const week = c.req.param("week");
   return c.json(await cached(c.env, `chase:${week}`, "ki", () => buildChase(c.env.DB, week)));
+});
+
+/** Acknowledge a not-reported area for the week so it stops flagging as attention. */
+app.post("/api/chase/:week/ack", async (c) => {
+  const week = c.req.param("week");
+  const b = await c.req.json<{ imosAreaId: number; reason?: string }>();
+  if (typeof b.imosAreaId !== "number") {
+    throw new HTTPException(400, { message: "imosAreaId is required" });
+  }
+  await setNotReportedAck(c.env.DB, week, b.imosAreaId, b.reason?.trim() || null, c.get("user"));
+  await audit(c.env.DB, c.get("user"), "not_reported.ack", { week, ...b });
+  await bumpData(c.env);
+  return c.json({ ok: true });
+});
+
+app.delete("/api/chase/:week/ack/:imosAreaId", async (c) => {
+  const week = c.req.param("week");
+  const id = parseInt(c.req.param("imosAreaId"), 10);
+  await clearNotReportedAck(c.env.DB, week, id);
+  await audit(c.env.DB, c.get("user"), "not_reported.unack", { week, imosAreaId: id });
+  await bumpData(c.env);
+  return c.json({ ok: true });
 });
 
 // --- crosswalk admin -------------------------------------------

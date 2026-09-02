@@ -34,6 +34,7 @@ import {
   getAreaWardRows,
   getCanonicalRows,
   getCrosswalkRows,
+  getNotReportedAcks,
   loadAreaHistory,
   loadFacts,
   loadWardFacts,
@@ -181,36 +182,65 @@ export async function buildStakeView(db: D1Database, weekStart: string, windowN 
   };
 }
 
+export interface NotReportedArea {
+  imosAreaId: number;
+  areaName: string;
+  zoneName: string;
+  lastModified: string | null;
+  newThisWeek: boolean;
+  ackReason?: string | null;
+  ackedBy?: string | null;
+}
+
 export async function buildChase(db: D1Database, weekStart: string) {
   const all = await weeksAvailable(db);
   const prior = all.filter((w) => w < weekStart);
   const prevWeek = prior[prior.length - 1] ?? null;
 
-  const [history, facts, prevIds] = await Promise.all([
+  const [history, facts, prevIds, acks] = await Promise.all([
     loadAreaHistory(db, weekStart),
     loadFacts(db, weekStart),
     prevWeek ? distinctAreaIdsForWeek(db, prevWeek) : Promise.resolve<number[] | null>(null),
+    getNotReportedAcks(db, weekStart),
   ]);
   const zoneOf = new Map<number, string>();
   for (const f of facts) if (!zoneOf.has(f.areaId)) zoneOf.set(f.areaId, f.zoneName);
   const prev = prevIds === null ? null : new Set(prevIds);
+  const ackBy = new Map(acks.map((a) => [a.imosAreaId, a]));
 
-  const stale = history
+  const stale: NotReportedArea[] = history
     .filter((h) => !h.updatedThisWeek)
-    .map((h) => ({
-      imosAreaId: h.imosAreaId,
-      areaName: h.imosAreaName,
-      zoneName: zoneOf.get(h.imosAreaId) ?? "",
-      lastModified: h.modifiedDate,
-      newThisWeek: prev !== null && !prev.has(h.imosAreaId),
-    }))
+    .map((h) => {
+      const ack = ackBy.get(h.imosAreaId);
+      return {
+        imosAreaId: h.imosAreaId,
+        areaName: h.imosAreaName,
+        zoneName: zoneOf.get(h.imosAreaId) ?? "",
+        lastModified: h.modifiedDate,
+        newThisWeek: prev !== null && !prev.has(h.imosAreaId),
+        ackReason: ack ? ack.reason : undefined,
+        ackedBy: ack ? ack.ackedBy : undefined,
+      };
+    })
     .sort((a, b) => a.zoneName.localeCompare(b.zoneName) || a.areaName.localeCompare(b.areaName));
+
+  // A brand-new area has no prior week to compare, so a blank first week is
+  // expected, not a miss. An acknowledged area has been handled by a human.
+  // Only the rest count toward "needs attention".
+  const acknowledged = stale.filter((s) => s.ackReason !== undefined);
+  const newThisTransfer = stale.filter((s) => s.ackReason === undefined && s.newThisWeek);
+  const open = stale.filter((s) => s.ackReason === undefined && !s.newThisWeek);
 
   return {
     weekStart,
     weekLabel: weekLabel(weekStart),
-    count: stale.length,
-    newCount: stale.filter((s) => s.newThisWeek).length,
+    count: open.length,
+    newCount: newThisTransfer.length,
+    ackCount: acknowledged.length,
+    open,
+    newThisTransfer,
+    acknowledged,
+    /** every stale area, for callers that still want the flat list */
     areas: stale,
   };
 }
