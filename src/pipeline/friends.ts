@@ -16,8 +16,12 @@ export interface Friend {
   attendedChurch2x: boolean;
   onBaptismCalendar: boolean;
   baptizedConfirmed: boolean;
+  confirmedAt: string | null;
+  /** 'confirmed' | 'unverified' for legacy backfill; null for sheet-sourced. */
+  confidence: string | null;
+  notes: string | null;
   dropped: boolean;
-  source: "sheet" | "portal";
+  source: string; // 'sheet' | 'portal' | a granular legacy source list
   createdAt: string;
   createdBy: string | null;
   updatedAt: string;
@@ -120,12 +124,16 @@ export function missionaryLastNames(s: string | null | undefined): string[] {
 export interface FriendsSummary {
   onDateTotal: number;
   onDateThisWeek: number;
-  baptizedThisMonth: number;
+  baptizedThisMonth: number; // confirmed tier
+  baptizedThisMonthUnverified: number; // Zone-Leader-form-only legacy
   calendarYes: number;
   calendarNo: number;
   church2xYes: number;
   church2xNo: number;
 }
+
+/** confirmed tier = sheet-sourced (null) or corroborated legacy. */
+const confirmedTier = (c: string | null) => c === null || c === "confirmed";
 
 export function summarise(
   friends: Friend[],
@@ -145,7 +153,16 @@ export function summarise(
         ? 0
         : onDate.filter((f) => f.baptismDate! >= weekStart && f.baptismDate! <= wkEnd!).length,
     baptizedThisMonth: friends.filter(
-      (f) => f.baptizedConfirmed && (f.baptismDate ?? "").startsWith(month),
+      (f) =>
+        f.baptizedConfirmed &&
+        confirmedTier(f.confidence) &&
+        (f.baptismDate ?? "").startsWith(month),
+    ).length,
+    baptizedThisMonthUnverified: friends.filter(
+      (f) =>
+        f.baptizedConfirmed &&
+        !confirmedTier(f.confidence) &&
+        (f.baptismDate ?? "").startsWith(month),
     ).length,
     calendarYes: onDate.filter((f) => f.onBaptismCalendar).length,
     calendarNo: onDate.filter((f) => !f.onBaptismCalendar).length,

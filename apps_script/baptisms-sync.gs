@@ -11,16 +11,18 @@
  *     SYNC_SECRET   (the same value set with `wrangler secret put FRIENDS_SYNC_SECRET`)
  */
 
-// Per-zone working tabs (zone taken from the tab name).
-var ZONE_TABS = [
-  'Alexandria', 'Annandale', 'Bull Run', 'Langley', 'Loudoun',
-  'Manassas', 'McLean', 'Oakton', 'Potomac', 'Woodbridge',
-  'Bella Vista North'
-];
-
-// History tabs (zone/stake read from columns, not the tab name). This catches
-// completed baptisms after STLs cycle them out of the working tabs.
+// Tabs are AUTO-DISCOVERED: any tab containing the header row below is read.
+// No hardcoded zone list to update at a transfer. For a working per-zone tab
+// the zone is the tab name; on the tabs listed here the zone comes from an
+// "Actual Zone" column instead.
 var HISTORY_TABS = ['Organized Baptisms'];
+
+// Tabs to never treat as data even if they somehow match (helpers/config).
+var SKIP_TABS = [
+  'Dashboard', 'Instructions', 'Last Names', 'Baptisms This Week',
+  'Baptisms For Next Week', 'Past Baptisms', 'Area Drop Down Options',
+  'ward_stake_key', 'All Units & Addresses'
+];
 
 var HEADER_MATCH = 'name (first and last)';
 
@@ -121,7 +123,15 @@ function collectRows_() {
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone() || 'America/New_York';
   var out = [], seen = {};
-  for (var z = 0; z < ZONE_TABS.length; z++) readTab_(ss, ZONE_TABS[z], ZONE_TABS[z], tz, out, seen);
+  var sheets = ss.getSheets();
+
+  // working per-zone tabs first (zone = tab name), so they win the de-dup
+  for (var i = 0; i < sheets.length; i++) {
+    var nm = sheets[i].getName();
+    if (SKIP_TABS.indexOf(nm) >= 0 || HISTORY_TABS.indexOf(nm) >= 0) continue;
+    readTab_(ss, nm, nm, tz, out, seen);
+  }
+  // history tabs after (zone from an "Actual Zone" column)
   for (var h = 0; h < HISTORY_TABS.length; h++) readTab_(ss, HISTORY_TABS[h], '', tz, out, seen);
   return out;
 }

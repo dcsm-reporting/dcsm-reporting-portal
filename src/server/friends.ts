@@ -29,7 +29,8 @@ export type StoredFriend = Friend & {
 const COLS =
   "id, name, zone, canonical_area_key, ward, stake, missionaries, baptism_date, baptism_time, " +
   "baptism_address, attended_church_2x, on_baptism_calendar, baptized_confirmed, dropped, active, " +
-  "left_sheet_at, source, sync_key, created_at, created_by, updated_at, updated_by";
+  "left_sheet_at, confirmed_at, confidence, notes, source, sync_key, created_at, created_by, " +
+  "updated_at, updated_by";
 
 function toFriend(r: Row): StoredFriend {
   return {
@@ -46,8 +47,10 @@ function toFriend(r: Row): StoredFriend {
     attendedChurch2x: Boolean(r.attended_church_2x),
     onBaptismCalendar: Boolean(r.on_baptism_calendar),
     baptizedConfirmed: Boolean(r.baptized_confirmed),
+    confidence: (r.confidence as string | null) ?? null,
+    notes: (r.notes as string | null) ?? null,
     dropped: Boolean(r.dropped),
-    source: (r.source as "sheet" | "portal") ?? "portal",
+    source: (r.source as string) ?? "portal",
     createdAt: r.created_at as string,
     createdBy: (r.created_by as string | null) ?? null,
     updatedAt: r.updated_at as string,
@@ -55,6 +58,7 @@ function toFriend(r: Row): StoredFriend {
     active: Boolean(r.active),
     syncKey: (r.sync_key as string | null) ?? null,
     leftSheetAt: (r.left_sheet_at as string | null) ?? null,
+    confirmedAt: (r.confirmed_at as string | null) ?? null,
   };
 }
 
@@ -147,9 +151,19 @@ export interface SheetRow {
 }
 
 const norm = (s: unknown) => String(s ?? "").trim();
-/** Zone is left out — it's renamed at transfers; ward|name is stable. */
+/**
+ * Zone is left out (renamed at transfers). Accents and inner whitespace are
+ * folded so cosmetic edits to a name/ward in the sheet don't orphan the record.
+ */
 export function syncKeyOf(ward: string, name: string): string {
-  return `${norm(ward)}|${norm(name)}`.toLowerCase();
+  const fold = (s: string) =>
+    String(s ?? "")
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "") // strip combining accent marks
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  return `${fold(ward)}|${fold(name)}`;
 }
 
 export async function syncFriends(
@@ -230,17 +244,20 @@ export async function syncFriends(
       stmts.push(
         db
           .prepare(
-            // back in the sheet ⇒ active again and no longer "dropped"
+            // back in the sheet ⇒ active again and no longer "dropped";
+            // stamp confirmed_at the first time the box goes ticked
             `UPDATE friend SET name=?, zone=?, ward=?, stake=?, missionaries=?, baptism_date=?,
                baptism_time=?, baptism_address=?, attended_church_2x=?, on_baptism_calendar=?,
-               baptized_confirmed=?, active=1, dropped=0, left_sheet_at=NULL, source='sheet',
+               baptized_confirmed=?,
+               confirmed_at = CASE WHEN ? = 1 AND baptized_confirmed = 0 THEN ? ELSE confirmed_at END,
+               active=1, dropped=0, left_sheet_at=NULL, source='sheet',
                updated_at=?, updated_by='sheet-sync'
              WHERE id=?`,
           )
           .bind(
             r.name, r.zone, r.ward, r.stake, r.missionaries, r.baptismDate, r.baptismTime,
             r.baptismAddress, r.attendedChurch2x ? 1 : 0, r.onBaptismCalendar ? 1 : 0,
-            r.baptizedConfirmed ? 1 : 0, now, prev.id,
+            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? 1 : 0, now, now, prev.id,
           ),
       );
     } else {
@@ -249,14 +266,14 @@ export async function syncFriends(
           .prepare(
             `INSERT INTO friend (id, name, zone, ward, stake, missionaries, baptism_date,
                baptism_time, baptism_address, attended_church_2x, on_baptism_calendar,
-               baptized_confirmed, dropped, active, source, sync_key, created_at, created_by,
-               updated_at, updated_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 'sheet', ?, ?, 'sheet-sync', ?, 'sheet-sync')`,
+               baptized_confirmed, confirmed_at, dropped, active, source, sync_key, created_at,
+               created_by, updated_at, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 'sheet', ?, ?, 'sheet-sync', ?, 'sheet-sync')`,
           )
           .bind(
             crypto.randomUUID(), r.name, r.zone, r.ward, r.stake, r.missionaries, r.baptismDate,
             r.baptismTime, r.baptismAddress, r.attendedChurch2x ? 1 : 0, r.onBaptismCalendar ? 1 : 0,
-            r.baptizedConfirmed ? 1 : 0, r.key, now, now,
+            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? now : null, r.key, now, now,
           ),
       );
       changed++;

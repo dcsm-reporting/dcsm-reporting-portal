@@ -23,8 +23,12 @@ import {
   closeWard,
   createCanonicalArea,
   getAreaWardRows,
+  getAuditLog,
   getCanonicalRows,
   getCrosswalkRows,
+  getFriendSyncLog,
+  getImportLog,
+  getRawPayload,
   getStructure,
   loadFacts,
   renameCanonical,
@@ -52,6 +56,7 @@ import {
   syncFriends,
   type SheetRow,
 } from "./friends.js";
+import { buildReconcile } from "./reconcile.js";
 
 /** Parsed once — the Area To Ward Key is bundled as text. */
 const areaKey = loadAreaKey(areaKeyCsv);
@@ -413,6 +418,38 @@ app.get("/api/friends/by-stake/:week", async (c) => {
     await cached(c.env, `friends-by-stake:${week}`, "friends", () =>
       friendsByStake(c.env.DB, week),
     ),
+  );
+});
+
+// --- data page (read-only browse) --------------------------------
+app.get("/api/data", async (c) =>
+  c.json(
+    await cached(c.env, "data", "both", async () => ({
+      imports: await getImportLog(c.env.DB),
+      audit: await getAuditLog(c.env.DB, 120),
+      syncs: await getFriendSyncLog(c.env.DB, 30),
+    })),
+  ),
+);
+
+app.get("/api/data/raw/:week", async (c) => {
+  const raw = await getRawPayload(c.env.DB, c.req.param("week"));
+  if (!raw) throw new HTTPException(404, { message: "no stored payload for that week" });
+  return new Response(raw, {
+    headers: {
+      "content-type": "application/json",
+      "content-disposition": `attachment; filename="imos-${c.req.param("week")}.json"`,
+    },
+  });
+});
+
+app.get("/api/reconcile", async (c) => {
+  const month =
+    c.req.query("month") ||
+    (await weeksAvailable(c.env.DB)).at(-1)?.slice(0, 7) ||
+    new Date().toISOString().slice(0, 7);
+  return c.json(
+    await cached(c.env, `reconcile:${month}`, "both", () => buildReconcile(c.env.DB, month)),
   );
 });
 

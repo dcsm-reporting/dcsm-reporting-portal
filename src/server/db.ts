@@ -458,6 +458,62 @@ export async function audit(
     .run();
 }
 
+// --- data page (read-only browse) ----------------------------------
+export async function getImportLog(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT ir.week_start, ir.week_end, ir.imported_at, ir.imported_by, ir.source_sha256,
+              (SELECT COUNT(*) FROM ki_fact k WHERE k.week_start = ir.week_start) AS n_facts
+       FROM import_run ir ORDER BY ir.week_start DESC`,
+    )
+    .all<Record<string, string | number | null>>();
+  return (results ?? []).map((r) => ({
+    weekStart: r.week_start as string,
+    weekEnd: r.week_end as string,
+    importedAt: r.imported_at as string,
+    importedBy: (r.imported_by as string | null) ?? null,
+    sha: (r.source_sha256 as string).slice(0, 12),
+    nFacts: (r.n_facts as number) ?? 0,
+  }));
+}
+
+export async function getAuditLog(db: D1Database, limit = 100) {
+  const { results } = await db
+    .prepare("SELECT at, actor, action, detail_json FROM audit_log ORDER BY id DESC LIMIT ?")
+    .bind(limit)
+    .all<Record<string, string | null>>();
+  return (results ?? []).map((r) => ({
+    at: r.at as string,
+    actor: (r.actor as string | null) ?? "",
+    action: r.action as string,
+    detail: r.detail_json ?? null,
+  }));
+}
+
+export async function getFriendSyncLog(db: D1Database, limit = 30) {
+  const { results } = await db
+    .prepare(
+      "SELECT at, rows_in, upserted, deactivated, warnings FROM friend_sync ORDER BY id DESC LIMIT ?",
+    )
+    .bind(limit)
+    .all<Record<string, string | number | null>>();
+  return (results ?? []).map((r) => ({
+    at: r.at as string,
+    rowsIn: (r.rows_in as number) ?? 0,
+    upserted: (r.upserted as number) ?? 0,
+    deactivated: (r.deactivated as number) ?? 0,
+    warnings: (r.warnings as string | null) ?? null,
+  }));
+}
+
+export async function getRawPayload(db: D1Database, weekStart: string): Promise<string | null> {
+  const r = await db
+    .prepare("SELECT raw_json FROM import_run WHERE week_start = ? ORDER BY id DESC LIMIT 1")
+    .bind(weekStart)
+    .first<{ raw_json: string }>();
+  return r?.raw_json ?? null;
+}
+
 // --- MLC recompute (config-driven, at read time) -----------------------
 /** Area ids that hold one of `positions` in the week's missionary snapshot. */
 export async function mlcAreaIdsForWeek(

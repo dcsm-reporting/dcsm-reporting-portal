@@ -173,7 +173,45 @@ export const api = {
     jget<Record<string, { onDate: FriendRow[]; baptized: FriendRow[] }>>(
       `/api/friends/by-stake/${week}`,
     ),
+  reconcile: (month?: string) =>
+    jget<ReconcileView>(`/api/reconcile${month ? `?month=${month}` : ""}`),
+  data: () => jget<DataView>("/api/data"),
 };
+
+export interface DataView {
+  imports: {
+    weekStart: string;
+    weekEnd: string;
+    importedAt: string;
+    importedBy: string | null;
+    sha: string;
+    nFacts: number;
+  }[];
+  audit: { at: string; actor: string; action: string; detail: string | null }[];
+  syncs: {
+    at: string;
+    rowsIn: number;
+    upserted: number;
+    deactivated: number;
+    warnings: string | null;
+  }[];
+}
+
+export interface ReconcileView {
+  month: string;
+  weeks: string[];
+  mission: { kiFeedBC: number; namedCount: number; unverifiedCount: number; gap: number };
+  byStake: { stake: string; kiFeedBC: number; namedCount: number; unverifiedCount: number; gap: number }[];
+  disappeared: {
+    id: string;
+    name: string;
+    ward: string | null;
+    stake: string | null;
+    baptismDate: string | null;
+    leftAt: string;
+    missionaries: string | null;
+  }[];
+}
 
 export interface FriendRow {
   id: string;
@@ -188,12 +226,16 @@ export interface FriendRow {
   attendedChurch2x: boolean;
   onBaptismCalendar: boolean;
   baptizedConfirmed: boolean;
+  confirmedAt: string | null;
+  confidence: string | null;
+  notes: string | null;
   dropped: boolean;
 }
 export interface FriendsSummary {
   onDateTotal: number;
   onDateThisWeek: number;
   baptizedThisMonth: number;
+  baptizedThisMonthUnverified: number;
   calendarYes: number;
   calendarNo: number;
   church2xYes: number;
