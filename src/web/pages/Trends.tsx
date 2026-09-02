@@ -1,27 +1,40 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { api } from "../api.js";
-import { ErrorNote, KI_CODE, KI_IDS, Loading, useAsync, useWeek } from "../lib.js";
+import { ErrorNote, KI_CODE, KI_IDS, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 
 const COLORS = ["#24406b", "#2f6b46", "#97620f", "#9a3b34", "#5b4b8a", "#0f6b78"];
 const ZONES = [
   "Alexandria", "Annandale", "Bull Run", "McLean", "Oakton",
   "Langley", "Loudoun", "Woodbridge", "Manassas", "Potomac",
 ];
+const KI_CODES = KI_IDS.map((ki) => KI_CODE[ki]);
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+const fmtMonth = (m: string) => {
+  const [y, mm] = m.split("-").map((n) => parseInt(n, 10));
+  return `${MONTH_ABBR[mm! - 1]} ${y}`;
+};
 
 export function TrendsPage() {
   const { week } = useWeek();
   const [scope, setScope] = useState<string>("mission");
   const [nWeeks, setNWeeks] = useState(12);
+  const [measure, setMeasure] = useState<"actual" | "pct">("actual");
   const [visible, setVisible] = useState<Set<string>>(new Set(["NP", "BD", "SA"]));
 
   const mlcOnly = scope === "mlc";
@@ -31,9 +44,34 @@ export function TrendsPage() {
     [week, nWeeks, scope],
   );
 
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    return data.rows.map((row, i) => {
+      const g = data.goals[i];
+      const point: Record<string, number | string | null> = { label: row.label };
+      for (const code of KI_CODES) {
+        const a = row[code as "NP"];
+        if (measure === "pct") {
+          const goal = g ? g[code as "NP"] : 0;
+          point[code] = goal > 0 ? Math.round((a / goal) * 100) : null;
+        } else {
+          point[code] = a;
+        }
+      }
+      return point;
+    });
+  }, [data, measure]);
+
+  const toggle = (code: string) =>
+    setVisible((s) => {
+      const n = new Set(s);
+      n.has(code) ? n.delete(code) : n.add(code);
+      return n;
+    });
+
   return (
     <>
-      <h2>Trends</h2>
+      <PageHead title="Trends" />
       <div className="row">
         <label className="field" style={{ margin: 0 }}>
           <span className="k mono">Scope</span>
@@ -48,6 +86,13 @@ export function TrendsPage() {
           </select>
         </label>
         <label className="field" style={{ margin: 0 }}>
+          <span className="k mono">Measure</span>
+          <select value={measure} onChange={(e) => setMeasure(e.target.value as typeof measure)}>
+            <option value="actual">Actual count</option>
+            <option value="pct">% of goal</option>
+          </select>
+        </label>
+        <label className="field" style={{ margin: 0 }}>
           <span className="k mono">Window</span>
           <select value={nWeeks} onChange={(e) => setNWeeks(parseInt(e.target.value, 10))}>
             {[4, 8, 12, 26, 52].map((n) => (
@@ -56,21 +101,14 @@ export function TrendsPage() {
           </select>
         </label>
         <span className="row" style={{ gap: ".3rem" }}>
-          {KI_IDS.map((ki) => {
-            const code = KI_CODE[ki];
+          {KI_CODES.map((code) => {
             const on = visible.has(code);
             return (
               <button
-                key={ki}
+                key={code}
                 className="pill"
                 style={{ borderColor: on ? "var(--accent)" : undefined, color: on ? "var(--accent-ink)" : undefined }}
-                onClick={() =>
-                  setVisible((s) => {
-                    const n = new Set(s);
-                    n.has(code) ? n.delete(code) : n.add(code);
-                    return n;
-                  })
-                }
+                onClick={() => toggle(code)}
               >
                 {code}
               </button>
@@ -79,15 +117,92 @@ export function TrendsPage() {
         </span>
       </div>
 
-      {loading && <Loading what="series" />}
+      {loading && <Loading what="the series" />}
       {err && <ErrorNote err={err} />}
       {data && (
         <div style={{ width: "100%", height: 420, marginTop: "1rem" }}>
           <ResponsiveContainer>
-            <LineChart data={data.rows} margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
+            <LineChart data={chartData} margin={{ top: 8, right: 62, bottom: 8, left: 0 }}>
               <CartesianGrid stroke="var(--rule)" strokeDasharray="3 3" />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--ink-soft)" }} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--ink-soft)" }} width={44} />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--ink-soft)" }}
+                width={44}
+                unit={measure === "pct" ? "%" : undefined}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--rule-strong)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(v: number) => (measure === "pct" ? `${v}%` : v)}
+              />
+              <Legend />
+              {measure === "pct" && (
+                <ReferenceLine
+                  y={100}
+                  stroke="var(--ink-soft)"
+                  strokeDasharray="4 4"
+                  label={{ value: "on target", position: "right", fontSize: 10, fill: "var(--ink-soft)" }}
+                />
+              )}
+              {KI_CODES.map((code, i) => {
+                if (!visible.has(code)) return null;
+                return (
+                  <Line
+                    key={code}
+                    type="monotone"
+                    dataKey={code}
+                    stroke={COLORS[i % COLORS.length]}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                  />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      {data && measure === "pct" && (
+        <p className="muted" style={{ fontSize: ".8rem" }}>
+          Each line is that week’s actual as a percentage of that week’s goal. 100% is on target.
+          Weeks where the goal was 0 are skipped.
+        </p>
+      )}
+
+      <MonthlyBaptisms />
+    </>
+  );
+}
+
+function MonthlyBaptisms() {
+  const { data, err, loading } = useAsync(() => api.monthlyBaptisms(6), []);
+  const rows = useMemo(
+    () =>
+      (data?.months ?? []).map((m) => ({
+        label: fmtMonth(m.month),
+        confirmed: m.confirmed,
+        unverified: m.unverified,
+      })),
+    [data],
+  );
+  const hasUnverified = rows.some((r) => r.unverified > 0);
+
+  return (
+    <>
+      <h3 style={{ marginTop: "2.4rem" }}>Baptisms, last 6 months</h3>
+      {loading && <Loading what="baptism counts" />}
+      {err && <ErrorNote err={err} />}
+      {data && (
+        <div style={{ width: "100%", height: 260 }}>
+          <ResponsiveContainer>
+            <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+              <CartesianGrid stroke="var(--rule)" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--ink-soft)" }} />
+              <YAxis tick={{ fontSize: 11, fill: "var(--ink-soft)" }} width={36} allowDecimals={false} />
               <Tooltip
                 contentStyle={{
                   background: "var(--surface)",
@@ -96,25 +211,23 @@ export function TrendsPage() {
                   fontSize: 12,
                 }}
               />
-              <Legend />
-              {KI_IDS.map((ki, i) => {
-                const code = KI_CODE[ki];
-                if (!visible.has(code)) return null;
-                return (
-                  <Line
-                    key={ki}
-                    type="monotone"
-                    dataKey={code}
-                    stroke={COLORS[i % COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                );
-              })}
-            </LineChart>
+              {hasUnverified && <Legend />}
+              <Bar dataKey="confirmed" name="Confirmed" stackId="b" fill="var(--accent)" radius={hasUnverified ? [0, 0, 0, 0] : [3, 3, 0, 0]}>
+                {rows.map((_, i) => (
+                  <Cell key={i} />
+                ))}
+              </Bar>
+              {hasUnverified && (
+                <Bar dataKey="unverified" name="Unverified (legacy)" stackId="b" fill="var(--rule-strong)" radius={[3, 3, 0, 0]} />
+              )}
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
+      <p className="muted" style={{ fontSize: ".8rem" }}>
+        Named completed baptisms by the month of the baptism date, from the Baptisms (MLC) sheet and
+        portal records.
+      </p>
     </>
   );
 }

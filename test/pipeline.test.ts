@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { normalize, validate, ValidationError } from "../src/pipeline/readImos.js";
-import { byArea, byZone, mlc } from "../src/pipeline/rollup.js";
+import { byArea, byZone, goalSeries, mlc, series } from "../src/pipeline/rollup.js";
 import type { ImosPayload } from "../src/pipeline/types.js";
 
 const FIXTURE = fileURLToPath(new URL("./fixtures/ki_sample.json", import.meta.url));
@@ -140,5 +140,14 @@ describe("rollup", () => {
     expect(rows["Mt Vernon"]).toBeDefined();
     expect(rows.ALEXANDRIA).toBeDefined();
     expect(rows.ALEXANDRIA![100]!.actual).toBe(13);
+  });
+
+  it("series is actuals, goalSeries is the summed goals, same shape", () => {
+    const wk = [{ label: "w1", weekStart: "2026-08-17", facts }];
+    const a = series(wk)[0]!;
+    const g = goalSeries(wk)[0]!;
+    expect(a.NP).toBe(28); // mission NP actual
+    expect(g.NP).toBe(41); // mission NP goal
+    expect(Object.keys(g).sort()).toEqual(Object.keys(a).sort());
   });
 });

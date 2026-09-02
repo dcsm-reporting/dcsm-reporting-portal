@@ -55,6 +55,7 @@ import {
   friendsByStake,
   friendsSummary,
   listFriends,
+  monthlyBaptisms,
   recordBaptism,
   syncFriends,
   type SheetRow,
@@ -171,7 +172,7 @@ app.get("/api/week/:week", async (c) => {
 app.get("/api/trends", async (c) => {
   const q = c.req.query();
   const key = `trends:${q.upTo ?? ""}:${q.n ?? ""}:${q.zone ?? ""}:${q.mlcOnly ?? ""}`;
-  const rows = await cached(c.env, key, "ki", () =>
+  const out = await cached(c.env, key, "ki", () =>
     buildTrends(c.env.DB, {
       upTo: q.upTo || undefined,
       n: q.n ? parseInt(q.n, 10) : undefined,
@@ -179,7 +180,7 @@ app.get("/api/trends", async (c) => {
       mlcOnly: q.mlcOnly === "1" || q.mlcOnly === "true",
     }),
   );
-  return c.json({ rows });
+  return c.json(out);
 });
 
 app.get("/api/stakes/:week", async (c) => {
@@ -429,6 +430,16 @@ app.get("/api/friends", async (c) => {
     }),
   );
   return c.json({ friends: rows });
+});
+
+app.get("/api/friends/monthly", async (c) => {
+  const n = Math.min(24, Math.max(1, parseInt(c.req.query("n") || "6", 10) || 6));
+  const keyDay = new Date().toISOString().slice(0, 10);
+  return c.json(
+    await cached(c.env, `friends-monthly:${n}:${keyDay}`, "friends", async () => ({
+      months: await monthlyBaptisms(c.env.DB, n),
+    })),
+  );
 });
 
 app.get("/api/friends/summary", async (c) => {

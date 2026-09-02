@@ -135,6 +135,40 @@ export async function friendsByStake(db: D1Database, weekStart: string) {
   return byStake;
 }
 
+/**
+ * Completed-baptism counts for the last `months` calendar months (oldest first),
+ * split confirmed vs unverified-legacy. Feeds the Trends baptism bar chart.
+ */
+export async function monthlyBaptisms(
+  db: D1Database,
+  months = 6,
+): Promise<{ month: string; confirmed: number; unverified: number }[]> {
+  const now = new Date();
+  const keys: string[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    keys.push(d.toISOString().slice(0, 7));
+  }
+  const earliest = keys[0]!;
+  const { results } = await db
+    .prepare(
+      `SELECT substr(baptism_date,1,7) AS m,
+              sum(CASE WHEN confidence IS NULL OR confidence='confirmed' THEN 1 ELSE 0 END) AS c,
+              sum(CASE WHEN confidence='unverified' THEN 1 ELSE 0 END) AS u
+       FROM friend
+       WHERE baptized_confirmed = 1 AND baptism_date >= ?
+       GROUP BY m`,
+    )
+    .bind(`${earliest}-01`)
+    .all<{ m: string; c: number; u: number }>();
+  const byMonth = new Map((results ?? []).map((r) => [r.m, r]));
+  return keys.map((month) => ({
+    month,
+    confirmed: byMonth.get(month)?.c ?? 0,
+    unverified: byMonth.get(month)?.u ?? 0,
+  }));
+}
+
 // --- portal-native record (close-the-gap on reconciliation) --------------
 export interface RecordInput {
   name: string;

@@ -9,6 +9,7 @@ import {
   byArea,
   byStake,
   byZone,
+  goalSeries,
   mlc,
   monthByZone,
   series,
@@ -157,7 +158,8 @@ export async function buildTrends(
     if (opts.mlcOnly) f = withMlc(f, await mlcAreaIdsForWeek(db, w, cfg.mlcPositions));
     wf.push({ label: weekLabel(w), weekStart: w, facts: f });
   }
-  return series(wf, { zone: opts.zone ?? null, mlcOnly: opts.mlcOnly ?? false, exclude });
+  const so = { zone: opts.zone ?? null, mlcOnly: opts.mlcOnly ?? false, exclude };
+  return { rows: series(wf, so), goals: goalSeries(wf, so) };
 }
 
 export async function buildStakeView(db: D1Database, weekStart: string, windowN = 12) {

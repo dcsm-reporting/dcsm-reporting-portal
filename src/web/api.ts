@@ -100,8 +100,12 @@ export const api = {
     if (q.n) p.set("n", String(q.n));
     if (q.zone) p.set("zone", q.zone);
     if (q.mlcOnly) p.set("mlcOnly", "1");
-    return jget<{ rows: SeriesRow[] }>(`/api/trends?${p}`);
+    return jget<{ rows: SeriesRow[]; goals: SeriesRow[] }>(`/api/trends?${p}`);
   },
+  monthlyBaptisms: (n = 6) =>
+    jget<{ months: { month: string; confirmed: number; unverified: number }[] }>(
+      `/api/friends/monthly?n=${n}`,
+    ),
   stakes: (w: string) => jget<StakeView>(`/api/stakes/${w}`),
   chase: (w: string) => jget<ChaseView>(`/api/chase/${w}`),
   ackNotReported: (w: string, imosAreaId: number, reason: string) =>

@@ -229,32 +229,53 @@ function sumActuals(
   return tot;
 }
 
-export function series(
-  weeks: WeekFacts[],
-  opts: { zone?: string | null; mlcOnly?: boolean; exclude?: ReadonlySet<string> } = {},
-): SeriesRow[] {
+function sumGoals(
+  facts: Iterable<KiFact>,
+  keep: (r: KiFact) => boolean,
+): Record<number, number> {
+  const tot: Record<number, number> = {};
+  for (const ki of KI_IDS) tot[ki] = 0;
+  for (const r of facts) {
+    if (!keep(r)) continue;
+    tot[r.kiId] = (tot[r.kiId] ?? 0) + (r.goal ?? 0);
+  }
+  return tot;
+}
+
+type SeriesOpts = { zone?: string | null; mlcOnly?: boolean; exclude?: ReadonlySet<string> };
+
+function keepFn(opts: SeriesOpts) {
   const exclude = opts.exclude ?? DEFAULT_ZONE_EXCLUDE;
   const zone = opts.zone ?? null;
   const mlcOnly = opts.mlcOnly ?? false;
-  const keep = (r: KiFact) => {
+  return (r: KiFact) => {
     if (exclude.has(r.zoneName)) return false;
     if (zone !== null && r.zoneName !== zone) return false;
     if (mlcOnly && !r.isMlc) return false;
     return true;
   };
-  return weeks.map(({ label, weekStart, facts }) => {
-    const t = sumActuals(facts, keep);
-    return {
-      label,
-      weekStart,
-      BC: t[20]!,
-      BD: t[30]!,
-      SA: t[40]!,
-      NP: t[100]!,
-      LMP: t[600]!,
-      NMS: t[300]!,
-    } satisfies SeriesRow;
-  });
+}
+
+const toRow = (label: string, weekStart: string, t: Record<number, number>): SeriesRow => ({
+  label,
+  weekStart,
+  BC: t[20]!,
+  BD: t[30]!,
+  SA: t[40]!,
+  NP: t[100]!,
+  LMP: t[600]!,
+  NMS: t[300]!,
+});
+
+export function series(weeks: WeekFacts[], opts: SeriesOpts = {}): SeriesRow[] {
+  const keep = keepFn(opts);
+  return weeks.map(({ label, weekStart, facts }) => toRow(label, weekStart, sumActuals(facts, keep)));
+}
+
+/** Same shape as series(), but each cell is the summed goal for that week. */
+export function goalSeries(weeks: WeekFacts[], opts: SeriesOpts = {}): SeriesRow[] {
+  const keep = keepFn(opts);
+  return weeks.map(({ label, weekStart, facts }) => toRow(label, weekStart, sumGoals(facts, keep)));
 }
 
 export interface WeekWardFacts {
