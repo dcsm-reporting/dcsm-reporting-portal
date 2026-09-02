@@ -62,7 +62,7 @@ import {
 } from "./friends.js";
 import { buildReconcile } from "./reconcile.js";
 import { buildPublish } from "./publish.js";
-import { getStakeRecipients, upsertStakeRecipient } from "./db.js";
+import { getConfig, getStakeRecipients, upsertStakeRecipient } from "./db.js";
 import stakeRecipientsSeed from "../../resources/stake_recipients.json";
 
 /** Parsed once — the Area To Ward Key is bundled as text. */
@@ -532,7 +532,7 @@ app.get("/api/export", async (c) => {
   const tables = [
     "import_run", "ki_fact", "ward_fact", "missionary_snapshot", "area_history",
     "canonical_area", "area_crosswalk", "area_ward", "friend", "friend_week",
-    "friend_sync", "stake_recipients", "config", "audit_log",
+    "friend_sync", "not_reported_ack", "stake_recipients", "config", "audit_log",
   ];
   const dump: Record<string, unknown[]> = {};
   for (const t of tables) {
@@ -560,14 +560,18 @@ app.get("/api/publish/:week", async (c) => {
   return c.json(await cached(c.env, `publish:${week}`, "both", () => buildPublish(c.env.DB, week)));
 });
 
-app.get("/api/recipients", async (c) => c.json({ recipients: await getStakeRecipients(c.env.DB) }));
+app.get("/api/recipients", async (c) =>
+  c.json({
+    recipients: await getStakeRecipients(c.env.DB),
+    ccAll: await getConfig<string[]>(c.env.DB, "report_cc_all", []),
+  }),
+);
 
 app.post("/api/recipients", async (c) => {
   const b = await c.req.json<{
     stake: string;
     presidentName?: string;
     toEmails?: string;
-    ccEmails?: string;
   }>();
   if (!b.stake) throw new HTTPException(400, { message: "stake is required" });
   await upsertStakeRecipient(
@@ -576,13 +580,25 @@ app.post("/api/recipients", async (c) => {
       stake: b.stake,
       presidentName: b.presidentName ?? null,
       toEmails: b.toEmails ?? null,
-      ccEmails: b.ccEmails ?? null,
+      ccEmails: null,
     },
     c.get("user"),
   );
   await audit(c.env.DB, c.get("user"), "recipients.set", { stake: b.stake });
   await bumpData(c.env);
   return c.json({ ok: true });
+});
+
+/** The single CC list applied to every stake report. */
+app.post("/api/recipients/cc", async (c) => {
+  const b = await c.req.json<{ ccAll: string[] }>();
+  const list = (Array.isArray(b.ccAll) ? b.ccAll : [])
+    .map((s) => String(s).trim())
+    .filter((s) => s.includes("@"));
+  await setConfig(c.env.DB, "report_cc_all", list);
+  await audit(c.env.DB, c.get("user"), "recipients.cc", { count: list.length });
+  await bumpData(c.env);
+  return c.json({ ok: true, ccAll: list });
 });
 
 app.post("/api/recipients/seed", async (c) => {
@@ -595,12 +611,24 @@ app.post("/api/recipients/seed", async (c) => {
   for (const r of seed) {
     await upsertStakeRecipient(
       c.env.DB,
-      { stake: r.stake, presidentName: r.president || null, toEmails: r.to || null, ccEmails: r.cc || null },
+      { stake: r.stake, presidentName: r.president || null, toEmails: r.to || null, ccEmails: null },
       "recipients-seed",
     );
   }
+  // the sheet's CC column is identical across every stake — lift it to the one
+  // mission-wide CC list
+  const cc = [
+    ...new Set(
+      seed
+        .flatMap((r) => (r.cc || "").split(/[,;\s]+/))
+        .map((s) => s.trim())
+        .filter((s) => s.includes("@")),
+    ),
+  ];
+  if (cc.length) await setConfig(c.env.DB, "report_cc_all", cc);
+
   await bumpData(c.env);
-  return c.json({ ok: true, seeded: seed.length });
+  return c.json({ ok: true, seeded: seed.length, ccAll: cc });
 });
 
 app.get("/api/reconcile", async (c) => {

@@ -3,7 +3,8 @@ import { api, type PublishView } from "../api.js";
 import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 import { Board, MlcBoard } from "../publish/boards.js";
 import { StakeReportDoc } from "../publish/stakeReport.js";
-import { copyRichHtml, downloadPng, gmailComposeUrl } from "../publish/download.js";
+import { copyEmail, copyRichHtml, downloadPng, gmailComposeUrl } from "../publish/download.js";
+import { buildEmail } from "../publish/email.js";
 import "../publish/publish.css";
 
 const ZONE_ABBR: Record<string, string> = {
@@ -158,6 +159,8 @@ function Reports({ data }: { data: PublishView }) {
   const [msg, setMsg] = useState("");
   if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
 
+  const email = buildEmail({ stake: r.stake, presidentName: r.presidentName, weekStartIso: data.week });
+
   const printReport = () => {
     document.body.classList.add("printing");
     const done = () => {
@@ -166,6 +169,10 @@ function Reports({ data }: { data: PublishView }) {
     };
     window.addEventListener("afterprint", done);
     setTimeout(() => window.print(), 50);
+  };
+  const flash = (m: string) => {
+    setMsg(m);
+    setTimeout(() => setMsg(""), 3000);
   };
 
   return (
@@ -176,43 +183,56 @@ function Reports({ data }: { data: PublishView }) {
             <option key={x.stake} value={x.stake}>{x.stake}</option>
           ))}
         </select>
-        <button className="btn" onClick={printReport}>Print / Save PDF</button>
-        <button
-          className="btn"
-          onClick={async () => {
-            if (!ref.current) return;
-            const ok = await copyRichHtml(ref.current);
-            setMsg(ok ? "Copied. Paste into the email." : "Copy failed; use Print instead.");
-            setTimeout(() => setMsg(""), 3000);
-          }}
-        >
-          Copy for email
-        </button>
         {r.toEmails.length > 0 && (
           <a
-            className="btn"
-            href={gmailComposeUrl(r.toEmails, r.ccEmails, `${r.stake} Stake, Key Indicators of Conversion (${data.weekLabel})`)}
+            className="btn primary"
+            href={gmailComposeUrl(r.toEmails, r.ccEmails, email.subject, email.bodyText)}
             target="_blank"
             rel="noopener noreferrer"
           >
             Open in Gmail ↗
           </a>
         )}
+        <button
+          className="btn"
+          onClick={async () => {
+            if (!ref.current) return;
+            const ok = await copyEmail(email.bodyHtml, email.bodyText, ref.current);
+            flash(ok ? "Letter + report copied. Paste into the email body." : "Copy failed; use Print.");
+          }}
+        >
+          Copy full email
+        </button>
+        <button
+          className="btn"
+          onClick={async () => {
+            if (!ref.current) return;
+            const ok = await copyRichHtml(ref.current);
+            flash(ok ? "Report copied." : "Copy failed; use Print.");
+          }}
+        >
+          Copy report only
+        </button>
+        <button className="btn" onClick={printReport}>Print / Save PDF</button>
         {msg && <span className="muted" style={{ fontSize: ".85rem" }}>{msg}</span>}
       </div>
 
       <div className="no-print" style={{ fontSize: ".82rem", color: "var(--ink-soft)", marginTop: ".4rem" }}>
         {r.toEmails.length === 0 ? (
           <>
-            No recipients on file for {r.stake}. Add them in <strong>Structure → Recipients</strong> or seed from the
-            EMAILS sheet.
+            No recipients on file for {r.stake}. Add them in <strong>Structure → Recipients</strong>.
           </>
         ) : (
           <div className="recipient-chips">
             {r.toEmails.map((e) => <span key={e} className="chip to">{e}</span>)}
             {r.ccEmails.map((e) => <span key={e} className="chip">cc {e}</span>)}
+            {r.ccEmails.length === 0 && <span className="muted">no CC list set</span>}
           </div>
         )}
+      </div>
+      <div className="no-print" style={{ fontSize: ".8rem", color: "var(--ink-faint)", marginTop: ".3rem" }}>
+        <strong>Open in Gmail</strong> prefills the recipients, subject, and cover letter.{" "}
+        <strong>Copy full email</strong> puts the letter + report on your clipboard to paste into the body.
       </div>
 
       <div className="publish-preview print-target" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>

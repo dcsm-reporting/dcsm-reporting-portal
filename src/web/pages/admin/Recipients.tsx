@@ -5,25 +5,45 @@ import { ErrorNote, Loading, useAsync } from "../../lib.js";
 export function RecipientsPage() {
   const { data, err, loading, reload } = useAsync(() => api.recipients(), []);
   const [rows, setRows] = useState<StakeRecipient[]>([]);
+  const [cc, setCc] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (data) setRows(data.recipients);
+    if (data) {
+      setRows(data.recipients);
+      setCc(data.ccAll.join(", "));
+    }
   }, [data]);
 
   if (loading) return <Loading what="recipients" />;
   if (err) return <ErrorNote err={err} />;
 
-  const patch = (i: number, k: keyof StakeRecipient, v: string) =>
+  const patch = (i: number, k: "presidentName" | "toEmails", v: string) =>
     setRows((r) => r.map((row, j) => (j === i ? { ...row, [k]: v } : row)));
 
-  const save = async (r: StakeRecipient) => {
+  const flash = (m: string) => {
+    setMsg(m);
+    setTimeout(() => setMsg(null), 2000);
+  };
+
+  const saveRow = async (r: StakeRecipient) => {
     setBusy(r.stake);
     try {
-      await api.setRecipient(r);
-      setMsg(`saved ${r.stake}`);
-      setTimeout(() => setMsg(null), 2000);
+      await api.setRecipient({ stake: r.stake, presidentName: r.presidentName, toEmails: r.toEmails });
+      flash(`saved ${r.stake}`);
+      reload();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveCc = async () => {
+    setBusy("__cc");
+    try {
+      const list = cc.split(/[,;\s]+/).map((s) => s.trim()).filter((s) => s.includes("@"));
+      await api.setReportCc(list);
+      flash("CC list saved");
       reload();
     } finally {
       setBusy(null);
@@ -34,20 +54,38 @@ export function RecipientsPage() {
     <>
       <h3 style={{ margin: 0 }}>Stake-report recipients</h3>
       <p className="muted" style={{ fontSize: ".85rem", maxWidth: "70ch" }}>
-        Used by the Publish page's "Open in Gmail" link. Comma-separate multiple addresses. The CC
-        column also picks up the mission-wide CC list from Config.
+        Used by the Publish page's "Open in Gmail" link. Comma-separate multiple addresses.
       </p>
+
+      {msg && <div className="note">{msg}</div>}
+
+      <div className="drawer">
+        <strong>CC on every stake report</strong>
+        <p className="muted" style={{ fontSize: ".82rem" }}>
+          The same list is CC'd on all eleven reports (mission leadership, secretary, etc.).
+        </p>
+        <div className="field">
+          <input
+            value={cc}
+            onChange={(e) => setCc(e.target.value)}
+            placeholder="president@…, secretary@…"
+          />
+        </div>
+        <button className="btn primary" disabled={busy === "__cc"} onClick={saveCc}>
+          {busy === "__cc" ? "Saving…" : "Save CC list"}
+        </button>
+      </div>
 
       {rows.length === 0 && (
         <div className="note">
-          Nothing here yet.{" "}
+          No stakes yet.{" "}
           <button
             className="btn"
             onClick={async () => {
               setBusy("__seed");
               try {
                 const r = await api.seedRecipients();
-                setMsg(`seeded ${r.seeded} stakes`);
+                flash(`seeded ${r.seeded} stakes`);
                 reload();
               } finally {
                 setBusy(null);
@@ -59,27 +97,24 @@ export function RecipientsPage() {
         </div>
       )}
 
-      {msg && <div className="note">{msg}</div>}
-
       {rows.map((r, i) => (
         <div className="drawer" key={r.stake}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <strong>{r.stake}</strong>
-            <button className="btn" disabled={busy === r.stake} onClick={() => save(r)}>
+            <button className="btn" disabled={busy === r.stake} onClick={() => saveRow(r)}>
               {busy === r.stake ? "Saving…" : "Save"}
             </button>
           </div>
           <div className="field">
-            <label>Stake president</label>
-            <input value={r.presidentName ?? ""} onChange={(e) => patch(i, "presidentName", e.target.value)} />
+            <label>Stake president (used in the letter greeting)</label>
+            <input
+              value={r.presidentName ?? ""}
+              onChange={(e) => patch(i, "presidentName", e.target.value)}
+            />
           </div>
           <div className="field">
             <label>To</label>
             <input value={r.toEmails ?? ""} onChange={(e) => patch(i, "toEmails", e.target.value)} />
-          </div>
-          <div className="field">
-            <label>CC</label>
-            <input value={r.ccEmails ?? ""} onChange={(e) => patch(i, "ccEmails", e.target.value)} />
           </div>
         </div>
       ))}

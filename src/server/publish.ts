@@ -70,7 +70,8 @@ export async function buildPublish(db: D1Database, week: string) {
       stake,
       presidentName: rec?.presidentName ?? null,
       toEmails: splitEmails(rec?.toEmails),
-      ccEmails: [...new Set([...splitEmails(rec?.ccEmails), ...ccAll])],
+      // CC is one mission-wide list now (report_cc_all), not per stake
+      ccEmails: [...new Set(ccAll)],
       wardTable: Object.entries(g.wards)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([ward, ki]) => ({ ward, ki: ki as Record<number, number> })),

@@ -206,8 +206,11 @@ export const api = {
 
   // --- publish ---------------------------------------------------
   publish: (week: string) => jget<PublishView>(`/api/publish/${week}`),
-  recipients: () => jget<{ recipients: StakeRecipient[] }>("/api/recipients"),
-  setRecipient: (r: StakeRecipient) => jpost<{ ok: true }>("/api/recipients", r),
+  recipients: () => jget<{ recipients: StakeRecipient[]; ccAll: string[] }>("/api/recipients"),
+  setRecipient: (r: { stake: string; presidentName: string | null; toEmails: string | null }) =>
+    jpost<{ ok: true }>("/api/recipients", r),
+  setReportCc: (ccAll: string[]) =>
+    jpost<{ ok: true; ccAll: string[] }>("/api/recipients/cc", { ccAll }),
   seedRecipients: () => jpost<{ ok: true; seeded: number }>("/api/recipients/seed", {}),
 };
 
@@ -215,7 +218,6 @@ export interface StakeRecipient {
   stake: string;
   presidentName: string | null;
   toEmails: string | null;
-  ccEmails: string | null;
 }
 
 export interface StakeReport {

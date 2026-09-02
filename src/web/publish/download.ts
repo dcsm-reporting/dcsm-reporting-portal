@@ -13,11 +13,8 @@ export async function downloadPng(node: HTMLElement, filename: string): Promise<
   a.click();
 }
 
-/** Copy an element's rich HTML to the clipboard so it pastes formatted into Gmail. */
-export async function copyRichHtml(node: HTMLElement): Promise<boolean> {
+async function writeClipboard(html: string, text: string): Promise<boolean> {
   try {
-    const html = node.outerHTML;
-    const text = node.innerText;
     await navigator.clipboard.write([
       new ClipboardItem({
         "text/html": new Blob([html], { type: "text/html" }),
@@ -27,7 +24,7 @@ export async function copyRichHtml(node: HTMLElement): Promise<boolean> {
     return true;
   } catch {
     try {
-      await navigator.clipboard.writeText(node.innerText);
+      await navigator.clipboard.writeText(text);
       return true;
     } catch {
       return false;
@@ -35,8 +32,26 @@ export async function copyRichHtml(node: HTMLElement): Promise<boolean> {
   }
 }
 
-/** A Gmail "compose" deep link with recipients + subject prefilled. */
-export function gmailComposeUrl(to: string[], cc: string[], subject: string): string {
+/** Copy an element's rich HTML to the clipboard so it pastes formatted into Gmail. */
+export function copyRichHtml(node: HTMLElement): Promise<boolean> {
+  return writeClipboard(node.outerHTML, node.innerText);
+}
+
+/** Copy the cover letter followed by the report, as one rich block. */
+export function copyEmail(letterHtml: string, letterText: string, reportNode: HTMLElement): Promise<boolean> {
+  const html = `<div>${letterHtml}<div style="margin-top:24px">${reportNode.outerHTML}</div></div>`;
+  const text = `${letterText}\n\n${reportNode.innerText}`;
+  return writeClipboard(html, text);
+}
+
+/** A Gmail "compose" deep link with recipients, subject, and body prefilled.
+ *  Gmail only accepts a plain-text body here. */
+export function gmailComposeUrl(
+  to: string[],
+  cc: string[],
+  subject: string,
+  body = "Report pasted below.\n\n",
+): string {
   const p = new URLSearchParams({
     view: "cm",
     fs: "1",
@@ -44,6 +59,6 @@ export function gmailComposeUrl(to: string[], cc: string[], subject: string): st
     su: subject,
   });
   if (cc.length) p.set("cc", cc.join(","));
-  p.set("body", "Report pasted below.\n\n");
+  p.set("body", body);
   return `https://mail.google.com/mail/?${p.toString()}`;
 }
