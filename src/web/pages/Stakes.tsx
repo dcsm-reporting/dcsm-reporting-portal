@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
 import { api, type FriendRow } from "../api.js";
-import { ErrorNote, KI_CODE, KI_IDS, Loading, useAsync, useWeek } from "../lib.js";
+import { ErrorNote, KI_CODE, KI_IDS, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 
 type StakeFriends = Record<string, { onDate: FriendRow[]; baptized: FriendRow[] }>;
 
@@ -20,23 +20,22 @@ export function StakesPage() {
   if (!data) return null;
 
   const stake = sel ?? data.stakes[0] ?? null;
-  if (!stake) return <p className="muted">No stake rollups yet — seed the crosswalk in Admin.</p>;
+  if (!stake) return <p className="muted">No stake rollups yet. Seed the crosswalk in Structure.</p>;
   const g = data.byStake[stake]!;
   const wards = Object.keys(g.wards).sort();
 
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h2>Stakes — {data.weekLabel}</h2>
+      <PageHead title={`Stakes: ${data.weekLabel}`} week>
         <select value={stake} onChange={(e) => setSel(e.target.value)}>
           {data.stakes.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
-      </div>
+      </PageHead>
       {stake === "(unmapped)" && (
         <div className="note warn">
-          These wards have no crosswalk row for this week. Resolve them in Admin → Crosswalk.
+          These wards have no crosswalk row for this week. Resolve them in Structure → Crosswalk.
         </div>
       )}
 
@@ -88,14 +87,14 @@ export function StakesPage() {
         const fb = friends.data?.[stake];
         return (
           <>
-            <h3>On date — {stake}</h3>
+            <h3>On date: {stake}</h3>
             {!fb || fb.onDate.length === 0 ? (
               <p className="muted">None on the Baptisms (MLC) sheet for this stake.</p>
             ) : (
               <ul>
                 {fb.onDate.map((f) => (
                   <li key={f.id}>
-                    <strong>{f.name}</strong> — {f.baptismDate}
+                    <strong>{f.name}</strong>, {f.baptismDate}
                     {f.ward ? ` · ${f.ward}` : ""}
                     {f.onBaptismCalendar ? " · 📅" : ""}
                     {f.attendedChurch2x ? " · ⛪×2" : ""}
@@ -105,11 +104,11 @@ export function StakesPage() {
             )}
             {fb && fb.baptized.length > 0 && (
               <>
-                <h3>Baptized (last 6 months) — {stake}</h3>
+                <h3>Baptized (last 6 months): {stake}</h3>
                 <ul>
                   {fb.baptized.map((f) => (
                     <li key={f.id}>
-                      <strong>{f.name}</strong> — {f.baptismDate}
+                      <strong>{f.name}</strong>, {f.baptismDate}
                       {f.ward ? ` · ${f.ward}` : ""}
                     </li>
                   ))}
@@ -121,7 +120,7 @@ export function StakesPage() {
       })()}
 
       <p className="muted" style={{ fontSize: ".78rem" }}>
-        {data.wardMapSize} ward→stake rows effective this week. Actual counts only — IMOS carries goals at area level, not ward.
+        {data.wardMapSize} ward→stake rows effective this week. Actual counts only; IMOS carries goals at area level, not ward.
         {" "}On-date names from the Baptisms (MLC) sheet.
       </p>
     </>

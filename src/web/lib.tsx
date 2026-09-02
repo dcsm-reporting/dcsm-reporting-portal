@@ -94,6 +94,36 @@ export function WeekPicker() {
   );
 }
 
+/**
+ * Standard page header: title on the left, an optional week selector on the
+ * right. The selector used to live in the masthead; it belongs with the pages
+ * that actually vary by week.
+ */
+export function PageHead({
+  title,
+  week = false,
+  children,
+}: {
+  title: React.ReactNode;
+  week?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="page-head">
+      <h2>{title}</h2>
+      <span className="page-head-controls">
+        {children}
+        {week && (
+          <label className="wk-inline">
+            <span className="k mono">Week</span>
+            <WeekPicker />
+          </label>
+        )}
+      </span>
+    </div>
+  );
+}
+
 // --- KI cell rendering --------------------------------------------
 export function bandClass(pct: number | null, lo = 50, mid = 80): string {
   if (pct === null || pct === undefined) return "na";
@@ -127,7 +157,7 @@ export function KiCells({
     <>
       {KI_IDS.map((ki) => {
         const c = row[ki];
-        if (!c) return <td key={ki} className="ki-group">—</td>;
+        if (!c) return <td key={ki} className="ki-group">–</td>;
         return (
           <td key={ki} className="ki-group">
             <span className="cell-actual">{c.actual}</span>

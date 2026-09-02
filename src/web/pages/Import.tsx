@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { api, type ImportSummary } from "../api.js";
-import { useWeek } from "../lib.js";
+import { PageHead, useWeek } from "../lib.js";
 
 const IMOS_BASE = "https://imos.churchofjesuschrist.org/ws/auth-controller/api-v1/ki/report";
 
@@ -77,10 +77,10 @@ export function ImportPage() {
 
   return (
     <>
-      <h2>Import an IMOS week</h2>
+      <PageHead title="Import an IMOS week" />
       <p className="muted" style={{ maxWidth: "70ch" }}>
         Pick the reporting week, open it in IMOS (you’ll need to be signed in to a missionary
-        account), copy the whole JSON response, and paste it below. Retrieval stays manual — the
+        account), copy the whole JSON response, and paste it below. Retrieval stays manual; the
         Church login is never automated.
       </p>
 
@@ -133,15 +133,15 @@ export function ImportPage() {
 
         {spanDays !== 7 && (
           <div className="note warn" style={{ marginTop: ".8rem" }}>
-            This range is {spanDays} days. IMOS will happily return it, but it isn’t a Mon–Sun week —
-            importing it stores one aggregated row under {active.monday}, which will skew the weekly
-            series. Use it only for a deliberate one-off.
+            This range is {spanDays} days. IMOS will happily return it, but it isn’t a Mon to Sun
+            week: importing it stores one aggregated row under {active.monday}, which will skew the
+            weekly series. Use it only for a deliberate one-off.
           </div>
         )}
       </div>
 
       <div className="field">
-        <label>IMOS KI report JSON</label>
+        <label>IMOS report JSON</label>
         <textarea
           className="paste"
           value={raw}
@@ -167,7 +167,7 @@ export function ImportPage() {
         </div>
       )}
 
-      {preview && <SummaryBlock s={preview} heading="Validation — not yet stored" />}
+      {preview && <SummaryBlock s={preview} heading="Validation (not yet stored)" />}
       {committed && (
         <>
           <div className="note ok">
@@ -191,15 +191,15 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
       <div className="cards">
         <Stat k="Week" v={s.weekLabel} sub={`${s.weekStart} → ${s.weekEnd} · ${span} days`} />
         <Stat k="Active areas" v={s.activeAreas} />
-        <Stat k="KI facts" v={s.nFacts} />
+        <Stat k="Data points" v={s.nFacts} />
         <Stat k="Ward rows" v={s.nWardFacts} />
         <Stat k="Missionaries" v={s.nMissionaries} />
       </div>
       {span !== 7 && (
-        <div className="note warn">This payload covers {span} days — not a normal week.</div>
+        <div className="note warn">This payload covers {span} days, not a normal week.</div>
       )}
       {s.alreadyStored && (
-        <div className="note warn">A week with this start date is already stored — committing overwrites its rows.</div>
+        <div className="note warn">A week with this start date is already stored; committing overwrites its rows.</div>
       )}
       {s.warnings.length > 0 && (
         <div className="note warn">

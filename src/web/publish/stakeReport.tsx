@@ -36,7 +36,7 @@ const td: React.CSSProperties = {
 };
 
 function fmt(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "–";
   const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
   const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][(m || 1) - 1];
   return y ? `${mon} ${d}` : iso;
@@ -78,11 +78,10 @@ export const StakeReportDoc = forwardRef<HTMLDivElement, { r: StakeReport; weekL
           Washington DC South Mission
         </div>
         <div style={{ fontFamily: '"Spectral", Georgia, serif', fontSize: 26, fontWeight: 600 }}>
-          {r.stake} Stake — Key Indicators
+          {r.stake} Stake
         </div>
         <div style={{ fontSize: 12, color: "#53606b" }}>
-          {weekLabel}
-          {r.presidentName ? ` · President ${r.presidentName}` : ""}
+          Key Indicators of Conversion · {weekLabel}
         </div>
 
         <div style={{ display: "flex", gap: 28, marginTop: 16 }}>
@@ -165,7 +164,7 @@ export const StakeReportDoc = forwardRef<HTMLDivElement, { r: StakeReport; weekL
               {r.onDate.map((f, i) => (
                 <tr key={i}>
                   <td style={{ ...td, textAlign: "left" }}>{f.name}</td>
-                  <td style={{ ...td, textAlign: "left" }}>{f.ward ?? "—"}</td>
+                  <td style={{ ...td, textAlign: "left" }}>{f.ward ?? "–"}</td>
                   <td style={{ ...td, textAlign: "left" }}>{fmt(f.baptismDate)}</td>
                   <td style={td}>{f.attendedChurch2x ? "✓" : ""}</td>
                   <td style={td}>{f.onBaptismCalendar ? "✓" : ""}</td>
@@ -189,7 +188,7 @@ export const StakeReportDoc = forwardRef<HTMLDivElement, { r: StakeReport; weekL
                       <span style={{ color: "#97620f", fontSize: 10 }}> (unverified)</span>
                     ) : null}
                   </td>
-                  <td style={{ ...td, textAlign: "left" }}>{f.ward ?? "—"}</td>
+                  <td style={{ ...td, textAlign: "left" }}>{f.ward ?? "–"}</td>
                   <td style={{ ...td, textAlign: "left" }}>{fmt(f.baptismDate)}</td>
                 </tr>
               ))}
@@ -198,7 +197,7 @@ export const StakeReportDoc = forwardRef<HTMLDivElement, { r: StakeReport; weekL
         )}
 
         <div style={{ marginTop: 26, fontSize: 10, color: "#8a95a0", fontFamily: '"IBM Plex Mono", monospace' }}>
-          Generated {new Date(generatedAt).toLocaleString()} · DCSM KI Portal
+          Generated {new Date(generatedAt).toLocaleString()} · DCSM Reporting
         </div>
       </div>
     );

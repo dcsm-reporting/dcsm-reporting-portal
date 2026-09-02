@@ -7,6 +7,7 @@ import {
   KiCells,
   KiHeadCells,
   Loading,
+  PageHead,
   bandClass,
   useAsync,
   useWeek,
@@ -27,13 +28,12 @@ export function ThisWeekPage() {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h2>{data.weekLabel}</h2>
+      <PageHead title={data.weekLabel} week>
         <span className="muted mono" style={{ fontSize: ".78rem" }}>
           {data.resolve.resolvedCount} areas resolved
           {data.resolve.unmapped.length > 0 && ` · ${data.resolve.unmapped.length} unmapped`}
         </span>
-      </div>
+      </PageHead>
 
       {data.resolve.unmapped.length > 0 && (
         <div className="note warn">
@@ -87,7 +87,7 @@ export function ThisWeekPage() {
         </table>
       </div>
 
-      <h3>MLC share — this week vs last</h3>
+      <h3>MLC share: this week vs last</h3>
       <div className="board-wrap">
         <table className="board">
           <thead>

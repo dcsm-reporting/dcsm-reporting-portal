@@ -1,17 +1,17 @@
 import { api } from "../api.js";
-import { ErrorNote, Loading, useAsync, useWeek } from "../lib.js";
+import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 
 export function ChasePage() {
   const { week } = useWeek();
   const { data, err, loading } = useAsync(() => api.chase(week!), [week]);
   if (!week) return <p className="muted">No weeks imported yet.</p>;
-  if (loading) return <Loading what="chase list" />;
+  if (loading) return <Loading what="the not-reported list" />;
   if (err) return <ErrorNote err={err} />;
   if (!data) return null;
 
   return (
     <>
-      <h2>Chase list — {data.weekLabel}</h2>
+      <PageHead title={`Not reported: ${data.weekLabel}`} week />
       <p className="muted" style={{ maxWidth: "70ch" }}>
         Areas whose IMOS numbers were not touched during this reporting week (from each area’s{" "}
         <code>history[].modifiedDate</code>). This replaces the old Sunday-night form nudge.
@@ -25,8 +25,9 @@ export function ChasePage() {
             {data.newCount > 0 && (
               <>
                 {" "}
-                <strong>{data.newCount}</strong> of them are <em>brand-new this transfer</em> — no
-                prior week to compare, so a blank first week is expected, not a missed report.
+                <strong>{data.newCount}</strong> of them are <em>brand-new this transfer</em>, so
+                there is no prior week to compare and a blank first week is expected, not a missed
+                report.
               </>
             )}
           </div>

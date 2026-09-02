@@ -107,7 +107,7 @@ function RolloverBody({
   return (
     <>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3 style={{ margin: 0 }}>Transfer rollover — {plan.weekStart}</h3>
+        <h3 style={{ margin: 0 }}>Transfer rollover: {plan.weekStart}</h3>
         <button className="btn" onClick={reload}>Re-scan</button>
       </div>
 
@@ -160,7 +160,7 @@ function RolloverBody({
       {plan.summary.areasNew > 0 && (
         <div className="note">
           <strong>“new”</strong> marks an area that appears this week but wasn’t in last week’s
-          payload — usually a transfer split (one area becoming two). Give it its own canonical key
+          payload, usually a transfer split (one area becoming two). Give it its own canonical key
           and map it; its history simply starts here. If it’s really the <em>same</em> area under a
           new IMOS id, set the key to the existing one instead and untick “New?”.
         </div>
@@ -321,7 +321,7 @@ function RolloverBody({
             {busy ? "Applying…" : `Apply ${areaSel.size} area${areaSel.size === 1 ? "" : "s"} + ${wardSel.size} ward${wardSel.size === 1 ? "" : "s"} effective ${week}`}
           </button>
           <span className="muted" style={{ fontSize: ".8rem" }}>
-            Effective-dated from {week} — earlier weeks keep their old mapping.
+            Effective-dated from {week}; earlier weeks keep their old mapping.
           </span>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { api, type Structure, type StructureArea } from "../../api.js";
 import { ErrorNote, Loading, useAsync, useWeek } from "../../lib.js";
 
@@ -44,25 +44,30 @@ export function AreasPage() {
             {rows.map((a) => {
               const cur = a.mappings.find((m) => m.open) ?? a.mappings[0];
               const stakes = [...new Set(a.wards.filter((w) => w.open).map((w) => w.stake))];
+              const isOpen = open === a.key;
               return (
-                <tr key={a.key} style={{ cursor: "pointer" }} onClick={() => setOpen(open === a.key ? null : a.key)}>
-                  <td>{open === a.key ? "▾ " : "▸ "}{a.displayName}</td>
-                  <td className="mono">{a.key}</td>
-                  <td>{cur ? <>{cur.imosAreaName}<span className="muted mono" style={{ fontSize: ".72rem" }}> #{cur.imosAreaId}</span></> : <span className="muted">none</span>}</td>
-                  <td>{a.wards.filter((w) => w.open).length}</td>
-                  <td style={{ textAlign: "left" }}>{stakes.map((s) => <span key={s} className="chip" style={{ marginRight: 4 }}>{s}</span>)}</td>
-                  <td>{a.retiredAt ? <span className="chip low">retired</span> : <span className="chip high">active</span>}</td>
-                </tr>
+                <Fragment key={a.key}>
+                  <tr style={{ cursor: "pointer" }} onClick={() => setOpen(isOpen ? null : a.key)}>
+                    <td>{isOpen ? "▾ " : "▸ "}{a.displayName}</td>
+                    <td className="mono">{a.key}</td>
+                    <td>{cur ? <>{cur.imosAreaName}<span className="muted mono" style={{ fontSize: ".72rem" }}> #{cur.imosAreaId}</span></> : <span className="muted">none</span>}</td>
+                    <td>{a.wards.filter((w) => w.open).length}</td>
+                    <td style={{ textAlign: "left" }}>{stakes.map((s) => <span key={s} className="chip" style={{ marginRight: 4 }}>{s}</span>)}</td>
+                    <td>{a.retiredAt ? <span className="chip low">retired</span> : <span className="chip high">active</span>}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="row-expand">
+                      <td colSpan={6} style={{ padding: 0 }}>
+                        <AreaDrawer area={a} onChange={reload} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
-
-      {open && (() => {
-        const a = data.areas.find((x) => x.key === open);
-        return a ? <AreaDrawer area={a} onChange={reload} /> : null;
-      })()}
 
       <StakesSection data={data} onChange={reload} />
     </>
@@ -111,7 +116,7 @@ function AreaDrawer({ area, onChange }: { area: StructureArea; onChange: () => v
               <td className="mono">#{m.imosAreaId}</td>
               <td>{m.imosAreaName}</td>
               <td className="mono">{m.validFrom}</td>
-              <td className="mono">{m.validTo ?? "—"}</td>
+              <td className="mono">{m.validTo ?? "–"}</td>
               <td>
                 {m.open && (
                   <button className="btn" disabled={busy} onClick={() => run(() => api.closeMapping(m.imosAreaId, m.validFrom, vf))}>
@@ -135,7 +140,7 @@ function AreaDrawer({ area, onChange }: { area: StructureArea; onChange: () => v
               <td>{w.wardName}</td>
               <td>{w.stake}</td>
               <td className="mono">{w.validFrom}</td>
-              <td className="mono">{w.validTo ?? "—"}</td>
+              <td className="mono">{w.validTo ?? "–"}</td>
               <td>
                 {w.open && (
                   <button className="btn" disabled={busy} onClick={() => run(() => api.closeWard(area.key, w.wardUnitId, w.validFrom, vf))}>

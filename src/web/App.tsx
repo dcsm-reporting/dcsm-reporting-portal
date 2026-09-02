@@ -1,9 +1,9 @@
 import { Component, type ReactNode, Suspense, lazy, useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import { WeekPicker, WeekProvider } from "./lib.js";
+import { WeekProvider } from "./lib.js";
 import { ThisWeekPage } from "./pages/ThisWeek.js";
 
-// Route-level code splitting — Recharts (Trends, Stakes) and the admin section
+// Route-level code splitting – Recharts (Trends, Stakes) and the admin section
 // are the heavy chunks; keep them off the first paint.
 const ConsolePage = lazy(() => import("./pages/Console.js").then((m) => ({ default: m.ConsolePage })));
 const MonthPage = lazy(() => import("./pages/Month.js").then((m) => ({ default: m.MonthPage })));
@@ -28,9 +28,9 @@ const TABS: [string, string][] = [
   ["/weekly", "Weekly console"],
   ["/month", "Month"],
   ["/stakes", "Stakes"],
-  ["/friends", "Friends"],
+  ["/baptisms", "Baptisms"],
   ["/trends", "Trends"],
-  ["/chase", "Chase list"],
+  ["/not-reported", "Not reported"],
   ["/publish", "Publish"],
   ["/import", "Import"],
   ["/data", "Data"],
@@ -81,7 +81,7 @@ export function App() {
       <div className="app">
         <header className="masthead">
           <div className="brand">
-            <h1>DCSM KI Portal</h1>
+            <h1>DCSM Reporting</h1>
             <small>Washington DC South Mission</small>
           </div>
           <nav className="tabs">
@@ -98,7 +98,6 @@ export function App() {
           </nav>
           <span className="spacer" />
           <WhoAmI />
-          <WeekPicker />
         </header>
         <main>
           <Boundary>
@@ -108,9 +107,11 @@ export function App() {
                 <Route path="/weekly" element={<ConsolePage />} />
                 <Route path="/month" element={<MonthPage />} />
                 <Route path="/stakes" element={<StakesPage />} />
-                <Route path="/friends" element={<FriendsPage />} />
+                <Route path="/baptisms" element={<FriendsPage />} />
+                <Route path="/friends" element={<Navigate to="/baptisms" replace />} />
                 <Route path="/trends" element={<TrendsPage />} />
-                <Route path="/chase" element={<ChasePage />} />
+                <Route path="/not-reported" element={<ChasePage />} />
+                <Route path="/chase" element={<Navigate to="/not-reported" replace />} />
                 <Route path="/publish" element={<PublishPage />} />
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/data" element={<DataPage />} />

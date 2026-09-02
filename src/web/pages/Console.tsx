@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { api } from "../api.js";
-import { ErrorNote, Loading, useAsync } from "../lib.js";
+import { ErrorNote, Loading, PageHead, useAsync } from "../lib.js";
 
 const MARK: Record<string, { sym: string; cls: string }> = {
   done: { sym: "✓", cls: "hi" },
@@ -12,9 +12,9 @@ const LINK_FOR: Record<string, string> = {
   import: "/import",
   crosswalk: "/admin/rollover",
   rollover: "/admin/rollover",
-  chase: "/chase",
-  friends: "/friends",
-  reconcile: "/friends",
+  chase: "/not-reported",
+  friends: "/baptisms",
+  reconcile: "/baptisms",
   boards: "/publish",
   stakes: "/publish",
 };
@@ -40,20 +40,19 @@ export function ConsolePage() {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h2>Weekly console — {data.latestLabel}</h2>
+      <PageHead title={`Weekly console: ${data.latestLabel}`}>
         <button className="btn" onClick={reload}>Refresh</button>
-      </div>
+      </PageHead>
 
       <div className="cards">
         <Stat k="Weeks stored" v={data.weeksStored} sub={data.range ? `${data.range.first} → ${data.range.last}` : ""} />
-        <Stat k="Zones" v={data.counts?.zones ?? "—"} />
-        <Stat k="Areas resolved" v={data.counts?.areasResolved ?? "—"} sub={data.counts?.areasUnmapped ? `${data.counts.areasUnmapped} unmapped` : "all mapped"} />
-        <Stat k="Stakes" v={data.counts?.stakes ?? "—"} />
-        <Stat k="Chase list" v={data.counts?.chase ?? "—"} sub={data.counts?.chase ? "need a nudge" : "all current"} />
+        <Stat k="Zones" v={data.counts?.zones ?? "–"} />
+        <Stat k="Areas resolved" v={data.counts?.areasResolved ?? "–"} sub={data.counts?.areasUnmapped ? `${data.counts.areasUnmapped} unmapped` : "all mapped"} />
+        <Stat k="Stakes" v={data.counts?.stakes ?? "–"} />
+        <Stat k="Not reported" v={data.counts?.chase ?? "–"} sub={data.counts?.chase ? "still out" : "all reported"} />
         {data.friends && (
           <Stat
-            k="Friends synced"
+            k="Baptisms synced"
             v={data.friends.syncAgeHours === null ? "never" : `${data.friends.syncAgeHours} h ago`}
             sub={`${data.friends.onDate} on date · ${data.friends.baptizedThisMonth} baptized`}
           />
@@ -62,7 +61,7 @@ export function ConsolePage() {
           <Stat
             k={`Reconcile ${data.reconcile.month}`}
             v={data.reconcile.gap > 0 ? `+${data.reconcile.gap}` : data.reconcile.gap}
-            sub={data.reconcile.stakesWithGap > 0 ? `${data.reconcile.stakesWithGap} stake gap(s)` : "matches feed"}
+            sub={data.reconcile.stakesWithGap > 0 ? `${data.reconcile.stakesWithGap} stake gap(s)` : "matches Portal"}
           />
         )}
       </div>
@@ -100,7 +99,7 @@ export function ConsolePage() {
         <Link className="btn" to="/month">Month</Link>
         <Link className="btn" to="/stakes">Stake reports</Link>
         <Link className="btn" to="/trends">Trends</Link>
-        <Link className="btn" to="/admin/rollover">Rollover / structure</Link>
+        <Link className="btn" to="/admin/rollover">Structure</Link>
         <Link className="btn" to="/admin/config">Config</Link>
       </div>
     </>

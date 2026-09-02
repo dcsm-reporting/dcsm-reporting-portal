@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { api, type PublishView } from "../api.js";
-import { ErrorNote, Loading, useAsync, useWeek } from "../lib.js";
+import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 import { Board, MlcBlock } from "../publish/boards.js";
 import { StakeReportDoc } from "../publish/stakeReport.js";
 import { copyRichHtml, downloadPng, gmailComposeUrl } from "../publish/download.js";
@@ -26,13 +26,12 @@ export function PublishPage() {
 
   return (
     <>
-      <div className="row no-print" style={{ justifyContent: "space-between" }}>
-        <h2>Publish — {data.weekLabel}</h2>
-        <nav className="subnav" style={{ margin: 0, border: "none", padding: 0 }}>
+      <PageHead title={`Publish: ${data.weekLabel}`} week>
+        <nav className="subnav no-print" style={{ margin: 0, border: "none", padding: 0 }}>
           <a className={tab === "boards" ? "active" : ""} onClick={() => setTab("boards")} style={{ cursor: "pointer" }}>Boards</a>
           <a className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")} style={{ cursor: "pointer" }}>Stake reports</a>
         </nav>
-      </div>
+      </PageHead>
       {tab === "boards" ? <Boards data={data} /> : <Reports data={data} />}
     </>
   );
@@ -78,7 +77,7 @@ function Boards({ data }: { data: PublishView }) {
       <div className="publish-preview" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
         <div ref={missionRef}>
           <Board
-            title="Key Indicators — Mission"
+            title="Mission"
             weekLabel={data.weekLabel}
             rows={b.zones}
             grid={b.byZone}
@@ -109,7 +108,7 @@ function Boards({ data }: { data: PublishView }) {
       <div className="publish-preview" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
         <div ref={zoneRef}>
           <Board
-            title={`Key Indicators — ${zone} Zone`}
+            title={`${zone} Zone`}
             weekLabel={data.weekLabel}
             rows={[...areaNames, zone.toUpperCase()]}
             grid={areaGrid}
@@ -127,7 +126,7 @@ function Reports({ data }: { data: PublishView }) {
   const r = data.reports.find((x) => x.stake === sel) ?? data.reports[0];
   const ref = useRef<HTMLDivElement>(null);
   const [msg, setMsg] = useState("");
-  if (!r) return <p className="muted">No stakes yet — seed the crosswalk.</p>;
+  if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
 
   const printReport = () => {
     document.body.classList.add("printing");
@@ -153,7 +152,7 @@ function Reports({ data }: { data: PublishView }) {
           onClick={async () => {
             if (!ref.current) return;
             const ok = await copyRichHtml(ref.current);
-            setMsg(ok ? "Copied — paste into the email." : "Copy failed; use Print instead.");
+            setMsg(ok ? "Copied. Paste into the email." : "Copy failed; use Print instead.");
             setTimeout(() => setMsg(""), 3000);
           }}
         >
@@ -162,7 +161,7 @@ function Reports({ data }: { data: PublishView }) {
         {r.toEmails.length > 0 && (
           <a
             className="btn"
-            href={gmailComposeUrl(r.toEmails, r.ccEmails, `${r.stake} Stake — Key Indicators (${data.weekLabel})`)}
+            href={gmailComposeUrl(r.toEmails, r.ccEmails, `${r.stake} Stake, Key Indicators of Conversion (${data.weekLabel})`)}
             target="_blank"
             rel="noopener noreferrer"
           >

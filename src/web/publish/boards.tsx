@@ -18,12 +18,12 @@ function bandBg(pct: number | null, b: Bands): string {
 }
 
 function Cell({ c, bands }: { c: KiCell | undefined; bands: Bands }) {
-  if (!c) return <td style={td}>—</td>;
+  if (!c) return <td style={td}>–</td>;
   return (
     <td style={{ ...td, background: bandBg(c.pct, bands) }}>
       <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.1, color: "#1c2530" }}>{c.actual}</div>
       <div style={{ fontSize: 11, color: "#53606b" }}>
-        {c.goal != null ? `goal ${c.goal}` : "—"}
+        {c.goal != null ? `goal ${c.goal}` : "–"}
         {c.pct != null && (
           <span style={{ color: band(c.pct, bands), fontWeight: 600 }}> · {c.pct}%</span>
         )}

@@ -39,7 +39,7 @@ export function ConfigPage() {
   return (
     <>
       <p className="muted" style={{ maxWidth: "68ch" }}>
-        These are read on every request — a change takes effect on the next page load, no deploy.
+        These are read on every request, so a change takes effect on the next page load, no deploy.
         Defaults come from the code; edits are stored in the database.
       </p>
 
@@ -121,13 +121,13 @@ export function ConfigPage() {
       <h3>Colour bands {saved === "bands" && <span className="chip high">saved</span>}</h3>
       <table className="grid" style={{ maxWidth: 420 }}>
         <tbody>
-          <BandRow label="Goal % — amber below" value={cfg.bands.goalPct.low}
+          <BandRow label="Goal %: amber below" value={cfg.bands.goalPct.low}
             set={(v) => setCfg({ ...cfg, bands: { ...cfg.bands, goalPct: { ...cfg.bands.goalPct, low: v } } })} />
-          <BandRow label="Goal % — green at/above" value={cfg.bands.goalPct.mid}
+          <BandRow label="Goal %: green at/above" value={cfg.bands.goalPct.mid}
             set={(v) => setCfg({ ...cfg, bands: { ...cfg.bands, goalPct: { ...cfg.bands.goalPct, mid: v } } })} />
-          <BandRow label="MLC share % — amber below" value={cfg.bands.mlcShare.low}
+          <BandRow label="MLC share %: amber below" value={cfg.bands.mlcShare.low}
             set={(v) => setCfg({ ...cfg, bands: { ...cfg.bands, mlcShare: { ...cfg.bands.mlcShare, low: v } } })} />
-          <BandRow label="MLC share % — green at/above" value={cfg.bands.mlcShare.mid}
+          <BandRow label="MLC share %: green at/above" value={cfg.bands.mlcShare.mid}
             set={(v) => setCfg({ ...cfg, bands: { ...cfg.bands, mlcShare: { ...cfg.bands.mlcShare, mid: v } } })} />
         </tbody>
       </table>

@@ -328,7 +328,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
   const steps = [
     {
       id: "import",
-      label: `Import — ${week.weekLabel}`,
+      label: `Import: ${week.weekLabel}`,
       state: "done" as const,
       detail: `${week.zones.length} zones, ${week.resolve.resolvedCount} areas resolved.`,
     },
@@ -339,7 +339,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       detail:
         week.resolve.unmapped.length === 0
           ? "Every area resolves."
-          : `${week.resolve.unmapped.length} area(s) unmapped — run Rollover.`,
+          : `${week.resolve.unmapped.length} area(s) unmapped; run Rollover.`,
     },
     {
       id: "rollover",
@@ -352,7 +352,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     },
     {
       id: "chase",
-      label: "Chase list",
+      label: "Not reported",
       state: chase.count === 0 ? ("done" as const) : ("attention" as const),
       detail:
         chase.count === 0
@@ -370,7 +370,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
             : ("done" as const),
       detail:
         syncAgeH === null
-          ? "No sheet sync has landed yet — check the Apps Script bridge."
+          ? "No sheet sync has landed yet; check the Apps Script bridge."
           : `Last sync ${syncAgeH < 1 ? "under an hour" : `${Math.round(syncAgeH)} h`} ago · ` +
             `${friends?.onDateTotal ?? 0} on date, ${friends?.baptizedThisMonth ?? 0} baptized this month.`,
     },
@@ -384,16 +384,16 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
           : ("done" as const),
       detail:
         reconcile === null
-          ? "Run it from Friends → Monthly baptism reconciliation."
+          ? "Run it from Baptisms → Monthly baptism reconciliation."
           : reconcileGap > 0
-            ? `${reconcileGap} stake(s) show more in the KI feed than named records — close before the monthly report.`
-            : `Named records match the KI feed for ${latest.slice(0, 7)}.`,
+            ? `${reconcileGap} stake(s) show more in the Mission Portal count than named records; close before the monthly report.`
+            : `Named records match the Mission Portal count for ${latest.slice(0, 7)}.`,
     },
     {
       id: "boards",
       label: "Download board images",
       state: "todo" as const,
-      detail: "Publish → Boards — mission + per-zone PNGs.",
+      detail: "Publish → Boards: mission, MLC, and per-zone PNGs.",
     },
     {
       id: "stakes",
@@ -401,8 +401,8 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       state: stake.wardMapSize > 0 ? ("todo" as const) : ("attention" as const),
       detail:
         stake.wardMapSize > 0
-          ? `${stake.stakes.length} stakes ready — Publish → Stake reports.`
-          : "No ward→stake rows for this week — seed the crosswalk.",
+          ? `${stake.stakes.length} stakes ready. Publish → Stake reports.`
+          : "No ward→stake rows for this week; seed the crosswalk.",
     },
   ];
 

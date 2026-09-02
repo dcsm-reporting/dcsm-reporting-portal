@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { ErrorNote, KiCells, KiHeadCells, Loading, useAsync, useWeek } from "../lib.js";
+import { ErrorNote, KiCells, KiHeadCells, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 
 export function MonthPage() {
   const { week } = useWeek();
@@ -12,7 +12,7 @@ export function MonthPage() {
   const zones = data.zones.filter((z) => z !== "MISSION");
   return (
     <>
-      <h2>{data.month.label} — Mission at a Glance</h2>
+      <PageHead title={`${data.month.label}: Mission at a Glance`} week />
       <p className="muted mono" style={{ fontSize: ".78rem" }}>
         Sum of {data.month.window.length} weeks: {data.month.window.join(", ")}
       </p>

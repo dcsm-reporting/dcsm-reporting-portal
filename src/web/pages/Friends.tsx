@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, type FriendRow } from "../api.js";
-import { ErrorNote, Loading, useAsync, useWeek } from "../lib.js";
+import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 
 const ZONES = [
   "Alexandria", "Annandale", "Bull Run", "McLean", "Oakton",
@@ -22,22 +22,24 @@ export function FriendsPage() {
     summary.reload();
   };
 
+  const monthName = new Date().toLocaleString("en-US", { month: "long" });
+
   return (
     <>
-      <h2>Friends with Baptismal Dates &amp; Baptized</h2>
+      <PageHead title="Baptisms" week />
 
       {summary.data && (
         <div className="note">
           {summary.data.lastSyncedAt ? (
             <>
-              Mirrored from the <strong>Baptisms (MLC)</strong> sheet — last sync{" "}
+              Mirrored from the <strong>Baptisms (MLC)</strong> sheet. Last sync{" "}
               {new Date(summary.data.lastSyncedAt).toLocaleString()}. Edit in the sheet; this view is
               read-only.
             </>
           ) : (
             <>
               <strong>Not linked yet.</strong> Set up the sheet bridge (see{" "}
-              <code>apps_script/baptisms-sync.gs</code>) — until then this is empty.
+              <code>apps_script/baptisms-sync.gs</code>); until then this is empty.
             </>
           )}
         </div>
@@ -47,26 +49,26 @@ export function FriendsPage() {
       {summary.err && <ErrorNote err={summary.err} />}
       {summary.data && (
         <div className="cards">
-          <Stat k="On date" v={summary.data.onDateTotal} />
-          <Stat k="On date this week" v={summary.data.onDateThisWeek} sub={week ?? ""} />
+          <Stat k="On date" v={summary.data.onDateTotal} sub="have a baptismal date" />
+          <Stat k="On date this week" v={summary.data.onDateThisWeek} sub="dated in this week" />
           <Stat
             k="Baptized this month"
             v={summary.data.baptizedThisMonth}
             sub={
               summary.data.baptizedThisMonthUnverified > 0
-                ? `+${summary.data.baptizedThisMonthUnverified} unverified`
-                : ""
+                ? `${monthName} · +${summary.data.baptizedThisMonthUnverified} unverified`
+                : monthName
             }
           />
           <Stat
-            k="Baptismal calendar"
-            v={`${summary.data.calendarYes} / ${summary.data.calendarYes + summary.data.calendarNo}`}
-            sub="have it"
+            k="Baptismal calendar prepared"
+            v={`${summary.data.calendarYes} of ${summary.data.calendarYes + summary.data.calendarNo}`}
+            sub="of those on date"
           />
           <Stat
-            k="Church 2×"
-            v={`${summary.data.church2xYes} / ${summary.data.church2xYes + summary.data.church2xNo}`}
-            sub="attended"
+            k="Attended church 2×"
+            v={`${summary.data.church2xYes} of ${summary.data.church2xYes + summary.data.church2xNo}`}
+            sub="of those on date"
           />
         </div>
       )}
@@ -109,8 +111,8 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
     <>
       <h3 style={{ marginTop: "2.4rem" }}>Monthly baptism reconciliation</h3>
       <p className="muted" style={{ maxWidth: "72ch", fontSize: ".88rem" }}>
-        The named count is the authoritative total (per the SOP). This is the pre-report cross-check:
-        where the named records and the Mission Portal / KI-feed aggregate disagree, and anyone who
+        The named count of completed baptisms is the authoritative total. This is the pre-report
+        cross-check: where the named records and the Mission Portal count disagree, and anyone who
         dropped off the sheet near their baptism date without being confirmed.
       </p>
       <div className="row">
@@ -131,9 +133,9 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
               <div className="sub">authoritative</div>
             </div>
             <div className="card">
-              <div className="k">KI-feed aggregate</div>
+              <div className="k">Mission Portal count</div>
               <div className="v">{data.mission.kiFeedBC}</div>
-              <div className="sub">Mission Portal — flag only</div>
+              <div className="sub">cross-check only</div>
             </div>
             {data.mission.unverifiedCount > 0 && (
               <div className="card">
@@ -147,7 +149,7 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
               <div className="v" style={{ color: data.mission.gap === 0 ? "var(--band-hi)" : "var(--band-mid)" }}>
                 {data.mission.gap > 0 ? `+${data.mission.gap}` : data.mission.gap}
               </div>
-              <div className="sub">{data.mission.gap > 0 ? "names likely missing" : data.mission.gap < 0 ? "ahead of Mission Portal" : "reconciled"}</div>
+              <div className="sub">{data.mission.gap > 0 ? "names likely missing" : data.mission.gap < 0 ? "ahead of the Portal count" : "reconciled"}</div>
             </div>
           </div>
 
@@ -158,7 +160,7 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
                   <tr>
                     <th className="row-head">Stake</th>
                     <th>Named</th>
-                    <th>KI-feed</th>
+                    <th>Portal</th>
                     <th>Gap</th>
                   </tr>
                 </thead>
@@ -219,7 +221,7 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
                         <td className="row-head muted">{[d.ward, d.stake].filter(Boolean).join(" · ")}</td>
                         <td className="row-head mono">{fmtDate(d.baptismDate)}</td>
                         <td className="row-head mono muted">{d.leftAt.slice(0, 10)}</td>
-                        <td className="row-head muted" style={{ fontSize: ".82rem" }}>{d.missionaries ?? "—"}</td>
+                        <td className="row-head muted" style={{ fontSize: ".82rem" }}>{d.missionaries ?? "–"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -259,7 +261,7 @@ function RecordBaptism({ onRecorded }: { onRecorded: () => void }) {
         missionaries: f.missionaries.trim() || undefined,
         notes: f.notes.trim() || undefined,
       });
-      setMsg(r.duplicate ? "Already on record — nothing added." : "Recorded. Gap updated.");
+      setMsg(r.duplicate ? "Already on record – nothing added." : "Recorded. Gap updated.");
       setF({ name: "", baptismDate: "", ward: "", stake: "", missionaries: "", notes: "" });
       onRecorded();
     } catch (e) {
@@ -349,8 +351,8 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
             <tr key={f.id}>
               <td className="row-head">{f.name}</td>
               <td className="row-head muted">{[f.zone, f.stake].filter(Boolean).join(" · ")}</td>
-              <td className="row-head">{f.ward ?? "—"}</td>
-              <td className="row-head muted" style={{ fontSize: ".82rem" }}>{f.missionaries ?? "—"}</td>
+              <td className="row-head">{f.ward ?? "–"}</td>
+              <td className="row-head muted" style={{ fontSize: ".82rem" }}>{f.missionaries ?? "–"}</td>
               <td className="row-head mono">
                 {fmtDate(f.baptismDate)}
                 {f.baptismTime && f.baptismTime !== "TBD" && !/1899|GMT/.test(f.baptismTime)
@@ -364,7 +366,7 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
                   f.confidence === "unverified" ? (
                     <span className="chip medium" title={f.notes ?? ""}>baptized · unverified</span>
                   ) : (
-                    <span className="chip high" title={f.confidence ? "legacy — corroborated" : ""}>
+                    <span className="chip high" title={f.confidence ? "legacy – corroborated" : ""}>
                       baptized
                     </span>
                   )
@@ -399,7 +401,7 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
 }
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "–";
   const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
   if (!y || !m || !d) return iso;
   const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1];

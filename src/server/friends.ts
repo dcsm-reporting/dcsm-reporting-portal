@@ -281,7 +281,7 @@ export async function syncFriends(
     .filter((r) => {
       if (!r.name) return false;
       if (!r.baptismDate && !r.baptizedConfirmed) {
-        warnings.push(`"${r.name}" has no baptism date and isn't marked baptized — skipped`);
+        warnings.push(`"${r.name}" has no baptism date and isn't marked baptized; skipped`);
         return false;
       }
       return true;

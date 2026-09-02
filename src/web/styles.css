@@ -138,6 +138,22 @@ table.board .ki-group { border-left: 1px solid var(--rule); }
 .field label { font-size: 0.8rem; color: var(--ink-soft); font-weight: 600; }
 textarea.paste { width: 100%; min-height: 220px; font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; }
 .row { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+
+/* page header (title + optional week selector) ------------------ */
+.page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin: 0 0 1rem; }
+.page-head h2 { margin: 0; }
+.page-head-controls { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+.wk-inline { display: flex; align-items: center; gap: 0.4rem; }
+.wk-inline .k { font-size: 0.7rem; color: var(--ink-soft); }
+
+/* collapsible sections ----------------------------------------- */
+details { margin: 1rem 0; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+details > summary { cursor: pointer; padding: 0.7rem 1rem; font-weight: 600; font-size: 0.9rem; list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "▸ "; color: var(--ink-soft); }
+details[open] > summary::before { content: "▾ "; }
+details[open] > summary { border-bottom: 1px solid var(--rule); }
+details > .board-wrap { padding: 0.4rem 1rem 1rem; }
 .muted { color: var(--ink-faint); }
 .spin { display: inline-block; width: 1em; height: 1em; border: 2px solid var(--rule-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -173,4 +189,6 @@ nav.subnav a.active { background: var(--accent-wash); color: var(--accent-ink); 
 .drawer h4 { margin: 0.8rem 0 0.4rem; font-size: 0.78rem; font-family: "IBM Plex Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
 .drawer h4:first-child { margin-top: 0; }
 .strike { text-decoration: line-through; color: var(--ink-faint); }
+tr.row-expand > td { background: var(--surface-sunk); border-bottom: 2px solid var(--rule-strong); }
+tr.row-expand .drawer { margin: 0; border-radius: 0; border-left: none; border-right: none; box-shadow: none; background: transparent; }
 .inline-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.4rem; }

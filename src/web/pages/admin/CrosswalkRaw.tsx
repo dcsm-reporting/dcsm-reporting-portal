@@ -22,7 +22,7 @@ export function CrosswalkRawPage() {
   return (
     <>
       <p className="muted" style={{ fontSize: ".85rem" }}>
-        Read-only view of the raw crosswalk tables — for debugging. Edit through Rollover and Areas.
+        Read-only view of the raw crosswalk tables, for debugging. Edit through Rollover and Areas.
       </p>
       <div className="row">
         {(["crosswalk", "areaWard", "canonical"] as const).map((t) => (
@@ -42,7 +42,7 @@ export function CrosswalkRawPage() {
               <tr key={i}>
                 {cols.map((c) => (
                   <td key={c} className="mono" style={{ fontSize: ".76rem", textAlign: "left" }}>
-                    {r[c] === null ? "—" : String(r[c])}
+                    {r[c] === null ? "–" : String(r[c])}
                   </td>
                 ))}
               </tr>
