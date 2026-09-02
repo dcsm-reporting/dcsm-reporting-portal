@@ -36,6 +36,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", default="resources/wdcs_legacy_baptisms.csv")
     ap.add_argument("--sql", default="backfill.sql")
+    # The live Baptisms (MLC) sheet owns baptisms from this date on; legacy rows
+    # on/after it are dropped so they don't double-count.
+    ap.add_argument("--sheet-from", default="2026-08-01")
     args = ap.parse_args()
 
     with open(args.csv, encoding="utf-8-sig", newline="") as f:
@@ -47,7 +50,7 @@ def main() -> int:
         "DELETE FROM friend WHERE source NOT IN ('sheet','portal');",
     ]
     used_keys: set[str] = set()
-    n_conf = n_unv = n_nokey = 0
+    n_conf = n_unv = n_nokey = n_after_sheet = 0
 
     for r in rows:
         name = (r.get("name") or "").strip()
@@ -58,6 +61,9 @@ def main() -> int:
         zone = (r.get("zone") or "").strip()
         miss = (r.get("missionaries") or "").strip()
         bd = (r.get("baptism_date") or "").strip()
+        if bd and bd >= args.sheet_from:
+            n_after_sheet += 1
+            continue  # the live sheet owns this period
         src = (r.get("source") or "legacy").strip()
         notes = (r.get("notes") or "").strip()
         conf = "unverified" if src == "zl_form_response" else "confirmed"
@@ -87,6 +93,7 @@ def main() -> int:
     print(f"{len(rows)} rows -> {args.sql}")
     print(f"  confirmed: {n_conf}   unverified (ZL form only): {n_unv}")
     print(f"  sync_key suppressed for {n_nokey} (blank ward or collision)")
+    print(f"  skipped {n_after_sheet} on/after --sheet-from {args.sheet_from}")
     return 0
 
 
