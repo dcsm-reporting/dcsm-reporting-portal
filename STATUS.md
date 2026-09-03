@@ -2,6 +2,17 @@
 
 _Last updated: 2026-09-03 — hardening round: import correctness, mission-time-zone dates, sheet hygiene, gap detection, optional Access token check._
 
+## 2026-09-03 privacy review (Handbook 33.6, 33.8, 33.9)
+
+`docs/privacy.md` is the assessment. Built from it: a **viewer allowlist**
+(`viewer_emails`; empty = everyone Access admits; admins always pass; a refused
+account sees a "not authorized" page); **sheet columns beyond the named fields
+are dropped at sync unless kept** (`sheet_extra_columns`, chosen under Admin →
+Reporting settings from the header names seen, `sheet_extra_headers_seen`);
+raw IMOS payload downloads admin-only; the source workbooks and the legacy
+baptism list untracked from git (still in history). App renamed **WDCSM
+Reporting**.
+
 ## 2026-09-03 follow-ups (units, sheet columns, Console, Baptisms split)
 
 - **"Unit" everywhere a person reads it** (ward or branch); code keeps `ward`.

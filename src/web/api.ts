@@ -123,10 +123,12 @@ export interface ChaseView {
 }
 
 export const api = {
-  me: () => jget<{ user: string; isAdmin: boolean }>("/api/me"),
-  admins: () => jget<{ admins: string[] }>("/api/admins"),
+  me: () => jget<{ user: string; isAdmin: boolean; authorized?: boolean }>("/api/me"),
+  admins: () => jget<{ admins: string[]; viewers: string[] }>("/api/admins"),
   setAdmins: (admins: string[]) =>
-    jpost<{ ok: true; admins: string[] }>("/api/admins", { admins }),
+    jpost<{ ok: true; admins: string[]; viewers: string[] }>("/api/admins", { admins }),
+  setViewers: (viewers: string[]) =>
+    jpost<{ ok: true; admins: string[]; viewers: string[] }>("/api/admins", { viewers }),
   weeks: () => jget<WeeksResponse>("/api/weeks"),
   week: (w: string) => jget<WeekView>(`/api/week/${w}`),
   trends: (q: { upTo?: string; n?: number; zone?: string | null; mlcOnly?: boolean }) => {
@@ -459,6 +461,8 @@ export interface PortalConfig {
   bands: { goalPct: { low: number; mid: number }; mlcShare: { low: number; mid: number } };
   areaBand: { low: number; high: number };
   stakeReportLayout?: StakeReportLayout;
+  sheetExtraColumns?: string[];
+  sheetExtraHeadersSeen?: string[];
 }
 export interface ConfigResponse {
   config: PortalConfig;

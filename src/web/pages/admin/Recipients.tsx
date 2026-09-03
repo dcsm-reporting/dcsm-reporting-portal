@@ -202,7 +202,8 @@ function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
                   OTHER COLUMNS ON THE BAPTISMS SHEET
                 </div>
                 <p className="muted" style={{ fontSize: ".78rem", margin: "0 0 .3rem", maxWidth: "60ch" }}>
-                  Additional columns on the sheet. Tick one to include it in the on-date list.
+                  Sheet columns the mission keeps (Reporting settings). Tick one to include it in the
+                  on-date list.
                 </p>
                 <div className="row" style={{ gap: ".4rem 1rem" }}>
                   {pub.data!.extraKeys!.map((k) => (

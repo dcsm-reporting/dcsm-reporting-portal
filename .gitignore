@@ -12,3 +12,8 @@ coverage/
 
 # local backup dumps — commit deliberately with `git add -f` if wanted
 backups/
+
+# Source workbooks and the legacy baptism list carry members' and friends'
+# personal data. They stay on the office machine / mission Drive, not in git.
+resources/*.xlsx
+resources/wdcs_legacy_baptisms.csv

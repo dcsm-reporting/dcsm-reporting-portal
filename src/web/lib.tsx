@@ -28,12 +28,23 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   return { ...state, reload: run };
 }
 
-/** Current user + whether they can edit admin settings. Cached for the session. */
-let mePromise: Promise<{ user: string; isAdmin: boolean }> | null = null;
+/** Current user, whether they may view at all, and whether they can edit admin
+ *  settings. Cached for the session. */
+export interface Me {
+  user: string;
+  isAdmin: boolean;
+  /** false when the account passed Access but is not on the viewer list */
+  authorized: boolean;
+}
+let mePromise: Promise<Me> | null = null;
 export function useMe() {
-  const [me, setMe] = useState<{ user: string; isAdmin: boolean } | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   useEffect(() => {
-    if (!mePromise) mePromise = api.me().catch(() => ({ user: "", isAdmin: true }));
+    if (!mePromise)
+      mePromise = api
+        .me()
+        .then((m) => ({ user: m.user, isAdmin: m.isAdmin, authorized: m.authorized !== false }))
+        .catch(() => ({ user: "", isAdmin: true, authorized: true }));
     let live = true;
     mePromise.then((m) => live && setMe(m));
     return () => {

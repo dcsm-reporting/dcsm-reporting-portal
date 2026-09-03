@@ -208,6 +208,44 @@ export function ReportingConfigPage() {
         </button>
         <button className="btn" onClick={() => setCfg({ ...cfg, areaBand: defaults.areaBand })}>Reset</button>
       </div>
+
+      <h4 style={{ marginTop: "1.4rem", fontWeight: 600 }}>
+        Baptisms (MLC) sheet: other columns{" "}
+        {saved === "sheet_extra_columns" && <span className="chip high">saved</span>}
+      </h4>
+      <p className="muted" style={{ fontSize: ".85rem", maxWidth: "70ch" }}>
+        Columns on the sheet beyond the ones the portal is built around (name, dates, unit, stake,
+        missionaries, church, calendar, completed). Only ticked columns are stored; the rest are
+        dropped at sync. Keep this to what reporting requires.
+      </p>
+      {(cfg.sheetExtraHeadersSeen ?? []).length === 0 ? (
+        <p className="muted" style={{ fontSize: ".85rem" }}>No other columns have been seen on the sheet yet.</p>
+      ) : (
+        <div className="row" style={{ gap: ".4rem 1rem" }}>
+          {(cfg.sheetExtraHeadersSeen ?? []).map((h) => (
+            <label key={h} className="row" style={{ gap: ".3rem" }}>
+              <input
+                type="checkbox"
+                checked={(cfg.sheetExtraColumns ?? []).includes(h)}
+                onChange={(e) =>
+                  setCfg({
+                    ...cfg,
+                    sheetExtraColumns: e.target.checked
+                      ? [...(cfg.sheetExtraColumns ?? []), h]
+                      : (cfg.sheetExtraColumns ?? []).filter((x) => x !== h),
+                  })
+                }
+              />
+              <span style={{ fontSize: ".85rem" }}>{h}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      <div className="row" style={{ marginTop: ".6rem" }}>
+        <button className="btn primary" onClick={() => save("sheet_extra_columns", cfg.sheetExtraColumns ?? [])}>
+          Save kept columns
+        </button>
+      </div>
     </>
   );
 }

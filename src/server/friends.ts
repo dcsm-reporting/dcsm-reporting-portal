@@ -19,7 +19,7 @@ import {
   type Friend,
   type FriendsSummary,
 } from "../pipeline/friends.js";
-import { getAreaWardRows } from "./db.js";
+import { getAreaWardRows, getConfig, setConfig } from "./db.js";
 import { wardMapForWeek } from "../pipeline/resolve.js";
 import { addMonthsClamped, mondayOf, recentMonthKeys, todayIso } from "../shared/dates.js";
 
@@ -408,6 +408,14 @@ export async function syncFriends(
   const now = new Date().toISOString();
   let skippedJunk = 0;
 
+  // Columns the portal has no named field for are kept only if the mission
+  // listed them (Admin → Reporting settings). The header *names* seen are
+  // recorded so the office can decide; the values are dropped otherwise.
+  const keepExtra = new Set(
+    (await getConfig<string[]>(db, "sheet_extra_columns", [])).map((s) => String(s).trim()),
+  );
+  const headersSeen = new Set<string>();
+
   // normalise + key, drop nameless rows. A formula-driven cell can push a
   // spreadsheet error token (#REF!, #N/A …) through as if it were text; those
   // are blanked field-by-field and a row whose *name* is one is dropped.
@@ -428,9 +436,13 @@ export async function syncFriends(
       const extraIn: Record<string, string> = {};
       if (r.extra && typeof r.extra === "object") {
         for (const [k, v] of Object.entries(r.extra)) {
+          const key = k.trim();
+          if (!key) continue;
+          headersSeen.add(key);
+          if (!keepExtra.has(key)) continue;
           if (isSheetError(v)) continue;
           const s = norm(v);
-          if (k.trim() && s) extraIn[k.trim()] = s;
+          if (s) extraIn[key] = s;
         }
       }
       const extra = extraJson(extraIn);
@@ -480,6 +492,13 @@ export async function syncFriends(
         );
       }
     }
+  }
+
+  // remember new header names (names only) so the office can choose to keep them
+  if (headersSeen.size > 0) {
+    const known = await getConfig<string[]>(db, "sheet_extra_headers_seen", []);
+    const merged = [...new Set([...known, ...headersSeen])].sort();
+    if (merged.length !== known.length) await setConfig(db, "sheet_extra_headers_seen", merged);
   }
 
   // dedupe the snapshot on the exact key (a true duplicate entry collapses)

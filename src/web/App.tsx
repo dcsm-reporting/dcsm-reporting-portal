@@ -82,6 +82,28 @@ export function App() {
   const isAdmin = me?.isAdmin ?? true; // optimistic until /api/me resolves
   const tabs = TABS.filter(([, , adminOnly]) => !adminOnly || isAdmin);
 
+  if (me && !me.authorized) {
+    return (
+      <div className="app">
+        <header className="masthead">
+          <div className="brand">
+            <h1>WDCSM Reporting</h1>
+            <small>Washington DC South Mission</small>
+          </div>
+        </header>
+        <main>
+          <div className="note" style={{ maxWidth: "60ch", margin: "3rem auto" }}>
+            <strong>This account is not authorized for the portal.</strong>
+            <p style={{ margin: ".5rem 0 0" }}>
+              You are signed in as <span className="mono">{me.user}</span>. Access is limited to the
+              people the mission office has listed. Ask the office to add you.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <WeekProvider>
       <div className="app">

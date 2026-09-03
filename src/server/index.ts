@@ -80,11 +80,35 @@ const areaKey = loadAreaKey(areaKeyCsv, unitsCsv);
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-/** Empty `admin_emails` = everyone can edit (no lock-out risk on first setup). */
-async function computeIsAdmin(db: D1Database, email: string): Promise<boolean> {
-  const list = await getConfig<string[]>(db, "admin_emails", []);
-  if (!Array.isArray(list) || list.length === 0) return true;
-  return list.map((s) => s.trim().toLowerCase()).includes(email.toLowerCase());
+/**
+ * Who may use the portal at all, and who may administer it. Both lists live
+ * in config. Empty `admin_emails` = every user is an admin (no lock-out risk
+ * on first setup). Empty `viewer_emails` = everyone Cloudflare Access lets in
+ * (the mission's email domains) may view; a non-empty list restricts viewing
+ * to those addresses plus the admins. One query for both.
+ */
+async function computeAccess(
+  db: D1Database,
+  email: string,
+): Promise<{ isAdmin: boolean; isViewer: boolean }> {
+  const { results } = await db
+    .prepare("SELECT key, value_json FROM config WHERE key IN ('admin_emails', 'viewer_emails')")
+    .all<{ key: string; value_json: string }>();
+  const lists: Record<string, string[]> = {};
+  for (const r of results ?? []) {
+    try {
+      const v = JSON.parse(r.value_json);
+      lists[r.key] = Array.isArray(v) ? v.map((s: unknown) => String(s).trim().toLowerCase()) : [];
+    } catch {
+      lists[r.key] = [];
+    }
+  }
+  const me = email.toLowerCase();
+  const admins = lists.admin_emails ?? [];
+  const viewers = lists.viewer_emails ?? [];
+  const isAdmin = admins.length === 0 || admins.includes(me);
+  const isViewer = isAdmin || viewers.length === 0 || viewers.includes(me);
+  return { isAdmin, isViewer };
 }
 
 /** Path prefixes that change mission structure/config — admin-only. Weekly
@@ -102,6 +126,7 @@ const ADMIN_WRITE_PREFIXES = [
 ];
 function needsAdmin(method: string, path: string): boolean {
   if (path === "/api/export") return true;
+  if (path.startsWith("/api/data/raw/")) return true; // raw IMOS payloads carry every missionary's name
   if (method === "GET" || method === "HEAD") return false;
   if (/^\/api\/rollover\/[^/]+\/apply$/.test(path)) return true;
   if (path === "/api/console/check") return true; // the office's checklist
@@ -144,8 +169,13 @@ app.use("/api/*", async (c, next) => {
     if (!ok.includes(email.toLowerCase())) throw new HTTPException(403, { message: "not allowed" });
   }
   c.set("user", email);
-  const isAdmin = await computeIsAdmin(c.env.DB, email);
+  const { isAdmin, isViewer } = await computeAccess(c.env.DB, email);
   c.set("isAdmin", isAdmin);
+  if (!isViewer) {
+    // /api/me still answers so the page can say why; everything else is closed
+    if (c.req.path === "/api/me") return c.json({ user: email, isAdmin: false, authorized: false });
+    throw new HTTPException(403, { message: "this account is not authorized for the portal" });
+  }
   if (!isAdmin && needsAdmin(c.req.method, c.req.path)) {
     throw new HTTPException(403, { message: "admin access required" });
   }
@@ -161,31 +191,49 @@ app.onError((err, c) => {
 
 // --- meta -------------------------------------------------------------
 app.get("/api/health", (c) => c.json({ ok: true }));
-app.get("/api/me", (c) => c.json({ user: c.get("user"), isAdmin: c.get("isAdmin") }));
+app.get("/api/me", (c) => c.json({ user: c.get("user"), isAdmin: c.get("isAdmin"), authorized: true }));
 
-/** The admin allowlist. Empty ⇒ every authenticated user is an admin. */
+const cleanEmails = (v: unknown) => [
+  ...new Set(
+    (Array.isArray(v) ? v : [])
+      .map((s) => String(s).trim().toLowerCase())
+      .filter((s) => s.includes("@")),
+  ),
+];
+
+/** The admin and viewer allowlists. Empty admins ⇒ everyone is an admin;
+ *  empty viewers ⇒ everyone Access lets in may view. */
 app.get("/api/admins", async (c) =>
-  c.json({ admins: await getConfig<string[]>(c.env.DB, "admin_emails", []) }),
+  c.json({
+    admins: await getConfig<string[]>(c.env.DB, "admin_emails", []),
+    viewers: await getConfig<string[]>(c.env.DB, "viewer_emails", []),
+  }),
 );
 app.post("/api/admins", async (c) => {
-  const b = await c.req.json<{ admins?: string[] }>();
-  const list = [
-    ...new Set(
-      (Array.isArray(b.admins) ? b.admins : [])
-        .map((s) => String(s).trim().toLowerCase())
-        .filter((s) => s.includes("@")),
-    ),
-  ];
-  // guard against locking everyone out: a non-empty list must include the setter
-  if (list.length > 0 && !list.includes(c.get("user").toLowerCase())) {
-    throw new HTTPException(400, {
-      message: "the list must include your own address, or you'd lock yourself out",
-    });
+  const b = await c.req.json<{ admins?: string[]; viewers?: string[] }>();
+  const me = c.get("user").toLowerCase();
+  if (b.admins !== undefined) {
+    const list = cleanEmails(b.admins);
+    // guard against locking everyone out: a non-empty list must include the setter
+    if (list.length > 0 && !list.includes(me)) {
+      throw new HTTPException(400, {
+        message: "the admin list must include your own address, or you would lock yourself out",
+      });
+    }
+    await setConfig(c.env.DB, "admin_emails", list);
+    await audit(c.env.DB, c.get("user"), "admins.set", { count: list.length });
   }
-  await setConfig(c.env.DB, "admin_emails", list);
-  await audit(c.env.DB, c.get("user"), "admins.set", { count: list.length });
+  if (b.viewers !== undefined) {
+    const list = cleanEmails(b.viewers);
+    await setConfig(c.env.DB, "viewer_emails", list);
+    await audit(c.env.DB, c.get("user"), "viewers.set", { count: list.length });
+  }
   await bumpData(c.env);
-  return c.json({ ok: true, admins: list });
+  return c.json({
+    ok: true,
+    admins: await getConfig<string[]>(c.env.DB, "admin_emails", []),
+    viewers: await getConfig<string[]>(c.env.DB, "viewer_emails", []),
+  });
 });
 
 app.get("/api/weeks", async (c) => {

@@ -32,6 +32,9 @@ Nothing else. No personal account is load-bearing.
 
 ## 3. Five-minute items still open (do them)
 
+- **Set the viewer list** (Admin → Admin access → Who can view). Until it is
+  set, any @missionary.org account in any mission can sign in and see
+  friends' and new members' names. See `docs/privacy.md`.
 - **Arm the weekly backup**: two GitHub Actions secrets
   (`CLOUDFLARE_API_TOKEN` with D1 Edit, `CLOUDFLARE_ACCOUNT_ID`). Then a
   SQL dump lands in the repository every Monday without anyone remembering.

@@ -30,6 +30,14 @@ export interface ResolvedConfig {
   areaBand: { low: number; high: number };
   /** sections + options of the stake-president report (Admin → Stake reports) */
   stakeReportLayout: StakeReportLayout;
+  /**
+   * Baptisms (MLC) sheet columns the portal has no named field for that the
+   * mission has chosen to keep. Anything not listed is dropped at sync time,
+   * so the portal only ever holds what someone decided it needs.
+   */
+  sheetExtraColumns: string[];
+  /** header names the sheet has sent that are not named fields (names only, no values) */
+  sheetExtraHeadersSeen: string[];
 }
 
 export const CONFIG_DEFAULTS: ResolvedConfig = {
@@ -42,6 +50,8 @@ export const CONFIG_DEFAULTS: ResolvedConfig = {
   },
   areaBand: { low: 80, high: 130 },
   stakeReportLayout: DEFAULT_STAKE_REPORT_LAYOUT,
+  sheetExtraColumns: [],
+  sheetExtraHeadersSeen: [],
 };
 
 export const CONFIG_KEYS = [
@@ -51,6 +61,8 @@ export const CONFIG_KEYS = [
   "bands",
   "area_band",
   "stake_report_layout",
+  "sheet_extra_columns",
+  "sheet_extra_headers_seen",
 ] as const;
 
 /** Reject a config write that would break the pipeline (wrong shape / type). */
@@ -61,6 +73,8 @@ export function validateConfigValue(key: (typeof CONFIG_KEYS)[number], value: un
     case "mlc_positions":
     case "zone_order":
     case "zone_exclude":
+    case "sheet_extra_columns":
+    case "sheet_extra_headers_seen":
       return isStrList(value) ? null : `${key} must be a list of strings`;
     case "bands": {
       const b = value as ResolvedConfig["bands"] | null;
@@ -88,14 +102,17 @@ export function validateConfigValue(key: (typeof CONFIG_KEYS)[number], value: un
 }
 
 export async function loadConfig(db: D1Database): Promise<ResolvedConfig> {
-  const [mlcPositions, zoneOrder, zoneExclude, bands, areaBand, layoutRaw] = await Promise.all([
-    getConfig(db, "mlc_positions", CONFIG_DEFAULTS.mlcPositions),
-    getConfig(db, "zone_order", CONFIG_DEFAULTS.zoneOrder),
-    getConfig(db, "zone_exclude", CONFIG_DEFAULTS.zoneExclude),
-    getConfig(db, "bands", CONFIG_DEFAULTS.bands),
-    getConfig(db, "area_band", CONFIG_DEFAULTS.areaBand),
-    getConfig<unknown>(db, "stake_report_layout", CONFIG_DEFAULTS.stakeReportLayout),
-  ]);
+  const [mlcPositions, zoneOrder, zoneExclude, bands, areaBand, layoutRaw, extraCols, extraSeen] =
+    await Promise.all([
+      getConfig(db, "mlc_positions", CONFIG_DEFAULTS.mlcPositions),
+      getConfig(db, "zone_order", CONFIG_DEFAULTS.zoneOrder),
+      getConfig(db, "zone_exclude", CONFIG_DEFAULTS.zoneExclude),
+      getConfig(db, "bands", CONFIG_DEFAULTS.bands),
+      getConfig(db, "area_band", CONFIG_DEFAULTS.areaBand),
+      getConfig<unknown>(db, "stake_report_layout", CONFIG_DEFAULTS.stakeReportLayout),
+      getConfig(db, "sheet_extra_columns", CONFIG_DEFAULTS.sheetExtraColumns),
+      getConfig(db, "sheet_extra_headers_seen", CONFIG_DEFAULTS.sheetExtraHeadersSeen),
+    ]);
   // A stored value that has drifted from the expected shape must not take the
   // whole portal down; fall back to the default for that one key.
   return {
@@ -105,5 +122,7 @@ export async function loadConfig(db: D1Database): Promise<ResolvedConfig> {
     bands: validateConfigValue("bands", bands) ? CONFIG_DEFAULTS.bands : bands,
     areaBand: validateConfigValue("area_band", areaBand) ? CONFIG_DEFAULTS.areaBand : areaBand,
     stakeReportLayout: normalizeLayout(layoutRaw).layout,
+    sheetExtraColumns: validateConfigValue("sheet_extra_columns", extraCols) ? [] : extraCols,
+    sheetExtraHeadersSeen: validateConfigValue("sheet_extra_headers_seen", extraSeen) ? [] : extraSeen,
   };
 }
