@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api.js";
+import { api, type ConsoleStep } from "../api.js";
 import { ErrorNote, Loading, PageHead, useAsync } from "../lib.js";
 
 const MARK: Record<string, { sym: string; cls: string }> = {
@@ -20,8 +21,14 @@ const LINK_FOR: Record<string, string> = {
   stakes: "/publish",
 };
 
+/** A measurable step that reads "done" from live data counts as checked. */
+const isChecked = (s: ConsoleStep, override: Record<string, boolean>): boolean =>
+  s.state === "done" ? true : (override[s.id] ?? !!s.checked);
+
 export function ConsolePage() {
   const { data, err, loading, reload } = useAsync(() => api.console(), []);
+  const [override, setOverride] = useState<Record<string, boolean>>({});
+
   if (loading) return <Loading what="the weekly console" />;
   if (err) return <ErrorNote err={err} />;
   if (!data) return null;
@@ -37,10 +44,13 @@ export function ConsolePage() {
     );
   }
 
-  const attention = data.steps.filter((s) => s.state === "attention" && !s.checked);
-  const check = async (id: string, checked: boolean) => {
-    await api.checkStep(id, checked);
-    reload();
+  const attention = data.steps.filter(
+    (s) => s.state === "attention" && !isChecked(s, override),
+  );
+  // optimistic: flip locally now, persist in the background, revert on failure
+  const check = (id: string, checked: boolean) => {
+    setOverride((o) => ({ ...o, [id]: checked }));
+    api.checkStep(id, checked).catch(() => setOverride((o) => ({ ...o, [id]: !checked })));
   };
 
   return (
@@ -90,30 +100,33 @@ export function ConsolePage() {
 
       <h3>This week’s checklist</h3>
       <p className="muted" style={{ fontSize: ".82rem", marginTop: "-.3rem" }}>
-        The ✓ / ! marks come from live data. Tick a box as you finish each step; the list resets when
-        the next week is imported.
+        Measurable steps tick themselves from live data. Tick the rest as you finish them; the list
+        resets when the next week is imported.
       </p>
       <ol className="steps checklist">
         {data.steps.map((s) => {
           const m = MARK[s.state]!;
           const to = LINK_FOR[s.id];
+          const done = isChecked(s, override);
+          const auto = s.state === "done";
           return (
-            <li key={s.id} className={s.checked ? "checked" : ""}>
+            <li key={s.id} className={done ? "checked" : ""}>
               <input
                 type="checkbox"
-                checked={!!s.checked}
+                checked={done}
+                disabled={auto}
                 onChange={(e) => check(s.id, e.target.checked)}
-                title="Mark done for this week"
+                title={auto ? "Done automatically" : "Mark done for this week"}
               />
               <span>
                 <b>{to ? <Link to={to}>{s.label}</Link> : s.label}</b>
-                {!s.checked && (
+                {!done && (
                   <span className={`pct ${m.cls}`} style={{ marginLeft: ".5rem", fontSize: ".7rem" }}>
                     {m.sym} {s.state}
                   </span>
                 )}
                 <span className="hint"> {s.detail}</span>
-                {s.checked && s.state === "attention" && (
+                {done && !auto && s.state === "attention" && (
                   <span className="hint" style={{ color: "var(--band-mid)" }}> (still flagged)</span>
                 )}
               </span>
