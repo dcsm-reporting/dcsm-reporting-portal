@@ -250,6 +250,72 @@ export async function recordBaptism(
   return { id, duplicate: false };
 }
 
+/**
+ * Deliberately correct a completed baptism that shouldn't count — it never
+ * happened, was a duplicate, or wasn't a convert baptism (e.g. a ward
+ * baptism). This is the human, audited counterpart to the passive sheet-sync
+ * retention: a row leaving the sheet is *assumed* to mean "cycled out, still
+ * counts"; this is the deliberate override for "it left because it was
+ * wrong". Un-confirms and deactivates the record but keeps it — with the
+ * reason recorded — rather than deleting it, so the history survives. Works
+ * on any source (sheet, portal, or legacy backfill), not just portal rows.
+ */
+export async function correctBaptism(
+  db: D1Database,
+  actor: string,
+  id: string,
+  reason: string,
+): Promise<{ name: string }> {
+  const f = await getFriend(db, id);
+  if (!f) throw new Error("no such record");
+  if (!f.baptizedConfirmed) throw new Error("that record isn't marked baptized");
+  const trimmed = reason.trim();
+  if (!trimmed) throw new Error("a reason is required");
+  const now = new Date().toISOString();
+  const note = `Corrected ${now.slice(0, 10)} by ${actor}: ${trimmed}`;
+  await db
+    .prepare(
+      `UPDATE friend SET baptized_confirmed = 0, active = 0, dropped = 1,
+         notes = CASE WHEN notes IS NULL OR notes = '' THEN ? ELSE notes || char(10) || ? END,
+         updated_at = ?, updated_by = ?
+       WHERE id = ?`,
+    )
+    .bind(note, note, now, actor, id)
+    .run();
+  return { name: f.name };
+}
+
+/**
+ * Confirmed-and-cycled-out-almost-immediately is the one pattern that doesn't
+ * look like a normal monthly clear-out (STLs typically confirm weeks before
+ * cycling names out at month's end). Not proof of anything wrong — just worth
+ * a human glance. Limited to the last 90 days so it doesn't accumulate.
+ */
+export async function flaggedRetentions(db: D1Database): Promise<
+  { id: string; name: string; ward: string | null; stake: string | null; baptismDate: string | null; confirmedAt: string | null; leftSheetAt: string | null }[]
+> {
+  const cutoff = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const { results } = await db
+    .prepare(
+      `SELECT id, name, ward, stake, baptism_date, confirmed_at, left_sheet_at FROM friend
+       WHERE baptized_confirmed = 1 AND left_sheet_at IS NOT NULL AND confirmed_at IS NOT NULL
+         AND left_sheet_at >= ?
+         AND (julianday(left_sheet_at) - julianday(confirmed_at)) < 3
+       ORDER BY left_sheet_at DESC`,
+    )
+    .bind(cutoff)
+    .all<Record<string, string | null>>();
+  return (results ?? []).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    ward: r.ward ?? null,
+    stake: r.stake ?? null,
+    baptismDate: r.baptism_date ?? null,
+    confirmedAt: r.confirmed_at ?? null,
+    leftSheetAt: r.left_sheet_at ?? null,
+  }));
+}
+
 // --- sheet sync -----------------------------------------------------------
 export interface SheetRow {
   zone?: string;
@@ -296,6 +362,7 @@ export async function syncFriends(
   retained: number;
   deactivated: number;
   warnings: string[];
+  rejected?: boolean;
 }> {
   const warnings: string[] = [];
   const now = new Date().toISOString();
@@ -352,6 +419,7 @@ export async function syncFriends(
 
   let upserted = 0;
   let changed = 0;
+  let inserted = 0;
   const stmts: D1PreparedStatement[] = [];
   const claimed = new Set<string>(); // friend ids matched this run
 
@@ -416,6 +484,7 @@ export async function syncFriends(
           ),
       );
       changed++;
+      inserted++;
     }
     upserted++;
   }
@@ -447,6 +516,34 @@ export async function syncFriends(
       );
       deactivated++;
     }
+  }
+
+  // Circuit breaker: a sort, a cut-paste, or a sync landing mid-edit can make a
+  // burst of rows look like they simultaneously vanished and reappeared under
+  // slightly different text. That shows up as inserts + drops happening
+  // together — unlike the normal monthly clear-out, where STLs remove a batch
+  // of *confirmed* baptisms and those are retained, not dropped, so they don't
+  // count here. If inserts+drops are large relative to the active sheet
+  // population, something looks off: apply nothing and report it instead of
+  // guessing.
+  const activeBefore = sheetRows.filter((f) => f.active).length;
+  const identityChurn = inserted + deactivated;
+  // Below a real baseline there's nothing to compare against — a first-ever
+  // sync, or one after a reset, is supposed to insert a lot of rows at once.
+  const MIN_BASELINE = 10;
+  const churnLimit = Math.max(8, Math.round(activeBefore * 0.3));
+  if (activeBefore >= MIN_BASELINE && identityChurn > churnLimit) {
+    const msg =
+      `sync held back: ${inserted} new + ${deactivated} dropped (of ${activeBefore} active) in one pass ` +
+      `looks like a mid-edit or a sort, not real changes; nothing was applied. Re-run once the sheet settles.`;
+    warnings.push(msg);
+    await db
+      .prepare(
+        "INSERT INTO friend_sync (at, rows_in, upserted, deactivated, warnings) VALUES (?, ?, 0, 0, ?)",
+      )
+      .bind(now, rows.length, JSON.stringify(warnings))
+      .run();
+    return { rowsIn: rows.length, upserted: 0, changed: 0, retained: 0, deactivated: 0, warnings, rejected: true };
   }
 
   // run in chunks

@@ -52,6 +52,8 @@ import {
   weekLabel,
 } from "./service.js";
 import {
+  correctBaptism,
+  flaggedRetentions,
   friendsByStake,
   friendsSummary,
   listFriends,
@@ -570,6 +572,31 @@ app.delete("/api/friends/record/:id", async (c) => {
   await bumpFriends(c.env);
   return c.json({ ok: true });
 });
+
+/**
+ * Deliberately correct a completed baptism that shouldn't count (it never
+ * happened, was a duplicate, or wasn't a convert baptism). Works on any
+ * source — unlike the DELETE above, which only touches portal-added rows.
+ * Un-confirms and deactivates the record; the reason is kept in its notes.
+ */
+app.post("/api/friends/:id/correct", async (c) => {
+  const id = c.req.param("id");
+  const b = await c.req.json<{ reason?: string }>();
+  let res: { name: string };
+  try {
+    res = await correctBaptism(c.env.DB, c.get("user"), id, b.reason ?? "");
+  } catch (e) {
+    throw new HTTPException(400, { message: (e as Error).message });
+  }
+  await audit(c.env.DB, c.get("user"), "friends.correct", { id, name: res.name, reason: b.reason });
+  await bumpFriends(c.env);
+  return c.json({ ok: true, ...res });
+});
+
+/** Baptisms confirmed and cycled off the sheet almost immediately — worth a glance. */
+app.get("/api/friends/flagged", async (c) =>
+  c.json({ flagged: await cached(c.env, "friends-flagged", "friends", () => flaggedRetentions(c.env.DB)) }),
+);
 
 // --- data page (read-only browse) --------------------------------
 app.get("/api/data", async (c) =>

@@ -145,8 +145,39 @@ export function FriendsPage() {
       {list.err && <ErrorNote err={list.err} />}
       {list.data && <FriendTable rows={list.data.friends} onChange={refresh} />}
 
+      <FlaggedRetentions />
       <Reconciliation onChange={refresh} />
     </>
+  );
+}
+
+/**
+ * A baptism confirmed and cycled off the sheet almost immediately doesn't
+ * match the normal monthly clear-out pattern (STLs usually confirm weeks
+ * before removing names at month's end). Not proof of a mistake, just worth
+ * a glance — one click opens the same "doesn't count" correction as the main
+ * table.
+ */
+function FlaggedRetentions() {
+  const { data, err, loading } = useAsync(() => api.flaggedRetentions(), []);
+  if (loading || err || !data || data.flagged.length === 0) return null;
+  return (
+    <div className="note warn" style={{ marginTop: "1.2rem" }}>
+      <strong>{data.flagged.length} baptism{data.flagged.length === 1 ? "" : "s"} confirmed and removed from the sheet within days of each other.</strong>{" "}
+      That's unusual for a routine monthly clear-out (those are normally confirmed weeks earlier), so
+      it's worth a quick check that each one really happened and counts as a convert baptism.
+      <ul style={{ margin: ".5rem 0 0", paddingLeft: "1.2rem" }}>
+        {data.flagged.map((f) => (
+          <li key={f.id} style={{ fontSize: ".85rem" }}>
+            <strong>{f.name}</strong>
+            {[f.ward, f.stake].filter(Boolean).length > 0 && <>, {[f.ward, f.stake].filter(Boolean).join(", ")}</>}
+            , dated {fmtDate(f.baptismDate)}
+            {" · confirmed "}{f.confirmedAt?.slice(0, 10)}{", left the sheet "}{f.leftSheetAt?.slice(0, 10)}
+            {". Use the "}<em>doesn’t count</em>{" button above on this name if it shouldn't count."}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -194,7 +225,7 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
               <div className="note ok">
                 <strong>Everything the Mission Portal counted for {monthLabel(data.month)} has a name.</strong>{" "}
                 {data.mission.namedCount > data.mission.kiFeedBC
-                  ? `Our list has ${data.mission.namedCount - data.mission.kiFeedBC} more than the Portal, which is normal — our list is the more complete one.`
+                  ? `Our list has ${data.mission.namedCount - data.mission.kiFeedBC} more than the Portal, which is normal: our list is the more complete one.`
                   : "Nothing to track down."}
               </div>
             ) : (
@@ -232,7 +263,7 @@ function Reconciliation({ onChange }: { onChange: () => void }) {
                 <div className="card">
                   <div className="k">Old unverified names</div>
                   <div className="v">{data.mission.unverifiedCount}</div>
-                  <div className="sub">not counted — need a source</div>
+                  <div className="sub">not counted, need a source</div>
                 </div>
               )}
             </div>
@@ -422,17 +453,38 @@ function RecordBaptism({ onRecorded }: { onRecorded: () => void }) {
 }
 
 function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => void }) {
-  const [removing, setRemoving] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   if (rows.length === 0) return <p className="muted">No records.</p>;
 
   const remove = async (id: string, name: string) => {
     if (!window.confirm(`Remove the hand-entered baptism record for ${name}?`)) return;
-    setRemoving(id);
+    setBusy(id);
     try {
       await api.deleteRecord(id);
       onChange();
     } finally {
-      setRemoving(null);
+      setBusy(null);
+    }
+  };
+
+  const correct = async (id: string, name: string) => {
+    const reason = window.prompt(
+      `Why doesn't ${name}'s baptism count? (didn't happen, duplicate, not a convert baptism, etc.) ` +
+        `This un-marks it everywhere: reports, reconciliation, Trends. The record stays, with your note.`,
+    );
+    if (reason == null) return; // cancelled
+    if (!reason.trim()) {
+      window.alert("A reason is required.");
+      return;
+    }
+    setBusy(id);
+    try {
+      await api.correctBaptism(id, reason);
+      onChange();
+    } catch (e) {
+      window.alert((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   };
   return (
@@ -487,11 +539,25 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
                     </span>{" "}
                     <button
                       className="btn"
-                      disabled={removing === f.id}
+                      disabled={busy === f.id}
                       onClick={() => remove(f.id, f.name)}
                       style={{ fontSize: ".72rem", padding: "2px 7px" }}
                     >
-                      {removing === f.id ? "removing…" : "remove"}
+                      {busy === f.id ? "removing…" : "remove"}
+                    </button>
+                  </>
+                )}
+                {f.baptizedConfirmed && (
+                  <>
+                    {" "}
+                    <button
+                      className="btn"
+                      disabled={busy === f.id}
+                      title="This baptism shouldn't count (didn't happen, duplicate, not a convert baptism)"
+                      onClick={() => correct(f.id, f.name)}
+                      style={{ fontSize: ".72rem", padding: "2px 7px" }}
+                    >
+                      {busy === f.id ? "…" : "doesn’t count"}
                     </button>
                   </>
                 )}

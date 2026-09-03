@@ -3,8 +3,15 @@
  *
  * Bind this to the "Baptisms (MLC)" spreadsheet (Extensions → Apps Script),
  * set the two Script Properties below, add a time-driven trigger on
- * `pushToPortal` (every 15 min is plenty), and the portal's Friends page will
+ * `pushToPortal` (every 15 min is plenty), and the portal's Baptisms page will
  * mirror the sheet. The sheet stays the place STLs actually edit.
+ *
+ * The onEdit() trigger below needs no separate setup — it's a simple trigger,
+ * Apps Script wires it up automatically because it's named exactly `onEdit`.
+ * It just timestamps the last edit so pushToPortal() can skip a run that
+ * would land mid-edit (a sort or a multi-row move can leave things briefly
+ * inconsistent); it tries again on the next 15-minute tick. The portal's own
+ * sync also has a circuit breaker for anything that slips through.
  *
  *   Script Properties (Project Settings → Script Properties):
  *     PORTAL_URL    https://dcsm-ki-portal.dcsm-reporting.workers.dev
@@ -48,8 +55,24 @@ var FIELD_BY_HEADER = {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('KI Portal')
-    .addItem('Push to portal now', 'pushToPortal')
+    .addItem('Push to portal now', 'pushToPortalForce')
     .addToUi();
+}
+
+/** Menu item: a human clicked it on purpose, so skip the debounce wait. */
+function pushToPortalForce() {
+  return pushToPortal(true);
+}
+
+// A sort, a cut-paste, or a multi-row restructure can leave the sheet briefly
+// inconsistent (a name split across two rows, a ward cell blank mid-move). The
+// 15-minute timer can land in that window. This is a simple trigger — no setup
+// needed beyond the function existing — that just remembers when the sheet was
+// last touched, so pushToPortal() can wait for things to settle.
+var DEBOUNCE_MS = 2 * 60 * 1000; // 2 minutes since the last edit
+
+function onEdit(e) {
+  PropertiesService.getScriptProperties().setProperty('LAST_EDIT_AT', String(Date.now()));
 }
 
 function mostRecentMonday_() {
@@ -136,11 +159,17 @@ function collectRows_() {
   return out;
 }
 
-function pushToPortal() {
+function pushToPortal(force) {
   var props = PropertiesService.getScriptProperties();
   var url = props.getProperty('PORTAL_URL');
   var secret = props.getProperty('SYNC_SECRET');
   if (!url || !secret) throw new Error('Set PORTAL_URL and SYNC_SECRET in Script Properties.');
+
+  var lastEdit = Number(props.getProperty('LAST_EDIT_AT') || 0);
+  if (!force && lastEdit && Date.now() - lastEdit < DEBOUNCE_MS) {
+    Logger.log('Skipped: sheet was edited less than ' + (DEBOUNCE_MS / 60000) + ' min ago. Will try again next run.');
+    return 'skipped (recent edit)';
+  }
 
   var payload = { weekStart: mostRecentMonday_(), rows: collectRows_() };
   var res = UrlFetchApp.fetch(url.replace(/\/+$/, '') + '/api/friends/sync', {
