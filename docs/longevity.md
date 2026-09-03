@@ -128,3 +128,12 @@ year and this one is expected to last several.
 - [ ] Admin → Admin access lists current people only.
 - [ ] Access policy still matches the missionary email domains.
 - [ ] This page still describes reality; fix it if not.
+
+## 11. One rule for whoever edits the code
+
+**When an `/api/*` response changes shape, bump that route's cache key**
+(`"structure:v2"` → `"structure:v3"` in `src/server/index.ts`). Views are served
+from the KV cache and a deploy does not invalidate it, so a page can otherwise
+read yesterday's shape and crash with "cannot read properties of undefined".
+This has happened twice (Trends, Areas & wards). The client should also treat
+new fields as optional for the first hour after a deploy.

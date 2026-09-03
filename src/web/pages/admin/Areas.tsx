@@ -43,7 +43,7 @@ export function AreasPage() {
       a.wards.some((w) => w.stake.toLowerCase().includes(s) || w.wardName.toLowerCase().includes(s))
     );
   });
-  const wardRows = data.wards.filter((w) => {
+  const wardRows = (data.wards ?? []).filter((w) => {
     if (!s) return true;
     return (
       w.wardName.toLowerCase().includes(s) ||
@@ -64,7 +64,7 @@ export function AreasPage() {
             Teaching areas ({data.areas.filter((a) => !a.retiredAt).length})
           </button>
           <button className={view === "wards" ? "on" : ""} onClick={() => setView("wards")}>
-            Wards ({data.wards.length})
+            Wards ({(data.wards ?? []).length})
           </button>
         </span>
         <input placeholder="filter by area, ward, stake, zone…" value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 260 }} />
@@ -247,7 +247,7 @@ function WardPicker({
 }) {
   const byStake = useMemo(() => {
     const m = new Map<string, StructureWard[]>();
-    for (const w of data.wards) (m.get(w.stake) ?? m.set(w.stake, []).get(w.stake)!).push(w);
+    for (const w of data.wards ?? []) (m.get(w.stake) ?? m.set(w.stake, []).get(w.stake)!).push(w);
     return [...m.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [data.wards]);
   return (
@@ -348,7 +348,7 @@ function RenameWard({ data, onDone }: { data: Structure; onDone: (m: string) => 
   const [ids, setIds] = useState<number[]>([]);
   const [name, setName] = useState("");
   const { busy, msg, run } = useBusy();
-  const cur = data.wards.find((w) => w.wardUnitId === ids[0]);
+  const cur = (data.wards ?? []).find((w) => w.wardUnitId === ids[0]);
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
@@ -357,7 +357,7 @@ function RenameWard({ data, onDone }: { data: Structure; onDone: (m: string) => 
         is unaffected and still shows on the This Week board.
       </p>
       <div className="inline-form">
-        <WardPicker data={data} value={ids} onChange={(v) => (setIds(v), setName(data.wards.find((w) => w.wardUnitId === v[0])?.wardName ?? ""))} multi={false} />
+        <WardPicker data={data} value={ids} onChange={(v) => (setIds(v), setName((data.wards ?? []).find((w) => w.wardUnitId === v[0])?.wardName ?? ""))} multi={false} />
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="new name" style={{ minWidth: 220 }} />
         <button
           className="btn primary"
@@ -382,7 +382,7 @@ function RetireWard({ data, defaultWeek, onDone }: { data: Structure; defaultWee
   const [ids, setIds] = useState<number[]>([]);
   const [to, setTo] = useState(defaultWeek);
   const { busy, msg, run } = useBusy();
-  const cur = data.wards.find((w) => w.wardUnitId === ids[0]);
+  const cur = (data.wards ?? []).find((w) => w.wardUnitId === ids[0]);
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>

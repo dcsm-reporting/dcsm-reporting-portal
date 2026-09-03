@@ -494,7 +494,7 @@ app.post("/api/console/check", async (c) => {
 // --- config ------------------------------------------------------
 app.get("/api/config", async (c) =>
   c.json(
-    await cached(c.env, "config", "ki", async () => ({
+    await cached(c.env, "config:v2", "ki", async () => ({
       config: await loadConfig(c.env.DB),
       defaults: CONFIG_DEFAULTS,
       keys: CONFIG_KEYS,
@@ -517,7 +517,7 @@ app.put("/api/config", async (c) => {
 
 // --- structure (Admin → Areas) --------------------------------
 app.get("/api/structure", async (c) =>
-  c.json(await cached(c.env, "structure", "ki", () => getStructure(c.env.DB))),
+  c.json(await cached(c.env, "structure:v2", "ki", () => getStructure(c.env.DB))),
 );
 
 // --- transfer rollover ---------------------------------------
@@ -836,7 +836,7 @@ app.get("/api/export", async (c) => {
 // --- publish (boards + stake reports) ---------------------------
 app.get("/api/publish/:week", async (c) => {
   const week = c.req.param("week");
-  return c.json(await cached(c.env, `publish:v2:${week}`, "both", () => buildPublish(c.env.DB, week)));
+  return c.json(await cached(c.env, `publish:v3:${week}`, "both", () => buildPublish(c.env.DB, week)));
 });
 
 app.get("/api/recipients", async (c) =>
