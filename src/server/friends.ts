@@ -80,10 +80,17 @@ export async function listFriends(
   if (opts.status === "on-date")
     where.push("baptized_confirmed = 0 AND dropped = 0 AND baptism_date IS NOT NULL");
   else if (opts.status === "baptized") where.push("baptized_confirmed = 1");
+  // Baptized: most recent first, so today's sheet surfaces above last year's
+  // backfill instead of under it. On-date / all: soonest date first (still
+  // actionable planning order).
+  const order =
+    opts.status === "baptized"
+      ? "baptism_date IS NULL, baptism_date DESC, name"
+      : "baptized_confirmed, baptism_date IS NULL, baptism_date, name";
   const sql =
     `SELECT ${COLS} FROM friend` +
     (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
-    " ORDER BY baptized_confirmed, baptism_date IS NULL, baptism_date, name";
+    ` ORDER BY ${order}`;
   const { results } = await db.prepare(sql).bind(...bind).all<Row>();
   return (results ?? []).map(toFriend);
 }
@@ -283,37 +290,6 @@ export async function correctBaptism(
     .bind(note, note, now, actor, id)
     .run();
   return { name: f.name };
-}
-
-/**
- * Confirmed-and-cycled-out-almost-immediately is the one pattern that doesn't
- * look like a normal monthly clear-out (STLs typically confirm weeks before
- * cycling names out at month's end). Not proof of anything wrong — just worth
- * a human glance. Limited to the last 90 days so it doesn't accumulate.
- */
-export async function flaggedRetentions(db: D1Database): Promise<
-  { id: string; name: string; ward: string | null; stake: string | null; baptismDate: string | null; confirmedAt: string | null; leftSheetAt: string | null }[]
-> {
-  const cutoff = new Date(Date.now() - 90 * 86_400_000).toISOString();
-  const { results } = await db
-    .prepare(
-      `SELECT id, name, ward, stake, baptism_date, confirmed_at, left_sheet_at FROM friend
-       WHERE baptized_confirmed = 1 AND left_sheet_at IS NOT NULL AND confirmed_at IS NOT NULL
-         AND left_sheet_at >= ?
-         AND (julianday(left_sheet_at) - julianday(confirmed_at)) < 3
-       ORDER BY left_sheet_at DESC`,
-    )
-    .bind(cutoff)
-    .all<Record<string, string | null>>();
-  return (results ?? []).map((r) => ({
-    id: r.id as string,
-    name: r.name as string,
-    ward: r.ward ?? null,
-    stake: r.stake ?? null,
-    baptismDate: r.baptism_date ?? null,
-    confirmedAt: r.confirmed_at ?? null,
-    leftSheetAt: r.left_sheet_at ?? null,
-  }));
 }
 
 // --- sheet sync -----------------------------------------------------------

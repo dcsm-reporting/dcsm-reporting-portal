@@ -212,8 +212,6 @@ export const api = {
     jsend<{ ok: true }>("DELETE", `/api/friends/record/${id}`, undefined),
   correctBaptism: (id: string, reason: string) =>
     jpost<{ ok: true; name: string }>(`/api/friends/${id}/correct`, { reason }),
-  flaggedRetentions: () =>
-    jget<{ flagged: FlaggedRetention[] }>("/api/friends/flagged"),
   data: () => jget<DataView>("/api/data"),
   exportUrl: "/api/export",
 
@@ -341,14 +339,6 @@ export interface FriendRow {
   notes: string | null;
   dropped: boolean;
   source: string;
-}
-export interface FlaggedRetention {
-  id: string;
-  name: string;
-  ward: string | null;
-  stake: string | null;
-  baptismDate: string | null;
-  confirmedAt: string | null;
   leftSheetAt: string | null;
 }
 export interface FriendsSummary {

@@ -143,41 +143,72 @@ export function FriendsPage() {
 
       {list.loading && <Loading what="friends" />}
       {list.err && <ErrorNote err={list.err} />}
-      {list.data && <FriendTable rows={list.data.friends} onChange={refresh} />}
+      {list.data && status === "baptized" && <BaptizedSections rows={list.data.friends} onChange={refresh} />}
+      {list.data && status !== "baptized" && <FriendTable rows={list.data.friends} onChange={refresh} />}
 
-      <FlaggedRetentions />
       <Reconciliation onChange={refresh} />
     </>
   );
 }
 
 /**
- * A baptism confirmed and cycled off the sheet almost immediately doesn't
- * match the normal monthly clear-out pattern (STLs usually confirm weeks
- * before removing names at month's end). Not proof of a mistake, just worth
- * a glance — one click opens the same "doesn't count" correction as the main
- * table.
+ * The "Baptized" list mixes three very different kinds of record, and
+ * flattening them into one table is what made the page feel wrong: it put a
+ * year of pre-portal backfill ahead of what's actually on the Baptisms (MLC)
+ * sheet right now. Split by what each record actually is instead:
+ *   - still on the sheet today (exactly matches the live sheet)
+ *   - confirmed, then cleared off the sheet by an STL (the normal monthly
+ *     cycle-out — shown plainly for a glance, not as a warning; there's no
+ *     reliable way to guess from timing alone whether a clear-out is
+ *     routine or a mistake, since STLs typically confirm-and-clear in the
+ *     same sitting, so "doesn't count" is the real tool, not a flag)
+ *   - historical, from before the sheet was the source of truth (loaded
+ *     once from old records; won't ever match the current sheet, and isn't
+ *     trying to)
  */
-function FlaggedRetentions() {
-  const { data, err, loading } = useAsync(() => api.flaggedRetentions(), []);
-  if (loading || err || !data || data.flagged.length === 0) return null;
+const isCurrentSource = (source: string) => source === "sheet" || source === "portal";
+
+function BaptizedSections({ rows, onChange }: { rows: FriendRow[]; onChange: () => void }) {
+  const current = rows.filter((f) => isCurrentSource(f.source));
+  const onSheetNow = current.filter((f) => f.leftSheetAt == null);
+  const recentlyCleared = current
+    .filter((f) => f.leftSheetAt != null)
+    .sort((a, b) => (b.leftSheetAt ?? "").localeCompare(a.leftSheetAt ?? ""));
+  const historical = rows.filter((f) => !isCurrentSource(f.source));
+
   return (
-    <div className="note warn" style={{ marginTop: "1.2rem" }}>
-      <strong>{data.flagged.length} baptism{data.flagged.length === 1 ? "" : "s"} confirmed and removed from the sheet within days of each other.</strong>{" "}
-      That's unusual for a routine monthly clear-out (those are normally confirmed weeks earlier), so
-      it's worth a quick check that each one really happened and counts as a convert baptism.
-      <ul style={{ margin: ".5rem 0 0", paddingLeft: "1.2rem" }}>
-        {data.flagged.map((f) => (
-          <li key={f.id} style={{ fontSize: ".85rem" }}>
-            <strong>{f.name}</strong>
-            {[f.ward, f.stake].filter(Boolean).length > 0 && <>, {[f.ward, f.stake].filter(Boolean).join(", ")}</>}
-            , dated {fmtDate(f.baptismDate)}
-            {" · confirmed "}{f.confirmedAt?.slice(0, 10)}{", left the sheet "}{f.leftSheetAt?.slice(0, 10)}
-            {". Use the "}<em>doesn’t count</em>{" button above on this name if it shouldn't count."}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <h4 style={{ marginTop: "1.2rem", fontWeight: 600 }}>
+        Currently on the Baptisms (MLC) sheet ({onSheetNow.length})
+      </h4>
+      <FriendTable rows={onSheetNow} onChange={onChange} />
+
+      {recentlyCleared.length > 0 && (
+        <>
+          <h4 style={{ marginTop: "1.8rem", fontWeight: 600 }}>
+            Recently cleared from the sheet ({recentlyCleared.length})
+          </h4>
+          <p className="muted" style={{ fontSize: ".85rem", maxWidth: "74ch" }}>
+            Confirmed, then removed from the sheet, most likely as part of a normal STL clear-out.
+            Worth a glance; use <em>doesn't count</em> on any name that shouldn't have counted.
+          </p>
+          <FriendTable rows={recentlyCleared} onChange={onChange} />
+        </>
+      )}
+
+      {historical.length > 0 && (
+        <details style={{ marginTop: "1.8rem" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Historical baptisms, before the sheet ({historical.length})
+          </summary>
+          <p className="muted" style={{ fontSize: ".85rem", maxWidth: "74ch", marginTop: ".5rem" }}>
+            Reconstructed from older records when the portal launched. These predate the Baptisms
+            (MLC) sheet as the source of truth, so they won't appear on it, that's expected.
+          </p>
+          <FriendTable rows={historical} onChange={onChange} />
+        </details>
+      )}
+    </>
   );
 }
 

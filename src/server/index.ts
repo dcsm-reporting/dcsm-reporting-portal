@@ -53,7 +53,6 @@ import {
 } from "./service.js";
 import {
   correctBaptism,
-  flaggedRetentions,
   friendsByStake,
   friendsSummary,
   listFriends,
@@ -592,11 +591,6 @@ app.post("/api/friends/:id/correct", async (c) => {
   await bumpFriends(c.env);
   return c.json({ ok: true, ...res });
 });
-
-/** Baptisms confirmed and cycled off the sheet almost immediately — worth a glance. */
-app.get("/api/friends/flagged", async (c) =>
-  c.json({ flagged: await cached(c.env, "friends-flagged", "friends", () => flaggedRetentions(c.env.DB)) }),
-);
 
 // --- data page (read-only browse) --------------------------------
 app.get("/api/data", async (c) =>
