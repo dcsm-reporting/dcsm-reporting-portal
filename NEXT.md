@@ -11,6 +11,41 @@ Deferred work, roughly in priority order. Nothing here is urgent.
 - **Turn on the Access token check** once you have the AUD tag in hand:
   `docs/access-token-check.md`. Two lines in `wrangler.toml`, one deploy.
 
+## Ideas worth building (Noah asked for the unconstrained list, 2026-09-03)
+
+Ranked by what they add per hour of work. None are started.
+
+1. **Baptism goals.** A monthly and annual baptism goal per zone and for the
+   mission (config table, edited under Admin), shown as a target line on the
+   Baptisms bar chart, a progress tile on the Baptisms page and the stake
+   report ("14 of 20 this month"), and a year-to-date pace. Optional per
+   stake later. About half a day.
+2. **Data-quality checks before publishing.** A panel on the Console that
+   flags entry mistakes the boards otherwise hide: an area with no goal set
+   on any indicator; an area whose six numbers are identical to last week
+   (copy-forward); an actual more than three times its goal; a zone whose
+   total dropped by half. About half a day.
+3. **Per-area history across id changes.** The canonical-area layer exists
+   but no report reads it. An "Area" page: pick a canonical area, see its
+   weekly numbers across every IMOS id it has had, plus who served there
+   (from `missionary_snapshot`). This is what makes the crosswalk pay for
+   itself. About a day.
+4. **Baptismal-date readiness list.** Friends whose date is within 14 days
+   and who lack the calendar tick or the two church attendances — the list
+   an STL needs on Sunday night. Cheap; the data is already there.
+5. **Year in review.** Once two years exist: totals by month, baptisms by
+   stake, this year vs last, exported as a PDF like the stake report.
+6. **Missionary view.** A missionary's numbers across areas (from the
+   snapshot table). Useful for MLC and for the president; sensitive, so
+   admin-only. About a day.
+7. **Monday MLC Slides repoint** (below, unchanged).
+8. **Arm the weekly backup cron** (two GitHub secrets, five minutes). Not a
+   feature, but the cheapest durability left on the table.
+
+Deliberately not on the list: anything that sends email or messages on its
+own, anything that logs into IMOS, and a second database. Those are the
+things that made the previous systems fragile.
+
 ## 1. Monday MLC Slides — repoint the weekly KIs to the portal
 
 Keep the existing Apps Script (`resources/DCSM Key Indicator Reports - Slides

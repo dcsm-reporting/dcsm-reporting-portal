@@ -18,7 +18,7 @@ import {
   type WeekWardFacts,
 } from "../pipeline/rollup.js";
 import { resolveWeek, wardMapForWeek } from "../pipeline/resolve.js";
-import { MISSION_KEY } from "../pipeline/constants.js";
+import { MISSION_KEY, UNMAPPED_STAKE } from "../pipeline/constants.js";
 import { planRollover, type RolloverInput, type RolloverPlan } from "../pipeline/rollover.js";
 import type { AreaKey } from "../pipeline/crosswalkSeed.js";
 import type { KiFact } from "../pipeline/types.js";
@@ -26,11 +26,15 @@ import { loadConfig, type ResolvedConfig } from "./config.js";
 import { friendsSummary } from "./friends.js";
 import { buildReconcile } from "./reconcile.js";
 import { lastCompleteWeekOf, missingMondays, todayIso } from "../shared/dates.js";
+import { slug } from "../pipeline/identity.js";
 import {
   addWard,
   attachArea,
   audit,
+  canonicalKeyExists,
+  closeMapping,
   createCanonicalArea,
+  newPositionsForWeek,
   distinctAreaIdsForWeek,
   distinctZonesForWeek,
   getAreaWardRows,
@@ -42,6 +46,7 @@ import {
   loadFacts,
   loadWardFacts,
   mlcAreaIdsForWeek,
+  setCanonicalRetired,
   weeksAvailable,
 } from "./db.js";
 
@@ -263,14 +268,15 @@ export async function buildRollover(
   db: D1Database,
   weekStart: string,
   areaKey: AreaKey,
-): Promise<RolloverPlan> {
-  const [facts, wardFacts, crosswalk, areaWard, canonical, all] = await Promise.all([
+): Promise<RolloverPlan & { newPositions: string[]; newLeadershipPositions: string[] }> {
+  const [facts, wardFacts, crosswalk, areaWard, canonical, all, cfg] = await Promise.all([
     loadFacts(db, weekStart),
     loadWardFacts(db, weekStart),
     getCrosswalkRows(db),
     getAreaWardRows(db),
     getCanonicalRows(db),
     weeksAvailable(db),
+    loadConfig(db),
   ]);
   if (facts.length === 0) throw new Error(`no facts stored for week ${weekStart}`);
 
@@ -295,7 +301,7 @@ export async function buildRollover(
     ? await Promise.all([distinctZonesForWeek(db, prevWeek), distinctAreaIdsForWeek(db, prevWeek)])
     : [null, null];
 
-  return planRollover({
+  const plan = planRollover({
     weekStart,
     areas: [...areas.values()],
     orgs: [...orgs.values()],
@@ -305,34 +311,160 @@ export async function buildRollover(
     areaWard,
     canonical,
     areaKey,
+    zoneExclude: cfg.zoneExclude,
+    zoneOrder: cfg.zoneOrder,
   });
+
+  // Position strings IMOS has never sent before. One that reads like a
+  // leadership role but is not in the MLC list would silently drop that
+  // area out of the MLC share — say so.
+  const newPositions = prevWeek ? await newPositionsForWeek(db, weekStart) : [];
+  const mlcSet = new Set(cfg.mlcPositions);
+  const leadershipLike = /LEAD|ASSIST|TRAIN|COORD|PRESID/i;
+  const suspicious = newPositions.filter((p) => !mlcSet.has(p) && leadershipLike.test(p));
+  return { ...plan, newPositions, newLeadershipPositions: suspicious };
 }
 
 export interface RolloverApply {
   validFrom: string;
   areas: { imosAreaId: number; canonicalAreaKey: string; isNew: boolean; displayName: string }[];
   wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
+  /** open mappings to close at validFrom; the canonical area is retired when no open id remains */
+  retire?: { imosAreaId: number; canonicalAreaKey: string; validFrom: string }[];
 }
 
 export async function applyRollover(
   db: D1Database,
   actor: string,
   body: RolloverApply,
-): Promise<{ areas: number; wards: number }> {
+): Promise<{ areas: number; wards: number; closed: number; retired: number; skipped: string[] }> {
   const vf = body.validFrom;
+  const skipped: string[] = [];
   for (const a of body.areas) {
-    if (a.isNew) await createCanonicalArea(db, a.canonicalAreaKey, a.displayName || a.canonicalAreaKey, vf);
-    await attachArea(db, a.imosAreaId, a.canonicalAreaKey, vf, "rollover");
+    // a hand-typed key: fold it to the slug form every other key uses
+    const key = slug(a.canonicalAreaKey) || slug(a.displayName);
+    if (!key) {
+      skipped.push(`area #${a.imosAreaId}: empty canonical key`);
+      continue;
+    }
+    if (a.isNew || !(await canonicalKeyExists(db, key))) {
+      await createCanonicalArea(db, key, a.displayName || a.canonicalAreaKey, vf);
+    }
+    await attachArea(db, a.imosAreaId, key, vf, "rollover");
   }
   for (const w of body.wards) {
-    await addWard(db, w.canonicalAreaKey, w.orgId, w.wardName, w.stake, vf);
+    const key = slug(w.canonicalAreaKey);
+    if (!key || !(await canonicalKeyExists(db, key))) {
+      skipped.push(
+        `ward "${w.wardName}" (org #${w.orgId}): its area "${w.canonicalAreaKey}" is not mapped yet — map the area first`,
+      );
+      continue;
+    }
+    if (!w.stake.trim()) {
+      skipped.push(`ward "${w.wardName}" (org #${w.orgId}): no stake given`);
+      continue;
+    }
+    await addWard(db, key, w.orgId, w.wardName, w.stake.trim(), vf);
+  }
+  let closed = 0;
+  let retired = 0;
+  for (const r of body.retire ?? []) {
+    await closeMapping(db, r.imosAreaId, r.validFrom, vf);
+    closed++;
+  }
+  if (closed > 0) {
+    // retire any canonical area left with no open mapping at all
+    const open = await getCrosswalkRows(db);
+    const stillOpen = new Set(open.filter((x) => x.validTo === null).map((x) => x.canonicalAreaKey));
+    for (const key of new Set((body.retire ?? []).map((r) => r.canonicalAreaKey))) {
+      if (!stillOpen.has(key)) {
+        await setCanonicalRetired(db, key, vf);
+        retired++;
+      }
+    }
   }
   await audit(db, actor, "rollover.apply", {
     validFrom: vf,
     areas: body.areas.length,
-    wards: body.wards.length,
+    wards: body.wards.length - skipped.filter((s) => s.startsWith("ward")).length,
+    closed,
+    retired,
+    skipped: skipped.length,
   });
-  return { areas: body.areas.length, wards: body.wards.length };
+  return {
+    areas: body.areas.length - skipped.filter((s) => s.startsWith("area")).length,
+    wards: body.wards.length - skipped.filter((s) => s.startsWith("ward")).length,
+    closed,
+    retired,
+    skipped,
+  };
+}
+
+/**
+ * What changed structurally between a payload and the previous stored week
+ * (and, when the week is already stored, between the payload and what is
+ * stored). Shown on the Import page so a transfer is announced at import
+ * time, not discovered later.
+ */
+export async function describeStructureChange(
+  db: D1Database,
+  norm: {
+    weekStart: string;
+    facts: readonly KiFact[];
+    wardFacts: readonly { orgId: number; orgName: string }[];
+  },
+) {
+  const all = await weeksAvailable(db);
+  const prior = all.filter((w) => w < norm.weekStart);
+  const prevWeek = prior[prior.length - 1] ?? null;
+
+  const thisAreas = new Map<number, { name: string; zone: string }>();
+  for (const f of norm.facts) if (!thisAreas.has(f.areaId)) thisAreas.set(f.areaId, { name: f.areaName, zone: f.zoneName });
+  const thisZones = new Set([...thisAreas.values()].map((a) => a.zone));
+  const thisOrgs = new Map<number, string>();
+  for (const w of norm.wardFacts) if (!thisOrgs.has(w.orgId)) thisOrgs.set(w.orgId, w.orgName);
+
+  const diff = async (week: string) => {
+    const [pf, pw] = await Promise.all([loadFacts(db, week), loadWardFacts(db, week)]);
+    const pa = new Map<number, { name: string; zone: string }>();
+    for (const f of pf) if (!pa.has(f.areaId)) pa.set(f.areaId, { name: f.areaName, zone: f.zoneName });
+    const pz = new Set([...pa.values()].map((a) => a.zone));
+    const po = new Map<number, string>();
+    for (const w of pw) if (!po.has(w.orgId)) po.set(w.orgId, w.orgName);
+    const areasNew = [...thisAreas].filter(([id]) => !pa.has(id)).map(([id, a]) => ({ imosAreaId: id, name: a.name, zone: a.zone }));
+    const areasGone = [...pa].filter(([id]) => !thisAreas.has(id)).map(([id, a]) => ({ imosAreaId: id, name: a.name, zone: a.zone }));
+    const movedZone = [...thisAreas]
+      .filter(([id, a]) => pa.has(id) && pa.get(id)!.zone !== a.zone)
+      .map(([id, a]) => ({ imosAreaId: id, name: a.name, from: pa.get(id)!.zone, to: a.zone }));
+    const renamed = [...thisAreas]
+      .filter(([id, a]) => pa.has(id) && pa.get(id)!.name !== a.name)
+      .map(([id, a]) => ({ imosAreaId: id, from: pa.get(id)!.name, to: a.name }));
+    return {
+      week,
+      zonesNew: [...thisZones].filter((z) => !pz.has(z)),
+      zonesGone: [...pz].filter((z) => !thisZones.has(z)),
+      areasNew,
+      areasGone,
+      movedZone,
+      renamed,
+      wardsNew: [...thisOrgs].filter(([id]) => !po.has(id)).map(([id, name]) => ({ orgId: id, name })),
+      wardsGone: [...po].filter(([id]) => !thisOrgs.has(id)).map(([id, name]) => ({ orgId: id, name })),
+    };
+  };
+
+  const vsPrev = prevWeek ? await diff(prevWeek) : null;
+  const vsStored = all.includes(norm.weekStart) ? await diff(norm.weekStart) : null;
+  const changed = (d: NonNullable<typeof vsPrev>) =>
+    d.zonesNew.length + d.zonesGone.length + d.areasNew.length + d.areasGone.length + d.movedZone.length +
+    d.wardsNew.length + d.wardsGone.length;
+  return {
+    vsPrev,
+    /** true when this payload's structure differs from the previous stored week: a transfer landed */
+    transfer: vsPrev ? changed(vsPrev) > 0 : false,
+    vsStored,
+    /** true when re-importing would change the stored week's structure (not just its numbers) */
+    storedDrift: vsStored ? changed(vsStored) > 0 : false,
+  };
 }
 
 // --- weekly console (dashboard) ------------------------------------
@@ -351,7 +483,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     };
   }
   const latest = all[all.length - 1]!;
-  const [week, chase, stake, rollover, friends, reconcile, checks] = await Promise.all([
+  const [week, chase, stakeRaw, rollover, friends, reconcile, checks] = await Promise.all([
     buildWeekView(db, latest),
     buildChase(db, latest),
     buildStakeView(db, latest),
@@ -361,6 +493,9 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     buildReconcile(db, latest.slice(0, 7)).catch(() => null),
     getConsoleChecks(db, latest),
   ]);
+
+  // the "(unmapped)" bucket is not a stake; don't count it as one
+  const stake = { ...stakeRaw, stakes: stakeRaw.stakes.filter((s) => s !== UNMAPPED_STAKE) };
 
   // friends sheet sync freshness — the STL sheet should land at least weekly
   const syncAgeH = friends?.lastSyncedAt
@@ -415,8 +550,12 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       state: rollover.summary.clean ? ("done" as const) : ("attention" as const),
       detail: rollover.summary.clean
         ? "No structural changes to resolve."
-        : `${rollover.summary.areasUnmapped} area(s), ${rollover.summary.wardsUnmapped} ward(s), ` +
-          `${rollover.summary.zonesNew} new / ${rollover.summary.zonesRetired} retired zone(s).`,
+        : `${rollover.summary.areasUnmapped} area(s) to map, ${rollover.summary.wardsUnmapped} ward(s) to map, ` +
+          `${rollover.summary.areasVanished} area(s) gone, ` +
+          `${rollover.summary.zonesNew} new / ${rollover.summary.zonesRetired} retired zone(s).` +
+          (rollover.excludedZonesMissing.length
+            ? ` Excluded zone "${rollover.excludedZonesMissing.join('", "')}" is not in this week's report — renamed?`
+            : ""),
     },
     {
       id: "chase",

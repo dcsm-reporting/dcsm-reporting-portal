@@ -301,11 +301,35 @@ export function normalize(
     areaHistory: [],
     activeAreaIds: new Set<number>(),
     warnings,
+    notes: [],
+    inactiveWithData: [],
   };
 
   for (const ctx of iterAreas(payload)) {
     const area = ctx.area;
-    if (!areaActive(area)) continue;
+    if (!areaActive(area)) {
+      // a closed area that still has this week's numbers: not counted, but say so
+      const actuals: Record<number, number> = {};
+      let total = 0;
+      for (const kiId of KI_IDS) {
+        const a = areaActual(area, kiId);
+        actuals[kiId] = a;
+        total += a;
+      }
+      if (total > 0) {
+        result.inactiveWithData.push({
+          areaId: area.id,
+          areaName: area.name ?? "",
+          zoneName: ctx.zoneName,
+          actuals,
+        });
+        result.notes.push(
+          `"${area.name}" (${area.id}, ${ctx.zoneName}) is closed as of this report but still carries ` +
+            `${total} count(s) for the week; they are not in any total. Mid-week close? Compare with the Mission Portal.`,
+        );
+      }
+      continue;
+    }
     const areaId = area.id;
     result.activeAreaIds.add(areaId);
     const isMlc = areaIsMlc(area);

@@ -133,6 +133,20 @@ describe("normalize", () => {
     expect(wf.orgName).toBe("Mount Vernon");
   });
 
+  it("a closed area that still carries numbers is noted, not counted", () => {
+    const p = loadFixture();
+    const zone = p.entity!.entities![0]!;
+    const area = zone.entities![0]!.entities![0]!;
+    area.areaBookHistory = [{ date: "2026-08-20", enabled: false }];
+    const r = normalize(p, { areaBand: WIDE });
+    expect(r.activeAreaIds.has(area.id)).toBe(false);
+    expect(r.inactiveWithData).toHaveLength(1);
+    expect(r.inactiveWithData[0]!.areaId).toBe(area.id);
+    expect(r.notes[0]).toContain("closed as of this report");
+    // warnings (oracle-compared) are untouched by this
+    expect(r.warnings).toEqual(validate(p, { areaBand: WIDE }));
+  });
+
   it("records area history for the chase list", () => {
     expect(res.areaHistory.length).toBe(5);
     expect(res.areaHistory.every((h) => "modifiedDate" in h)).toBe(true);

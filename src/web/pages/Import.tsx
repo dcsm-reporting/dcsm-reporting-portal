@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { api, type ImportSummary } from "../api.js";
+import { Link } from "react-router-dom";
+import { api, type ImportSummary, type StructureDiff } from "../api.js";
 import { PageHead, useWeek } from "../lib.js";
 import { addDays, dayOfWeekMonday0, lastCompleteWeekOf, todayIso } from "@shared/dates";
 
@@ -188,15 +189,17 @@ export function ImportPage() {
           <button
             className="btn primary"
             onClick={doCommit}
-            disabled={busy || (preview.weekly === false && !force)}
+            disabled={busy || ((preview.weekly === false || !!preview.structure?.storedDrift) && !force)}
           >
             Commit week {preview.weekStart}
           </button>
         )}
-        {preview && preview.weekly === false && (
+        {preview && (preview.weekly === false || preview.structure?.storedDrift) && (
           <label className="row" style={{ gap: ".3rem" }}>
             <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
-            <span style={{ fontSize: ".85rem" }}>store anyway (not a Mon to Sun week)</span>
+            <span style={{ fontSize: ".85rem" }}>
+              store anyway{preview.weekly === false ? " (not a Mon to Sun week)" : " (replaces this week's structure)"}
+            </span>
           </label>
         )}
       </div>
@@ -214,6 +217,12 @@ export function ImportPage() {
             <strong>Stored.</strong> Week {committed.weekStart} is now the selected week.
             {staleRemoved > 0 &&
               ` ${staleRemoved} row(s) from the earlier import of this week were no longer in the report and were removed.`}
+            {committed.structure?.transfer && (
+              <>
+                {" "}
+                A transfer landed in this week: <Link to={`/admin/rollover?w=${committed.weekStart}`}>run Rollover now</Link>.
+              </>
+            )}
           </div>
           <SummaryBlock s={committed} heading="Imported" />
         </>
@@ -243,8 +252,23 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
           reporting week. It will not be stored unless you tick “store anyway”.
         </div>
       )}
-      {s.alreadyStored && (
+      {s.alreadyStored && !s.structure?.storedDrift && (
         <div className="note warn">A week with this start date is already stored; committing overwrites its rows.</div>
+      )}
+      {s.structure?.storedDrift && s.structure.vsStored && (
+        <div className="note stop">
+          <strong>This week is already stored with a different structure.</strong> Committing would
+          add {s.structure.vsStored.areasNew.length} area(s), remove {s.structure.vsStored.areasGone.length},
+          and move {s.structure.vsStored.movedZone.length} between zones. That is right after a correction in
+          IMOS, and wrong if this is the wrong pull. Tick “store anyway” only if you are sure.
+        </div>
+      )}
+      {s.structure?.transfer && s.structure.vsPrev && <TransferBlock d={s.structure.vsPrev} />}
+      {(s.notes?.length ?? 0) > 0 && (
+        <div className="note warn">
+          <strong>Transfer-week notes:</strong>
+          <ul>{s.notes!.map((n, i) => <li key={i}>{n}</li>)}</ul>
+        </div>
       )}
       {s.warnings.length > 0 && (
         <div className="note warn">
@@ -264,6 +288,42 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
         <div className="note ok">All checks clean.</div>
       )}
     </>
+  );
+}
+
+/** What moved since the previous stored week — a transfer, announced at import time. */
+function TransferBlock({ d }: { d: StructureDiff }) {
+  const n = d.areasNew.length + d.areasGone.length + d.movedZone.length + d.zonesNew.length + d.zonesGone.length;
+  return (
+    <div className="note">
+      <strong>Structure changed since {d.week}</strong> ({n} change{n === 1 ? "" : "s"}). Numbers
+      import fine; after committing, run <Link to="/admin/rollover">Admin → Rollover</Link> for this
+      week so the new areas and wards are mapped.
+      <ul style={{ margin: ".4rem 0 0", fontSize: ".85rem" }}>
+        {d.zonesNew.length > 0 && <li>New zone{d.zonesNew.length === 1 ? "" : "s"}: {d.zonesNew.join(", ")}</li>}
+        {d.zonesGone.length > 0 && <li>Zone{d.zonesGone.length === 1 ? "" : "s"} gone: {d.zonesGone.join(", ")}</li>}
+        {d.areasNew.length > 0 && (
+          <li>
+            New area{d.areasNew.length === 1 ? "" : "s"}: {d.areasNew.map((a) => `${a.name} (${a.zone})`).join(", ")}
+          </li>
+        )}
+        {d.areasGone.length > 0 && (
+          <li>
+            Area{d.areasGone.length === 1 ? "" : "s"} gone: {d.areasGone.map((a) => `${a.name} (${a.zone})`).join(", ")}
+          </li>
+        )}
+        {d.movedZone.length > 0 && (
+          <li>
+            Moved zone: {d.movedZone.map((a) => `${a.name} ${a.from} → ${a.to}`).join(", ")}
+          </li>
+        )}
+        {d.renamed.length > 0 && (
+          <li>Renamed: {d.renamed.map((a) => `${a.from} → ${a.to}`).join(", ")}</li>
+        )}
+        {d.wardsNew.length > 0 && <li>New ward{d.wardsNew.length === 1 ? "" : "s"}: {d.wardsNew.map((w) => w.name).join(", ")}</li>}
+        {d.wardsGone.length > 0 && <li>Ward{d.wardsGone.length === 1 ? "" : "s"} no longer covered: {d.wardsGone.map((w) => w.name).join(", ")}</li>}
+      </ul>
+    </div>
   );
 }
 

@@ -2,6 +2,34 @@
 
 _Last updated: 2026-09-03 — hardening round: import correctness, mission-time-zone dates, sheet hygiene, gap detection, optional Access token check._
 
+## 2026-09-03 transfer-proofing round
+
+Measured on the twelve stored weeks (including the 27 August restructure):
+ward org ids are stable (73 of 74 present every week), area ids churn
+(+4/−2, then +9), zones did not move. IMOS returns each week's own
+structure for historical pulls. Full rundown: `docs/transfers.md`.
+
+**Fixed**
+
+| Was | Now |
+|---|---|
+| The crosswalk was seeded once, effective 2026-08-24, so every earlier week showed all areas "unmapped" and the August per-stake baptism check parked three weeks under `(unmapped)` | Effective-dated lookups fall back to the nearest row (soonest later, else last earlier) when nothing covers a week. Pre-seed weeks resolve; a ward keeps its stake in a week no area covered it. "Unmapped" now means "never mapped". |
+| Rollover never proposed closing a mapping or retiring an area, so retired areas and dead IMOS ids accumulated forever | **Areas gone from IMOS this week**: close the mapping at that week; retire the area when it was its only id (a renamed area under a new id is recognised as a successor, not a retirement). Attaching an id to a retired area un-retires it. |
+| Ward suggestions came only from the static Area To Ward Key CSV, which goes stale as wards change | Suggestions from, in order: the org id's own history, a same-named ward's history, the CSV plus the bundled unit directory (`resources/units.csv`), the sibling ward in the same area, the area's CSV row |
+| A ward applied before its area existed crashed on a foreign key; a hand-typed key with spaces or capitals was stored as-is | Skipped with a message; keys are slugged |
+| Zone changes blocked "Structure up to date" forever (no action could clear them) | Zone changes are informational; **Use this order** applies the suggested board order in one click; a renamed excluded zone is flagged only when it actually disappeared |
+| A leadership position IMOS renamed (e.g. a new `…_ASSISTANT` string) would silently drop those areas out of the MLC share | New position strings are detected per week; leadership-looking ones not in the MLC list are flagged on Rollover with a link to fix |
+| Nothing said "a transfer landed" at import time | The Import page lists what moved vs the previous stored week (zones, areas, moves, renames, wards) and links to Rollover after commit; re-importing a stored week with a *different structure* needs "store anyway" |
+| Numbers from an area closed mid-week were silently dropped | Still excluded from totals (matches the active-area rule), but listed with their counts as transfer-week notes so they can be compared with the Mission Portal |
+
+**Proven by** `test/resolve.test.ts` (fallbacks, unit directory, vanished /
+successor / ward-history suggestions) and a 60-check simulated transfer
+against a local Worker: two areas deleted, one renamed under a new id, one
+moved zone, a new zone built from two areas, a new ward in a mapped area, a
+brand-new area with a brand-new ward, an area closed mid-week with numbers, a
+zone renamed, a new position string; then apply, every view, and a retired
+area returning the following week.
+
 ## 2026-09-03 hardening round (what changed and why)
 
 A top-to-bottom review for "this has to last years". Every item below is

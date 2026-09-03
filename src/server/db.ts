@@ -523,6 +523,10 @@ export async function attachArea(
     );
   }
   await db.batch([
+    // an id pointing at this area again means the area is back in use
+    db
+      .prepare("UPDATE canonical_area SET retired_at = NULL WHERE canonical_area_key = ?")
+      .bind(canonicalAreaKey),
     // close whatever was open before this date
     db
       .prepare(
@@ -743,6 +747,28 @@ export async function mlcAreaIdsForWeek(
     .bind(weekStart, ...positions)
     .all<{ imos_area_id: number }>();
   return new Set((results ?? []).map((r) => r.imos_area_id));
+}
+
+/** Position strings that appear in one week's snapshot but in no earlier week. */
+export async function newPositionsForWeek(db: D1Database, weekStart: string): Promise<string[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT DISTINCT position FROM missionary_snapshot
+       WHERE week_start = ? AND position <> ''
+         AND position NOT IN (SELECT DISTINCT position FROM missionary_snapshot WHERE week_start < ?)
+       ORDER BY position`,
+    )
+    .bind(weekStart, weekStart)
+    .all<{ position: string }>();
+  return (results ?? []).map((r) => r.position);
+}
+
+export async function canonicalKeyExists(db: D1Database, key: string): Promise<boolean> {
+  const r = await db
+    .prepare("SELECT 1 FROM canonical_area WHERE canonical_area_key = ?")
+    .bind(key)
+    .first();
+  return !!r;
 }
 
 export async function distinctPositions(db: D1Database): Promise<string[]> {

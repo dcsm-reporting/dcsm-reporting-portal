@@ -136,6 +136,21 @@ export function ConsolePage() {
         })}
       </ol>
 
+      {data.system && (
+        <>
+          <h3>System</h3>
+          <p className="muted" style={{ fontSize: ".82rem" }}>
+            Environment <code>{data.system.portalEnv}</code> · Access token check{" "}
+            <code>{data.system.accessTokenCheck}</code>
+            {data.system.accessTokenCheck === "off" && (
+              <> (header trust; see <code>docs/access-token-check.md</code>)</>
+            )}{" "}
+            · sheet-sync secret {data.system.friendsSyncSecretSet ? "set" : <strong>missing</strong>} · response cache{" "}
+            {data.system.responseCache ? "on" : <strong>off</strong>} · dates in {data.system.missionTimeZone}
+          </p>
+        </>
+      )}
+
       <h3>Jump to</h3>
       <div className="row">
         <Link className="btn" to="/import">Import</Link>

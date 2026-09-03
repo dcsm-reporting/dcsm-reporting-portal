@@ -9,6 +9,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import areaKeyCsv from "../../resources/area-to-ward-key.csv";
+import unitsCsv from "../../resources/units.csv";
 import { isWeeklyPayload, load, normalize, ValidationError } from "../pipeline/readImos.js";
 import { loadAreaKey, seed } from "../pipeline/crosswalkSeed.js";
 import { resolveWeek } from "../pipeline/resolve.js";
@@ -52,6 +53,7 @@ import {
   buildStakeView,
   buildTrends,
   buildWeekView,
+  describeStructureChange,
   weekLabel,
 } from "./service.js";
 import {
@@ -70,8 +72,8 @@ import { getConfig, getStakeRecipients, setConsoleCheck, upsertStakeRecipient } 
 import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import stakeRecipientsSeed from "../../resources/stake_recipients.json";
 
-/** Parsed once — the Area To Ward Key is bundled as text. */
-const areaKey = loadAreaKey(areaKeyCsv);
+/** Parsed once — the Area To Ward Key + the unit directory are bundled as text. */
+const areaKey = loadAreaKey(areaKeyCsv, unitsCsv);
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -237,7 +239,10 @@ app.post("/api/import", async (c) => {
   ]);
   const rr = resolveWeek(norm.facts, norm.weekStart, { crosswalk, areaWard, canonical });
 
-  const existing = await loadFacts(c.env.DB, norm.weekStart);
+  const [existing, structure] = await Promise.all([
+    loadFacts(c.env.DB, norm.weekStart),
+    describeStructureChange(c.env.DB, norm),
+  ]);
   const summary = {
     weekStart: norm.weekStart,
     weekEnd: norm.weekEnd,
@@ -247,10 +252,14 @@ app.post("/api/import", async (c) => {
     nWardFacts: norm.wardFacts.length,
     nMissionaries: norm.missionaries.length,
     warnings: norm.warnings,
+    notes: norm.notes,
+    inactiveWithData: norm.inactiveWithData,
     alreadyStored: existing.length > 0,
     /** false when the range is not one Mon–Sun week; storing then needs force=true */
     weekly,
     unmapped: rr.unmapped.map(([id, name]) => ({ imosAreaId: id, imosAreaName: name })),
+    /** what moved vs the previous stored week (a transfer) and vs the stored copy of this week */
+    structure,
   };
 
   if (body.dryRun) return c.json({ dryRun: true, summary });
@@ -265,6 +274,25 @@ app.post("/api/import", async (c) => {
           `${norm.weekStart} → ${norm.weekEnd} is not a Monday-to-Sunday reporting week. ` +
           `Re-pull the correct range, or tick "store anyway" if this is deliberate.`,
         kind: "not-a-week",
+        summary,
+      },
+      422,
+    );
+  }
+  // Re-importing a stored week with a *different structure* (areas added or
+  // gone, zones changed) rewrites that week's history, not just its numbers.
+  // Legitimate after a correction in IMOS; a mistake if the wrong week was
+  // pulled or IMOS returned the current structure for an old range. Ask.
+  if (structure.storedDrift && !body.force) {
+    const d = structure.vsStored!;
+    return c.json(
+      {
+        error:
+          `Week ${norm.weekStart} is already stored with a different structure ` +
+          `(${d.areasNew.length} area(s) would be added, ${d.areasGone.length} removed, ` +
+          `${d.movedZone.length} moved zone). Storing replaces that week's structure. ` +
+          `Tick "store anyway" if this pull is the correct one.`,
+        kind: "stored-drift",
         summary,
       },
       422,
@@ -432,12 +460,21 @@ app.post("/api/seed", async (c) => {
 });
 
 // --- weekly console (dashboard) ------------------------------------
-app.get("/api/console", async (c) =>
+app.get("/api/console", async (c) => {
   // date in the key: "expected latest week" and sync-age roll over daily
-  c.json(
-    await cached(c.env, `console:v2:${todayIso()}`, "both", () => buildConsole(c.env.DB, areaKey)),
-  ),
-);
+  const view = await cached(c.env, `console:v3:${todayIso()}`, "both", () =>
+    buildConsole(c.env.DB, areaKey),
+  );
+  // deployment facts a successor can read off the page (never cached)
+  const system = {
+    portalEnv: c.env.PORTAL_ENV ?? "unknown",
+    accessTokenCheck: accessMode(c.env),
+    friendsSyncSecretSet: !!c.env.FRIENDS_SYNC_SECRET,
+    responseCache: !!c.env.CACHE,
+    missionTimeZone: "America/New_York",
+  };
+  return c.json({ ...view, system });
+});
 
 /** Tick / untick a checklist step for the latest week. */
 app.post("/api/console/check", async (c) => {
@@ -483,7 +520,7 @@ app.get("/api/structure", async (c) =>
 app.get("/api/rollover/:week", async (c) => {
   const week = c.req.param("week");
   return c.json(
-    await cached(c.env, `rollover:${week}`, "ki", () => buildRollover(c.env.DB, week, areaKey)),
+    await cached(c.env, `rollover:v2:${week}`, "ki", () => buildRollover(c.env.DB, week, areaKey)),
   );
 });
 
@@ -498,11 +535,13 @@ app.post("/api/rollover/:week/apply", async (c) => {
       displayName: string;
     }[];
     wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
+    retire?: { imosAreaId: number; canonicalAreaKey: string; validFrom: string }[];
   }>();
   const res = await applyRollover(c.env.DB, c.get("user"), {
     validFrom: b.validFrom || week,
     areas: b.areas ?? [],
     wards: b.wards ?? [],
+    retire: b.retire ?? [],
   });
   await bumpData(c.env);
   return c.json({ ok: true, applied: res, plan: await buildRollover(c.env.DB, week, areaKey) });

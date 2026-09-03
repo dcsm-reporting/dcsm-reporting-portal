@@ -127,6 +127,19 @@ export interface AreaHistoryRow {
   updatedThisWeek: boolean;
 }
 
+/**
+ * An area that is disabled as of this report but still carries numbers for
+ * the week — the mid-week transfer case (numbers entered Monday–Tuesday, area
+ * closed Wednesday). Excluded from every total, so it is listed for the
+ * person to compare against the Mission Portal.
+ */
+export interface InactiveWithData {
+  areaId: number;
+  areaName: string;
+  zoneName: string;
+  actuals: Record<number, number>;
+}
+
 export interface NormalizeResult {
   weekStart: string;
   weekEnd: string;
@@ -136,6 +149,9 @@ export interface NormalizeResult {
   areaHistory: AreaHistoryRow[];
   activeAreaIds: Set<number>;
   warnings: string[];
+  /** transfer-week observations that do not affect validity (kept apart from `warnings`, which the oracle compares) */
+  notes: string[];
+  inactiveWithData: InactiveWithData[];
 }
 
 // --- rollup output shapes ---------------------------------------------------

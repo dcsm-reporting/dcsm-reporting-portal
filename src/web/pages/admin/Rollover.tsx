@@ -34,6 +34,8 @@ function RolloverBody({
 
   const [areaSel, setAreaSel] = useState<Set<number>>(new Set());
   const [wardSel, setWardSel] = useState<Set<number>>(new Set());
+  const [goneSel, setGoneSel] = useState<Set<number>>(new Set());
+  const [zoneMsg, setZoneMsg] = useState<string | null>(null);
   const [areaOv, setAreaOv] = useState<Record<number, AreaOverride>>({});
   const [wardOv, setWardOv] = useState<Record<number, WardOverride>>({});
   const [busy, setBusy] = useState(false);
@@ -61,7 +63,7 @@ function RolloverBody({
   const selectSuggestedWards = () =>
     setWardSel(new Set(plan.wards.filter((w) => w.suggestion.stake).map((w) => w.orgId)));
 
-  const canApply = areaSel.size + wardSel.size > 0;
+  const canApply = areaSel.size + wardSel.size + goneSel.size > 0;
 
   async function apply() {
     setBusy(true);
@@ -79,11 +81,19 @@ function RolloverBody({
             return { orgId: id, canonicalAreaKey: o.canonicalAreaKey, wardName: o.wardName, stake: o.stake };
           })
           .filter((w) => w.canonicalAreaKey && w.stake),
+        retire: plan.vanished
+          .filter((v) => goneSel.has(v.imosAreaId))
+          .map((v) => ({ imosAreaId: v.imosAreaId, canonicalAreaKey: v.canonicalAreaKey, validFrom: v.validFrom })),
       };
       const res = await api.applyRollover(week, body);
-      setMsg(`Applied ${res.applied.areas} area mapping(s) and ${res.applied.wards} ward row(s).`);
+      setMsg(
+        `Applied ${res.applied.areas} area mapping(s), ${res.applied.wards} ward row(s), ` +
+          `closed ${res.applied.closed} mapping(s), retired ${res.applied.retired} area(s).` +
+          (res.applied.skipped?.length ? ` Skipped: ${res.applied.skipped.join("; ")}.` : ""),
+      );
       setAreaSel(new Set());
       setWardSel(new Set());
+      setGoneSel(new Set());
       setAreaOv({});
       setWardOv({});
       reload();
@@ -94,10 +104,26 @@ function RolloverBody({
     }
   }
 
+  async function applyZoneOrder() {
+    if (!plan.zoneOrderSuggested) return;
+    setBusy(true);
+    setZoneMsg(null);
+    try {
+      await api.setConfig("zone_order", plan.zoneOrderSuggested);
+      setZoneMsg("Zone order updated.");
+      reload();
+    } catch (e) {
+      setZoneMsg(`Failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const summaryCards = useMemo(
     () => [
       ["Areas to map", plan.summary.areasUnmapped],
       ["…new this transfer", plan.summary.areasNew],
+      ["Areas gone", plan.summary.areasVanished],
       ["Wards to map", plan.summary.wardsUnmapped],
       ["New / retired zones", `${plan.summary.zonesNew} / ${plan.summary.zonesRetired}`],
     ],
@@ -139,8 +165,27 @@ function RolloverBody({
 
       {msg && <div className="note">{msg}</div>}
 
+      {(plan.newLeadershipPositions?.length ?? 0) > 0 && (
+        <div className="note warn">
+          <strong>New leadership-looking position{plan.newLeadershipPositions!.length === 1 ? "" : "s"} in IMOS:</strong>{" "}
+          <span className="mono">{plan.newLeadershipPositions!.join(", ")}</span>. Not in the MLC list, so
+          areas holding {plan.newLeadershipPositions!.length === 1 ? "it" : "them"} are not counted as MLC
+          areas. If {plan.newLeadershipPositions!.length === 1 ? "it is" : "they are"} a zone leader / STL / assistant
+          role under a new name, add {plan.newLeadershipPositions!.length === 1 ? "it" : "them"} in{" "}
+          <Link to="/admin/config">Reporting settings → MLC positions</Link>.
+        </div>
+      )}
+      {(plan.newPositions?.length ?? 0) > 0 && (plan.newLeadershipPositions?.length ?? 0) === 0 && (
+        <p className="muted" style={{ fontSize: ".82rem" }}>
+          New position string{plan.newPositions!.length === 1 ? "" : "s"} first seen this week:{" "}
+          <span className="mono">{plan.newPositions!.join(", ")}</span> (not leadership-looking; nothing to do).
+        </p>
+      )}
+
       {/* zones */}
-      {plan.zones.some((z) => z.status !== "unchanged") && (
+      {(plan.zones.some((z) => z.status !== "unchanged") ||
+        plan.zoneOrderSuggested ||
+        plan.excludedZonesMissing.length > 0) && (
         <>
           <h4 style={{ marginTop: "1.6rem" }}>Zones</h4>
           <div className="row">
@@ -153,6 +198,90 @@ function RolloverBody({
                 {z.name} · {z.status}
               </span>
             ))}
+          </div>
+          {plan.excludedZonesMissing.length > 0 && (
+            <div className="note warn" style={{ marginTop: ".6rem" }}>
+              The zone{plan.excludedZonesMissing.length === 1 ? "" : "s"} excluded from mission totals (
+              {plan.excludedZonesMissing.join(", ")}) {plan.excludedZonesMissing.length === 1 ? "is" : "are"} not
+              in this week's report. If it was renamed, the exclusion no longer applies: update it in{" "}
+              <Link to="/admin/config">Reporting settings</Link>.
+            </div>
+          )}
+          {plan.zoneOrderSuggested && (
+            <div className="note" style={{ marginTop: ".6rem" }}>
+              Zone order on the boards is out of date for this week. Suggested:{" "}
+              <span className="mono" style={{ fontSize: ".8rem" }}>{plan.zoneOrderSuggested.join(" · ")}</span>{" "}
+              <button className="btn" disabled={busy} onClick={applyZoneOrder}>Use this order</button>
+              {zoneMsg && <span className="muted" style={{ marginLeft: ".5rem", fontSize: ".82rem" }}>{zoneMsg}</span>}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* vanished areas */}
+      {plan.vanished.length > 0 && (
+        <>
+          <div className="row" style={{ justifyContent: "space-between", marginTop: "1.6rem" }}>
+            <h4 style={{ margin: 0 }}>Areas gone from IMOS this week ({plan.vanished.length})</h4>
+            <span className="row">
+              <button className="btn" onClick={() => setGoneSel(new Set(plan.vanished.map((v) => v.imosAreaId)))}>
+                Select all
+              </button>
+              <button className="btn" onClick={() => setGoneSel(new Set())}>Clear</button>
+            </span>
+          </div>
+          <p className="muted" style={{ fontSize: ".85rem", maxWidth: "74ch" }}>
+            These IMOS ids are mapped but no longer appear in the report. Closing the mapping dates the
+            end of that id at {week}; when it was the area's only id the area is retired (its history
+            stays; un-retire in Areas &amp; wards if it comes back). Leave one unticked if the area is
+            only paused for a transfer.
+          </p>
+          <div className="tbl-scroll">
+            <table className="grid">
+              <thead>
+                <tr>
+                  <th style={{ width: "2rem" }}></th>
+                  <th>Area</th>
+                  <th>IMOS id</th>
+                  <th>Mapped since</th>
+                  <th>Effect</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.vanished.map((v) => (
+                  <tr key={v.imosAreaId}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={goneSel.has(v.imosAreaId)}
+                        onChange={(e) =>
+                          setGoneSel((s) => {
+                            const n = new Set(s);
+                            e.target.checked ? n.add(v.imosAreaId) : n.delete(v.imosAreaId);
+                            return n;
+                          })
+                        }
+                      />
+                    </td>
+                    <td>
+                      {v.displayName}
+                      <div className="muted mono" style={{ fontSize: ".72rem" }}>{v.canonicalAreaKey}</div>
+                    </td>
+                    <td className="mono">#{v.imosAreaId}</td>
+                    <td className="mono">{v.validFrom}</td>
+                    <td style={{ textAlign: "left" }}>
+                      {v.wouldRetire ? (
+                        <span className="chip low">close + retire area</span>
+                      ) : v.otherOpenMappings > 0 ? (
+                        <span className="chip">close this id only ({v.otherOpenMappings} other id{v.otherOpenMappings === 1 ? "" : "s"} stay open)</span>
+                      ) : (
+                        <span className="chip high">close this id; its successor is in “Areas to map”</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}
@@ -315,10 +444,14 @@ function RolloverBody({
         </>
       )}
 
-      {(unmappedAreas.length > 0 || plan.wards.length > 0) && (
+      {(unmappedAreas.length > 0 || plan.wards.length > 0 || plan.vanished.length > 0) && (
         <div className="row" style={{ marginTop: "1.2rem" }}>
           <button className="btn primary" disabled={!canApply || busy} onClick={apply}>
-            {busy ? "Applying…" : `Apply ${areaSel.size} area${areaSel.size === 1 ? "" : "s"} + ${wardSel.size} ward${wardSel.size === 1 ? "" : "s"} effective ${week}`}
+            {busy
+              ? "Applying…"
+              : `Apply ${areaSel.size} area${areaSel.size === 1 ? "" : "s"} + ${wardSel.size} ward${wardSel.size === 1 ? "" : "s"}` +
+                (goneSel.size ? ` + close ${goneSel.size} gone` : "") +
+                ` effective ${week}`}
           </button>
           <span className="muted" style={{ fontSize: ".8rem" }}>
             Effective-dated from {week}; earlier weeks keep their old mapping.

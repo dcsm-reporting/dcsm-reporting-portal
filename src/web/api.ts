@@ -66,10 +66,29 @@ export interface ImportSummary {
   nWardFacts: number;
   nMissionaries: number;
   warnings: string[];
+  notes?: string[];
+  inactiveWithData?: { areaId: number; areaName: string; zoneName: string; actuals: Record<number, number> }[];
   alreadyStored: boolean;
   /** false when the payload range is not one Mon–Sun week */
   weekly?: boolean;
   unmapped: { imosAreaId: number; imosAreaName: string }[];
+  structure?: {
+    vsPrev: StructureDiff | null;
+    transfer: boolean;
+    vsStored: StructureDiff | null;
+    storedDrift: boolean;
+  };
+}
+export interface StructureDiff {
+  week: string;
+  zonesNew: string[];
+  zonesGone: string[];
+  areasNew: { imosAreaId: number; name: string; zone: string }[];
+  areasGone: { imosAreaId: number; name: string; zone: string }[];
+  movedZone: { imosAreaId: number; name: string; from: string; to: string }[];
+  renamed: { imosAreaId: number; from: string; to: string }[];
+  wardsNew: { orgId: number; name: string }[];
+  wardsGone: { orgId: number; name: string }[];
 }
 
 export interface StakeView {
@@ -153,10 +172,11 @@ export const api = {
   // --- transfer rollover -------------------------------------
   rollover: (w: string) => jget<RolloverPlan>(`/api/rollover/${w}`),
   applyRollover: (w: string, body: RolloverApplyBody) =>
-    jpost<{ ok: true; applied: { areas: number; wards: number }; plan: RolloverPlan }>(
-      `/api/rollover/${w}/apply`,
-      body,
-    ),
+    jpost<{
+      ok: true;
+      applied: { areas: number; wards: number; closed: number; retired: number; skipped: string[] };
+      plan: RolloverPlan;
+    }>(`/api/rollover/${w}/apply`, body),
 
   // --- crosswalk edits ---------------------------------------
   renameCanonical: (key: string, displayName: string) =>
@@ -409,6 +429,13 @@ export interface ConsoleView {
   reconcile?: { month: string; gap: number; stakesWithGap: number } | null;
   steps: ConsoleStep[];
   config: PortalConfig;
+  system?: {
+    portalEnv: string;
+    accessTokenCheck: "off" | "on" | "misconfigured";
+    friendsSyncSecretSet: boolean;
+    responseCache: boolean;
+    missionTimeZone: string;
+  };
 }
 
 // --- config -----------------------------------------------------
@@ -489,12 +516,26 @@ export interface RolloverPlan {
       confidence: Confidence;
     };
   }[];
+  vanished: {
+    imosAreaId: number;
+    canonicalAreaKey: string;
+    displayName: string;
+    validFrom: string;
+    otherOpenMappings: number;
+    wouldRetire: boolean;
+  }[];
+  excludedZonesMissing: string[];
+  zoneOrderSuggested: string[] | null;
+  /** position strings first seen this week; the leadership-looking ones not in the MLC list */
+  newPositions?: string[];
+  newLeadershipPositions?: string[];
   summary: {
     zonesNew: number;
     zonesRetired: number;
     areasUnmapped: number;
     areasSuggested: number;
     areasNew: number;
+    areasVanished: number;
     wardsUnmapped: number;
     wardsSuggested: number;
     clean: boolean;
@@ -504,4 +545,5 @@ export interface RolloverApplyBody {
   validFrom?: string;
   areas: { imosAreaId: number; canonicalAreaKey: string; isNew: boolean; displayName: string }[];
   wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
+  retire?: { imosAreaId: number; canonicalAreaKey: string; validFrom: string }[];
 }
