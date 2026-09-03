@@ -3,14 +3,14 @@ import { PageHead } from "../lib.js";
 import { getTheme, setTheme, type Theme } from "../theme.js";
 
 /** Personal, per-browser preferences. Mission-wide reporting knobs live in
- *  Structure → Reporting settings. */
+ *  Admin → Reporting settings. */
 export function SettingsPage() {
   return (
     <>
       <PageHead title="Your preferences" />
       <p className="muted" style={{ maxWidth: "68ch", fontSize: ".88rem" }}>
         These are personal to you and this browser. Mission-wide reporting settings (MLC positions,
-        zone order, colour bands) live under <strong>Structure → Reporting settings</strong>.
+        zone order, colour bands) live under <strong>Admin → Reporting settings</strong>.
       </p>
       <AccountSection />
       <AppearanceSection />

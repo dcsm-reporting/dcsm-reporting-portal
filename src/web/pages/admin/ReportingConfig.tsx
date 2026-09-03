@@ -48,8 +48,7 @@ export function ReportingConfigPage() {
     <>
       <h3 style={{ margin: 0 }}>Reporting settings</h3>
       <p className="muted" style={{ maxWidth: "68ch" }}>
-        Read on every request, so a change takes effect on the next page load, no deploy. Defaults
-        come from the code; edits are stored in the database and apply for everyone.
+        Mission-wide settings. Changes apply to everyone on the next page load.
       </p>
       {saveErr && (
         <div className="note stop">
@@ -61,8 +60,8 @@ export function ReportingConfigPage() {
         MLC positions {saved === "mlc_positions" && <span className="chip high">saved</span>}
       </h4>
       <p className="muted" style={{ fontSize: ".85rem" }}>
-        An area counts as an MLC area if a missionary in it holds one of these. Recomputed at read
-        time, so a change here retro-applies to every stored week.
+        An area is an MLC area when a missionary assigned to it holds one of these positions. Changes
+        apply to every stored week.
       </p>
       <div className="row" style={{ gap: ".4rem 1rem" }}>
         {[...new Set([...(structReq.data?.positionsSeen ?? []), ...defaults.mlcPositions, ...cfg.mlcPositions])]
@@ -186,8 +185,8 @@ export function ReportingConfigPage() {
         Expected active areas {saved === "area_band" && <span className="chip high">saved</span>}
       </h4>
       <p className="muted" style={{ fontSize: ".85rem", maxWidth: "68ch" }}>
-        An import warns when the number of active proselyting areas in the payload falls outside
-        this range. Widen it if the mission grows or shrinks; it is a sanity check, not a limit.
+        An import warns when the number of active areas falls outside this range. Adjust it as the
+        mission grows or shrinks.
       </p>
       <table className="grid" style={{ maxWidth: 420 }}>
         <tbody>

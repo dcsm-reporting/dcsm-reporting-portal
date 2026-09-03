@@ -836,7 +836,7 @@ app.get("/api/export", async (c) => {
   return new Response(stream, {
     headers: {
       "content-type": "application/json",
-      "content-disposition": `attachment; filename="dcsm-reporting-${todayIso()}.json"`,
+      "content-disposition": `attachment; filename="wdcsm-reporting-${todayIso()}.json"`,
     },
   });
 });

@@ -24,19 +24,14 @@ export function BaptismCheckPage() {
 
   return (
     <>
-      <PageHead title="Baptisms">
-        <label className="field" style={{ margin: 0 }}>
-          <span className="k mono">Month</span>
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-        </label>
-      </PageHead>
-      <BaptismsSubnav />
+      <PageHead title="Baptisms" />
+      <BaptismsSubnav>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month" />
+      </BaptismsSubnav>
 
-      <h3 style={{ marginTop: "1rem" }}>Monthly baptism check</h3>
       <p className="muted" style={{ maxWidth: "74ch", fontSize: ".88rem" }}>
-        Before the month’s baptism report goes out, make sure every baptism the Mission Portal
-        counted has a name on our list. If the Portal counted more than we have names for, those
-        baptisms need to be tracked down with the STLs (or added here).
+        Every baptism the Mission Portal counted should have a name on the list before the monthly
+        report goes out. Missing names are confirmed with the STLs or recorded below.
       </p>
 
       {loading && <Loading what="the check" />}
@@ -56,16 +51,16 @@ export function BaptismCheckPage() {
               <div className="note ok">
                 <strong>Everything the Mission Portal counted for {monthLabel(data.month)} has a name.</strong>{" "}
                 {data.mission.namedCount > data.mission.kiFeedBC
-                  ? `Our list has ${data.mission.namedCount - data.mission.kiFeedBC} more than the Portal, which is normal: our list is the more complete one.`
-                  : "Nothing to track down."}
+                  ? `The list has ${data.mission.namedCount - data.mission.kiFeedBC} more than the Portal, which is normal.`
+                  : "Nothing to follow up."}
               </div>
             ) : (
               <div className="note warn">
                 <strong>
                   {missionMissing} baptism{missionMissing === 1 ? "" : "s"} the Mission Portal counted
-                  {missionMissing === 1 ? " is" : " are"} not on our list yet.
+                  {missionMissing === 1 ? " is" : " are"} not on the list.
                 </strong>{" "}
-                Get the name{missionMissing === 1 ? "" : "s"} from the STLs and add {missionMissing === 1 ? "it" : "them"} below.
+                Confirm the name{missionMissing === 1 ? "" : "s"} with the STLs and record {missionMissing === 1 ? "it" : "them"} below.
               </div>
             )}
 
@@ -156,9 +151,8 @@ export function BaptismCheckPage() {
             ) : (
               <>
                 <div className="note warn">
-                  These friends had a baptism date that has now passed, then disappeared from the
-                  sheet without being marked baptized. Either the baptism happened and wasn’t
-                  recorded, or the date slipped. Check each with the STL.
+                  These friends passed their baptism date and then left the sheet without being
+                  marked baptized. Confirm each with the STL.
                 </div>
                 <div className="board-wrap">
                   <table className="board">
@@ -246,10 +240,9 @@ function RecordBaptism({ onRecorded }: { onRecorded: () => void }) {
         <button className="btn" onClick={() => setOpen(false)}>Close</button>
       </div>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "68ch" }}>
-        Use this only when a baptism truly happened but isn't on the Baptisms (MLC) sheet (STL
-        deleted the row, late confirmation). It's saved as an authoritative portal record and counts
-        toward the named total. If the STL later re-adds them to the sheet, remove this entry from
-        the Baptized list to avoid a double-count.
+        For a baptism that took place but is not on the Baptisms (MLC) sheet. The record counts
+        toward the named total. If the STL later adds it to the sheet, remove this entry to avoid a
+        double count.
       </p>
       <div className="inline-form">
         <label className="field"><span className="k mono">Name *</span>

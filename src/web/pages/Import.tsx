@@ -77,9 +77,8 @@ export function ImportPage() {
     <>
       <PageHead title="Import an IMOS week" />
       <p className="muted" style={{ maxWidth: "70ch" }}>
-        Pick the reporting week, open it in IMOS (you’ll need to be signed in to a missionary
-        account), copy the whole JSON response, and paste it below. Retrieval stays manual; the
-        Church login is never automated.
+        Select the reporting week, open it in IMOS (signed in with a missionary account), copy the
+        full JSON response, and paste it below.
       </p>
 
       {/* week selector + URL */}
@@ -134,9 +133,8 @@ export function ImportPage() {
             {spanDays !== 7
               ? `This range is ${spanDays} days, not a Monday to Sunday week.`
               : `${active.monday} is not a Monday; reporting weeks run Monday to Sunday.`}{" "}
-            IMOS will happily return it, but importing it would store one aggregated row under{" "}
-            {active.monday} and skew the weekly series. The portal refuses it unless you tick
-            “store anyway” below.
+            Importing it would store one aggregated row under {active.monday} and distort the weekly
+            series. It is refused unless “store anyway” is ticked.
           </div>
         )}
         {alreadyStored && spanDays === 7 && startsMonday && (
@@ -259,8 +257,8 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
         <div className="note stop">
           <strong>This week is already stored with a different structure.</strong> Committing would
           add {s.structure.vsStored.areasNew.length} area(s), remove {s.structure.vsStored.areasGone.length},
-          and move {s.structure.vsStored.movedZone.length} between zones. That is right after a correction in
-          IMOS, and wrong if this is the wrong pull. Tick “store anyway” only if you are sure.
+          and move {s.structure.vsStored.movedZone.length} between zones. Expected after a correction in
+          IMOS; not if this is the wrong pull. Tick “store anyway” only if you are sure.
         </div>
       )}
       {s.structure?.transfer && s.structure.vsPrev && <TransferBlock d={s.structure.vsPrev} />}
@@ -281,7 +279,7 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
           <strong>{s.unmapped.length} area(s) not in the crosswalk:</strong>{" "}
           {s.unmapped.map((u) => `${u.imosAreaName} (${u.imosAreaId})`).join(", ")}.
           <br />
-          They import fine; resolve them in <strong>Structure → Rollover</strong> so stake rollups pick them up.
+          They import normally. Map them under <strong>Admin → Rollover</strong>.
         </div>
       )}
       {s.warnings.length === 0 && s.unmapped.length === 0 && s.weekly !== false && (
@@ -297,8 +295,8 @@ function TransferBlock({ d }: { d: StructureDiff }) {
   return (
     <div className="note">
       <strong>Structure changed since {d.week}</strong> ({n} change{n === 1 ? "" : "s"}). Numbers
-      import fine; after committing, run <Link to="/admin/rollover">Admin → Rollover</Link> for this
-      week so the new areas and units are mapped.
+      import normally. After committing, run <Link to="/admin/rollover">Admin → Rollover</Link> for
+      this week.
       <ul style={{ margin: ".4rem 0 0", fontSize: ".85rem" }}>
         {d.zonesNew.length > 0 && <li>New zone{d.zonesNew.length === 1 ? "" : "s"}: {d.zonesNew.join(", ")}</li>}
         {d.zonesGone.length > 0 && <li>Zone{d.zonesGone.length === 1 ? "" : "s"} gone: {d.zonesGone.join(", ")}</li>}

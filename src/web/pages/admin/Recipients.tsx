@@ -3,7 +3,7 @@ import { api, type EmailTemplate, type StakeRecipient, type StakeReportLayout } 
 import { buildEmail } from "../../publish/email.js";
 import { StakeReportDoc } from "../../publish/stakeReport.js";
 import { ErrorNote, KI_CODE, KI_IDS, KI_NAME, Loading, useAsync, useWeek } from "../../lib.js";
-import { DEFAULT_STAKE_REPORT_LAYOUT, SECTION_LABELS } from "@shared/reportLayout";
+import { DEFAULT_STAKE_REPORT_LAYOUT, SECTION_LABELS, normalizeLayout } from "@shared/reportLayout";
 import "../../publish/publish.css";
 
 export function RecipientsPage() {
@@ -21,8 +21,8 @@ export function RecipientsPage() {
     <>
       <h3 style={{ margin: 0 }}>Stake-president reports</h3>
       <p className="muted" style={{ fontSize: ".85rem", maxWidth: "72ch" }}>
-        What the report contains, the cover email that carries it, and who each stake's copy goes
-        to. All of it is settings, not code: change it here and the Publish page follows.
+        The report’s contents, the cover email, and each stake’s recipients. Changes apply to the
+        Publish page immediately.
       </p>
       {msg && <div className="note">{msg}</div>}
 
@@ -66,11 +66,11 @@ function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
   const [previewStake, setPreviewStake] = useState<string>("");
 
   useEffect(() => {
-    if (cfg.data) setDraft(cfg.data.config.stakeReportLayout ?? DEFAULT_STAKE_REPORT_LAYOUT);
+    if (cfg.data) setDraft(normalizeLayout(cfg.data.config.stakeReportLayout).layout);
   }, [cfg.data]);
 
   if (cfg.loading || !draft) return <Loading what="the report layout" />;
-  const saved = cfg.data?.config.stakeReportLayout ?? DEFAULT_STAKE_REPORT_LAYOUT;
+  const saved = normalizeLayout(cfg.data?.config.stakeReportLayout).layout;
   const L = draft;
   const set = (patch: Partial<StakeReportLayout>) => setDraft({ ...L, ...patch });
   const moveSection = (i: number, d: -1 | 1) => {
@@ -111,10 +111,9 @@ function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
         />
       </div>
       <p className="muted" style={{ fontSize: ".8rem", maxWidth: "76ch" }}>
-        Tick the sections the president wants, put them in order, and choose which indicators the
-        table and trend show. The preview below is the real latest-week report for one stake. A new
-        <em> kind</em> of section (a chart, a different table) still needs a developer; the file to
-        change is named at the top of <code>src/web/publish/stakeReport.tsx</code>.
+        Choose the sections, their order, and the indicators shown. The preview uses the latest
+        week’s real data. A new kind of section requires a code change
+        (<code>src/web/publish/stakeReport.tsx</code>).
       </p>
       {err && <div className="note stop">{err}</div>}
 
@@ -203,8 +202,7 @@ function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
                   OTHER COLUMNS ON THE BAPTISMS SHEET
                 </div>
                 <p className="muted" style={{ fontSize: ".78rem", margin: "0 0 .3rem", maxWidth: "60ch" }}>
-                  Every column the sheet has that the portal has no named field for. Tick one to add
-                  it to the on-date list. A column the STLs add next month shows up here on its own.
+                  Additional columns on the sheet. Tick one to include it in the on-date list.
                 </p>
                 <div className="row" style={{ gap: ".4rem 1rem" }}>
                   {pub.data!.extraKeys!.map((k) => (

@@ -67,16 +67,15 @@ export function AreasPage() {
             Units ({(data.wards ?? []).length})
           </button>
         </span>
-        <input placeholder="filter by area, ward, stake, zone…" value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 260 }} />
+        <input placeholder="filter by area, unit, stake, zone…" value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 260 }} />
       </div>
 
       {view === "areas" ? (
         <>
           <p className="muted" style={{ fontSize: ".82rem", maxWidth: "76ch" }}>
-            One row per teaching area the mission has ever had. The name is the portal's own; the
-            IMOS id and zone are whatever IMOS last reported. Click a row for its full id history
-            and ward rows. New, split, and merged areas arrive through the weekly import and are
-            mapped in <Link to="/admin/rollover">Rollover</Link>, not here.
+            Every teaching area the mission has had. Click a row for its IMOS id history and the
+            units it covers. New, split, and merged areas arrive with the weekly import and are
+            mapped in <Link to="/admin/rollover">Rollover</Link>.
           </p>
           <div className="tbl-scroll">
             <table className="grid">
@@ -145,10 +144,9 @@ export function AreasPage() {
       ) : (
         <>
           <p className="muted" style={{ fontSize: ".82rem", maxWidth: "76ch" }}>
-            One row per unit, ward or branch (IMOS org id). The stake here is what puts a unit’s numbers on a stake
-            president’s report. Use the quick actions above to move, rename, or retire a unit; a
-            brand-new unit appears in <Link to="/admin/rollover">Rollover</Link> the week IMOS first
-            reports it.
+            Every ward and branch, with the stake its numbers report to. Use the actions above to
+            move, rename, or retire a unit. A new unit appears in{" "}
+            <Link to="/admin/rollover">Rollover</Link> the week IMOS first reports it.
           </p>
           <div className="tbl-scroll">
             <table className="grid">
@@ -220,10 +218,9 @@ function QuickActions({ data, onDone }: { data: Structure; onDone: (m: string) =
       </div>
       {action === null && (
         <p className="muted" style={{ fontSize: ".82rem", margin: ".5rem 0 0", maxWidth: "80ch" }}>
-          Teaching areas and zones come from IMOS every week and are mapped in Rollover. Wards and
-          stakes are the mission's own record, so changes to them are made here. Every change is
-          dated by reporting week; earlier weeks keep what they had. A new stake is created simply
-          by moving wards to a name that does not exist yet, then adding its recipients.
+          Areas and zones come from IMOS and are mapped in Rollover. Units and stakes are maintained
+          here. Every change is dated by reporting week; earlier weeks are unchanged. To create a
+          stake, move units to a new stake name.
         </p>
       )}
       {action === "move" && <MoveWards data={data} defaultWeek={defaultWeek} onDone={(m) => (setAction(null), onDone(m))} />}
@@ -305,9 +302,8 @@ function MoveWards({ data, defaultWeek, onDone }: { data: Structure; defaultWeek
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        For a boundary change, a new stake, or a stake merging into another. Pick the units (Ctrl-click
-        for several), type the stake they now belong to, and the first reporting week it applies. Their
-        numbers land on the new stake's report from that week; the old stake keeps the earlier weeks.
+        For a boundary change, a new stake, or a stake merger. Select the units (Ctrl-click for
+        several), enter the stake, and the first reporting week it applies.
       </p>
       <div className="inline-form" style={{ alignItems: "flex-start" }}>
         <WardPicker data={data} value={ids} onChange={setIds} multi />
@@ -352,9 +348,8 @@ function RenameWard({ data, onDone }: { data: Structure; onDone: (m: string) => 
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        Changes the name shown on the stake reports. The unit keeps its org id and its history, so this
-        is also the right action when a branch becomes a ward (or the reverse). The name IMOS reports
-        is unaffected and still shows on the This Week board.
+        Changes the name shown on stake reports. The unit keeps its id and history, so this also
+        covers a branch becoming a ward.
       </p>
       <div className="inline-form">
         <WardPicker data={data} value={ids} onChange={(v) => (setIds(v), setName((data.wards ?? []).find((w) => w.wardUnitId === v[0])?.wardName ?? ""))} multi={false} />
@@ -388,11 +383,9 @@ function RetireWard({ data, defaultWeek, onDone }: { data: Structure; defaultWee
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        For a unit dissolved, or merged into another unit. Its rows are closed from the week you
-        give; earlier weeks keep it on its stake. Members who moved to another unit are reported by
-        that unit from now on, under its own org id, so nothing else needs to change. If the Church
-        created a brand-new unit in its place, it arrives through the weekly import and is mapped in
-        Rollover. If IMOS keeps reporting under the old org id, do not retire it; rename it instead.
+        For a unit dissolved or merged into another. Its rows close from the week given; earlier
+        weeks are unchanged. A replacement unit created by the Church arrives with the weekly import.
+        If IMOS still reports under the old id, rename the unit instead.
       </p>
       <div className="inline-form" style={{ alignItems: "flex-end" }}>
         <label className="field" style={{ margin: 0 }}><span className="k mono">Unit</span>
@@ -432,8 +425,8 @@ function RenameStake({ data, onDone }: { data: Structure; onDone: (m: string) =>
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        Renames the stake everywhere it is stored by name: every unit row, the report recipients, and
-        the stake on baptism records. Tell the STLs to use the new spelling on the sheet.
+        Renames the stake on every unit, the report recipients, and baptism records. Ask the STLs to
+        use the new name on the sheet.
       </p>
       <div className="inline-form">
         <select value={from} onChange={(e) => (setFrom(e.target.value), setTo(e.target.value))}>
@@ -498,8 +491,8 @@ function AreaDrawer({ area, onChange }: { area: StructureArea; onChange: () => v
 
       <h4>IMOS ids this area has had</h4>
       <p className="muted" style={{ fontSize: ".8rem", margin: "0 0 .4rem" }}>
-        Each row says "for weeks from … to …, IMOS id N was this area". Rollover writes these; close
-        or attach one by hand only to correct a mistake.
+        Which IMOS id represented this area, and when. Rollover maintains these; edit by hand only
+        to correct a mistake.
       </p>
       <table className="grid">
         <thead><tr><th>IMOS id</th><th>Name in IMOS</th><th>From</th><th>To</th><th>Note</th><th></th></tr></thead>

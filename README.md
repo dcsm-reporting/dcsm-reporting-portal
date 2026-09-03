@@ -1,4 +1,4 @@
-# DCSM KI Portal
+# WDCSM Reporting
 
 Washington DC South Mission — weekly Key Indicators reporting. One web app,
 role-account owned, $0 to run. React SPA + Cloudflare Worker + D1 (SQLite).

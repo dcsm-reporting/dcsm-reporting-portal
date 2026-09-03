@@ -5,6 +5,7 @@ import { Board, MlcBoard } from "../publish/boards.js";
 import { StakeReportDoc } from "../publish/stakeReport.js";
 import { copyEmail, copyRichHtml, downloadPdf, downloadPng, gmailComposeUrl } from "../publish/download.js";
 import { buildEmail } from "../publish/email.js";
+import { normalizeLayout } from "@shared/reportLayout";
 import "../publish/publish.css";
 
 const ZONE_ABBR: Record<string, string> = {
@@ -93,16 +94,16 @@ function Boards({ data }: { data: PublishView }) {
         <button
           className="btn primary"
           disabled={!!busy}
-          onClick={() => dl(missionRef, `DCSM-mission-${data.week}`)}
+          onClick={() => dl(missionRef, `WDCSM-mission-${data.week}`)}
         >
-          {busy === `DCSM-mission-${data.week}` ? "Rendering…" : "Download mission board"}
+          {busy === `WDCSM-mission-${data.week}` ? "Rendering…" : "Download mission board"}
         </button>
         <button
           className="btn primary"
           disabled={!!busy}
-          onClick={() => dl(mlcRef, `DCSM-MLC-${data.week}`)}
+          onClick={() => dl(mlcRef, `WDCSM-MLC-${data.week}`)}
         >
-          {busy === `DCSM-MLC-${data.week}` ? "Rendering…" : "Download MLC board"}
+          {busy === `WDCSM-MLC-${data.week}` ? "Rendering…" : "Download MLC board"}
         </button>
       </div>
 
@@ -135,9 +136,9 @@ function Boards({ data }: { data: PublishView }) {
         <button
           className="btn"
           disabled={!!busy}
-          onClick={() => dl(zoneRef, `DCSM-${ZONE_ABBR[zone] ?? zone}-${data.week}`)}
+          onClick={() => dl(zoneRef, `WDCSM-${ZONE_ABBR[zone] ?? zone}-${data.week}`)}
         >
-          {busy === `DCSM-${ZONE_ABBR[zone] ?? zone}-${data.week}` ? "Rendering…" : `Download ${zone} board`}
+          {busy === `WDCSM-${ZONE_ABBR[zone] ?? zone}-${data.week}` ? "Rendering…" : `Download ${zone} board`}
         </button>
       </div>
       <div className="publish-preview" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
@@ -180,9 +181,11 @@ function Reports({ data }: { data: PublishView }) {
     }
   };
 
-  if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
+  if (!r) return <p className="muted">No stake reports yet. Map units to stakes under Admin → Rollover.</p>;
 
   const unassigned = data.unassigned ?? [];
+  // repair whatever shape the (possibly cached) response carries
+  const layout = normalizeLayout(data.layout).layout;
 
   const email = buildEmail({
     stake: r.stake,
@@ -239,7 +242,7 @@ function Reports({ data }: { data: PublishView }) {
       <div className="no-print" style={{ fontSize: ".82rem", color: "var(--ink-soft)", marginTop: ".4rem" }}>
         {r.toEmails.length === 0 ? (
           <>
-            No recipients on file for {r.stake}. Add them in <strong>Structure → Recipients</strong>.
+            No recipients on file for {r.stake}. Add them under <strong>Admin → Stake reports</strong>.
           </>
         ) : (
           <div className="recipient-chips">
@@ -250,9 +253,8 @@ function Reports({ data }: { data: PublishView }) {
         )}
       </div>
       <div className="no-print" style={{ fontSize: ".8rem", color: "var(--ink-faint)", marginTop: ".3rem", maxWidth: "76ch" }}>
-        Two ways to send: <strong>Copy full email</strong> then Open in Gmail and paste (one step, the
-        report lands inline) — or <strong>Download PDF</strong>, Open in Gmail, and attach the file
-        (Gmail can't attach it automatically from a link).
+        To send: <strong>Copy full email</strong>, then Open in Gmail and paste. Or{" "}
+        <strong>Download PDF</strong> and attach it in Gmail.
       </div>
 
       {unassigned.length > 0 && (
@@ -261,8 +263,8 @@ function Reports({ data }: { data: PublishView }) {
             {unassigned.length} friend{unassigned.length === 1 ? "" : "s"} on the Baptisms (MLC) sheet{" "}
             {unassigned.length === 1 ? "is" : "are"} on no stake report
           </strong>{" "}
-          because the sheet’s stake column is blank or doesn’t match a known stake. Fix the stake on
-          the sheet and the next sync picks it up.
+          because the stake column on the sheet is blank or does not match a known stake. Correct it
+          on the sheet; the next sync picks it up.
           <ul style={{ margin: ".4rem 0 0", fontSize: ".85rem" }}>
             {unassigned.slice(0, 12).map((u, i) => (
               <li key={i}>
@@ -280,7 +282,7 @@ function Reports({ data }: { data: PublishView }) {
       )}
 
       <div className="publish-preview print-target" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
-        <StakeReportDoc ref={ref} r={r} weekLabel={data.weekLabel} generatedAt={data.generatedAt} layout={data.layout} />
+        <StakeReportDoc ref={ref} r={r} weekLabel={data.weekLabel} generatedAt={data.generatedAt} layout={layout} />
       </div>
     </>
   );

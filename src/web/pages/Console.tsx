@@ -101,8 +101,8 @@ export function ConsolePage() {
 
       <h3>This week’s checklist</h3>
       <p className="muted" style={{ fontSize: ".82rem", marginTop: "-.3rem" }}>
-        Measurable steps tick themselves from live data. Tick the rest as you finish them; the list
-        resets when the next week is imported.
+        Steps measured from data tick themselves. Tick the rest as you complete them; the list resets
+        when the next week is imported.
       </p>
       <ol className="steps checklist">
         {data.steps.map((s) => {
@@ -158,7 +158,7 @@ export function ConsolePage() {
         <Link className="btn" to="/not-reported">Not reported</Link>
         <Link className="btn" to="/stakes">Stakes</Link>
         <Link className="btn" to="/publish">Publish</Link>
-        <Link className="btn" to="/admin/rollover">Structure</Link>
+        <Link className="btn" to="/admin/rollover">Rollover</Link>
       </div>
     </>
   );

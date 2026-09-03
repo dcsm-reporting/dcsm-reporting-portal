@@ -237,10 +237,9 @@ function RolloverBody({
             </span>
           </div>
           <p className="muted" style={{ fontSize: ".85rem", maxWidth: "74ch" }}>
-            These IMOS ids are mapped but no longer appear in the report. Closing the mapping dates the
-            end of that id at {week}; when it was the area's only id the area is retired (its history
-            stays; un-retire in Areas &amp; units if it comes back). Leave one unticked if the area is
-            only paused for a transfer.
+            Mapped IMOS ids that no longer appear in the report. Ticking one closes its mapping at{" "}
+            {week} and retires the area if that was its only id. History is kept, and an area can be
+            un-retired in Areas &amp; units. Leave an area unticked if it is only paused.
           </p>
           <div className="tbl-scroll">
             <table className="grid">
@@ -294,10 +293,9 @@ function RolloverBody({
 
       {plan.summary.areasNew > 0 && (
         <div className="note">
-          <strong>“new”</strong> marks an area that appears this week but wasn’t in last week’s
-          payload, usually a transfer split (one area becoming two). Give it its own canonical key
-          and map it; its history simply starts here. If it’s really the <em>same</em> area under a
-          new IMOS id, set the key to the existing one instead and untick “New?”.
+          <strong>“new”</strong> marks an area not present last week, usually a split. Accept the
+          suggested key and its history starts here. If it is an existing area under a new IMOS id,
+          enter the existing key and untick “New?”.
         </div>
       )}
 
@@ -467,10 +465,8 @@ function RolloverBody({
       )}
       {(unmappedAreas.length > 0 || plan.wards.length > 0 || plan.vanished.length > 0) && (
         <p className="muted" style={{ fontSize: ".8rem", maxWidth: "80ch" }}>
-          Mappings are dated by reporting week, so everything above takes effect from Monday {week}
-          and earlier weeks keep their old mapping. The transfer day is written into the record for
-          anyone reading the history later; it does not change any number, because numbers are only
-          ever stored per week.
+          Changes take effect from Monday {week}; earlier weeks keep their mapping. The transfer day
+          is recorded for the history and does not change any number.
         </p>
       )}
     </>

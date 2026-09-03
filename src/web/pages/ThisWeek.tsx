@@ -50,8 +50,8 @@ export function ThisWeekPage() {
 
       {data.resolve.unmapped.length > 0 && (
         <div className="note warn">
-          <strong>{data.resolve.unmapped.length} IMOS area(s) not in the crosswalk.</strong>{" "}
-          Stake rollups will park them under “(unmapped)”. Fix in <strong>Structure → Rollover</strong>.
+          <strong>{data.resolve.unmapped.length} area(s) not yet mapped.</strong> Their units show
+          under “(unmapped)” on the Stakes page until mapped under <strong>Admin → Rollover</strong>.
         </div>
       )}
 
@@ -125,8 +125,7 @@ export function ThisWeekPage() {
           </div>
 
           <p className="muted" style={{ fontSize: ".78rem" }}>
-            Adds the four most recent stored weeks straight across. Import a missing week and this
-            recomputes.
+            The sum of the four most recent stored weeks.
           </p>
         </>
       ) : (

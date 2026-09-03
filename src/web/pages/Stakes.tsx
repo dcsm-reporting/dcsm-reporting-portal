@@ -20,7 +20,7 @@ export function StakesPage() {
   if (!data) return null;
 
   const stake = sel ?? data.stakes[0] ?? null;
-  if (!stake) return <p className="muted">No stake rollups yet. Seed the crosswalk in Structure.</p>;
+  if (!stake) return <p className="muted">No stake totals yet. Map units to stakes under Admin → Rollover.</p>;
   const g = data.byStake[stake]!;
   const wards = Object.keys(g.wards).sort();
 
@@ -120,8 +120,8 @@ export function StakesPage() {
       })()}
 
       <p className="muted" style={{ fontSize: ".78rem" }}>
-        {data.wardMapSize} ward→stake rows effective this week. Actual counts only; IMOS carries goals at area level, not ward.
-        {" "}On-date names from the Baptisms (MLC) sheet.
+        Actual counts only; IMOS records goals by area, not by unit. On-date names come from the
+        Baptisms (MLC) sheet.
       </p>
     </>
   );

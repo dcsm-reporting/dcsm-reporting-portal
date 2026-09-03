@@ -22,9 +22,8 @@ export function ChasePage() {
     <>
       <PageHead title={`Not reported: ${data.weekLabel}`} week />
       <p className="muted" style={{ maxWidth: "72ch" }}>
-        Areas whose IMOS numbers were not touched during this reporting week (from each area’s{" "}
-        <code>history[].modifiedDate</code>). Acknowledge one to stop it flagging; it clears on its
-        own once the area reports.
+        Areas whose IMOS numbers were not updated during this reporting week. Acknowledge an area
+        to stop it flagging; it clears when the area reports.
       </p>
 
       {data.count === 0 ? (

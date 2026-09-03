@@ -87,7 +87,7 @@ export function App() {
       <div className="app">
         <header className="masthead">
           <div className="brand">
-            <h1>DCSM Reporting</h1>
+            <h1>WDCSM Reporting</h1>
             <small>Washington DC South Mission</small>
           </div>
           <nav className="tabs">

@@ -21,17 +21,31 @@ export function fmtDate(iso: string | null): string {
   return `${mon} ${d}, ${y}`;
 }
 
-/** The two halves of Baptisms: the live list, and the monthly check. */
-export function BaptismsSubnav() {
+/** The two halves of Baptisms: the live list, and the monthly check. Page
+ *  controls (filters, month picker) sit on the right of the same row. */
+export function BaptismsSubnav({ children }: { children?: React.ReactNode }) {
   return (
-    <nav className="subnav" style={{ marginTop: 0 }}>
-      <NavLink to="/baptisms" end className={({ isActive }) => (isActive ? "active" : "")}>
-        Friends &amp; baptisms
-      </NavLink>
-      <NavLink to="/baptisms/check" className={({ isActive }) => (isActive ? "active" : "")}>
-        Monthly check
-      </NavLink>
-    </nav>
+    <div
+      className="row"
+      style={{
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        borderBottom: "1px solid var(--rule)",
+        paddingBottom: ".5rem",
+        marginBottom: ".9rem",
+      }}
+    >
+      <nav className="subnav" style={{ margin: 0, border: "none", padding: 0 }}>
+        <NavLink to="/baptisms" end className={({ isActive }) => (isActive ? "active" : "")}>
+          Friends &amp; baptisms
+        </NavLink>
+        <NavLink to="/baptisms/check" className={({ isActive }) => (isActive ? "active" : "")}>
+          Monthly check
+        </NavLink>
+      </nav>
+      {children && <span className="row" style={{ gap: ".6rem", alignItems: "center" }}>{children}</span>}
+    </div>
   );
 }
 
@@ -75,14 +89,8 @@ export function FriendsPage() {
 
   return (
     <>
-      <PageHead title="Baptisms">
-        <label className="field" style={{ margin: 0 }}>
-          <span className="k mono">Zone</span>
-          <select value={zone} onChange={(e) => setParam("zone", e.target.value)}>
-            <option value="">All zones</option>
-            {ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
-          </select>
-        </label>
+      <PageHead title="Baptisms" />
+      <BaptismsSubnav>
         <span className="seg">
           {(["on-date", "baptized", "all"] as const).map((s) => (
             <button key={s} className={status === s ? "on" : ""} onClick={() => setParam("show", s === "on-date" ? "" : s)}>
@@ -90,16 +98,18 @@ export function FriendsPage() {
             </button>
           ))}
         </span>
-      </PageHead>
-      <BaptismsSubnav />
+        <select value={zone} onChange={(e) => setParam("zone", e.target.value)} aria-label="Zone">
+          <option value="">All zones</option>
+          {ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
+        </select>
+      </BaptismsSubnav>
 
       {summary.data && (
-        <div className="note" style={{ marginTop: ".8rem" }}>
+        <div className="note">
           {summary.data.lastSyncedAt ? (
             <>
-              Mirrored from the <strong>Baptisms (MLC)</strong> sheet. Last sync{" "}
-              {new Date(summary.data.lastSyncedAt).toLocaleString()}. Edit in the sheet; this view is
-              read-only.
+              Mirrored from the <strong>Baptisms (MLC)</strong> sheet, last synced{" "}
+              {new Date(summary.data.lastSyncedAt).toLocaleString()}. Edit in the sheet.
             </>
           ) : (
             <>
@@ -213,8 +223,8 @@ function BaptizedSections({ rows, onChange }: { rows: FriendRow[]; onChange: () 
             Recently cleared from the sheet ({recentlyCleared.length})
           </h4>
           <p className="muted" style={{ fontSize: ".85rem", maxWidth: "74ch" }}>
-            Confirmed, then removed from the sheet, most likely as part of a normal STL clear-out.
-            Worth a glance; use <em>doesn't count</em> on any name that shouldn't have counted.
+            Confirmed, then removed from the sheet, usually in the routine STL clear-out. Use{" "}
+            <em>doesn’t count</em> on any name that should not have counted.
           </p>
           <FriendTable rows={recentlyCleared} onChange={onChange} />
         </>
@@ -226,8 +236,8 @@ function BaptizedSections({ rows, onChange }: { rows: FriendRow[]; onChange: () 
             Historical baptisms, before the sheet ({historical.length})
           </summary>
           <p className="muted" style={{ fontSize: ".85rem", maxWidth: "74ch", marginTop: ".5rem" }}>
-            Reconstructed from older records when the portal launched. These predate the Baptisms
-            (MLC) sheet as the source of truth, so they won't appear on it, that's expected.
+            Reconstructed from older records when the portal launched. They predate the sheet and
+            will not appear on it.
           </p>
           <FriendTable rows={historical} onChange={onChange} />
         </details>

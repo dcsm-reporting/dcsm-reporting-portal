@@ -28,7 +28,7 @@ export function AccessPage() {
     try {
       const list = val.split(/[\s,;]+/).map((s) => s.trim().toLowerCase()).filter((s) => s.includes("@"));
       const r = await api.setAdmins(list);
-      setMsg(r.admins.length === 0 ? "Saved — everyone is an admin again." : `Saved — ${r.admins.length} admin(s).`);
+      setMsg(r.admins.length === 0 ? "Saved. Everyone is an admin again." : `Saved. ${r.admins.length} admin(s).`);
       reload();
     } catch (e) {
       setMsg((e as Error).message);
@@ -41,10 +41,9 @@ export function AccessPage() {
     <>
       <h3 style={{ margin: 0 }}>Admin access</h3>
       <p className="muted" style={{ maxWidth: "72ch" }}>
-        One address per line (or comma-separated). These people see the <strong>Console</strong> and{" "}
-        <strong>Admin</strong> tabs and can change structure, units, recipients, the report layout, and
-        reporting settings. Everyone else who signs in keeps full read access to the rest of the
-        portal, plus Import, Publish, and the baptism actions.
+        One address per line. Admins see the <strong>Console</strong> and <strong>Admin</strong> tabs
+        and can change structure, units, stake reports, and reporting settings. Everyone else can view
+        every other page, import weeks, and publish.
       </p>
       <div className="note">
         {data.admins.length === 0 ? (
@@ -86,7 +85,7 @@ export function AccessPage() {
         {msg && <span className="muted" style={{ fontSize: ".85rem" }}>{msg}</span>}
       </div>
       <p className="muted" style={{ fontSize: ".8rem", marginTop: ".6rem" }}>
-        A non-empty list must include your own address — the server won't let you lock yourself out.
+        The list must include your own address, so you cannot lock yourself out.
       </p>
     </>
   );

@@ -233,7 +233,7 @@ function renderSection(id: StakeReportLayout["sections"][number]["id"], c: Ctx):
                   <th style={{ ...th, textAlign: "left" }}>Date</th>
                   {L.onDate.church2x && <th style={th}>Church 2×</th>}
                   {L.onDate.calendar && <th style={th}>Calendar</th>}
-                  {L.onDate.extra.map((k) => (
+                  {(L.onDate.extra ?? []).map((k) => (
                     <th key={k} style={{ ...th, textAlign: "left" }}>{k}</th>
                   ))}
                 </tr>
@@ -254,7 +254,7 @@ function renderSection(id: StakeReportLayout["sections"][number]["id"], c: Ctx):
                         {f.onBaptismCalendar ? "✓" : "–"}
                       </td>
                     )}
-                    {L.onDate.extra.map((k) => (
+                    {(L.onDate.extra ?? []).map((k) => (
                       <td key={k} style={tdL}>{f.extra?.[k] ?? "–"}</td>
                     ))}
                   </tr>
@@ -343,7 +343,7 @@ export const StakeReportDoc = forwardRef<
         }}
       >
         Weekly numbers from IMOS. Baptism and on-date names from the Baptisms (MLC) sheet. Generated{" "}
-        {new Date(generatedAt).toLocaleString()} &middot; DCSM Reporting
+        {new Date(generatedAt).toLocaleString()} &middot; WDCSM Reporting
       </div>
     </div>
   );
