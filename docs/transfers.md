@@ -67,7 +67,7 @@ mapped it at all.
 **The canonical area layer is a health check, not a dependency.** The
 `canonical_area` / `area_crosswalk` tables give each real teaching area a name
 that survives id changes. Today no report is computed from it; it drives the
-"N areas unmapped" warning, the Areas & wards admin page, and Rollover. Its
+"N areas unmapped" warning, the Areas & units admin page, and Rollover. Its
 value is for the future: a per-area history across id changes (see NEXT.md).
 Leaving it unmapped for a week does not change any number on any report.
 
@@ -118,7 +118,7 @@ the Publish page.
 ## Things that would still need a human decision
 
 - **A stake reorganisation** (wards moving between stakes, a stake created or
-  dissolved). Set the new stake on the affected wards in Areas & wards with
+  dissolved). Set the new stake on the affected wards in Areas & units with
   the effective date; rename or add the recipients row. Rare (years).
 - **Two areas merged into one that keeps neither name.** Map the surviving id
   to whichever canonical area you want the history under; retire the other.

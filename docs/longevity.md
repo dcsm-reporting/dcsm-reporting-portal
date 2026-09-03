@@ -49,7 +49,7 @@ validated on save so a mistake cannot take the portal down.
 |---|---|
 | Which sections the stake-president report contains, their order, which indicators, how many trend weeks, how many months of baptisms, headline tiles, an intro paragraph, a closing note | Admin → Stake reports → What the report contains |
 | The cover email's wording, subject, CC list, each stake's recipients and president | Admin → Stake reports |
-| A ward moving stake, a new stake, a ward renamed, a branch becoming a ward, a ward dissolved, a stake renamed | Admin → Areas & wards → quick actions |
+| A ward moving stake, a new stake, a ward renamed, a branch becoming a ward, a ward dissolved, a stake renamed | Admin → Areas & units → quick actions |
 | New, split, merged, renamed teaching areas; new wards IMOS starts reporting | Admin → Rollover (suggestions pre-filled) |
 | Which missionary positions make an MLC area, zone display order, zones excluded from mission totals, colour thresholds, expected active-area range | Admin → Reporting settings |
 | Who is an admin | Admin → Admin access |
@@ -138,7 +138,7 @@ year and this one is expected to last several.
 (`"structure:v2"` → `"structure:v3"` in `src/server/index.ts`). Views are served
 from the KV cache and a deploy does not invalidate it, so a page can otherwise
 read yesterday's shape and crash with "cannot read properties of undefined".
-This has happened twice (Trends, Areas & wards). The client should also treat
+This has happened twice (Trends, Areas & units). The client should also treat
 new fields as optional for the first hour after a deploy. Fields are only ever
 added, never renamed or removed: other tools read these routes too
 (`docs/api.md`).

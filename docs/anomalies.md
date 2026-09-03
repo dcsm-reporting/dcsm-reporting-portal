@@ -24,7 +24,7 @@ that is not here, add it.
 | Situation | What the portal does | What you do |
 |---|---|---|
 | Area ids change, areas split, zones renamed | Numbers still import (identity is not needed to store facts). This Week shows "N areas unmapped"; Stakes parks their wards under `(unmapped)`; the Console flags it. | **Admin → Rollover** for the new week: accept the suggestions, adjust the rest, Apply. Earlier weeks keep their old mapping. See `how-mapping-works.md`. |
-| A stake is renamed or two stakes merge | **Admin → Areas & wards → Stakes → Rename** updates the ward rows, the report recipients row, and the stake name on every friend record in one go. | Tell the STLs to use the new name on the sheet. |
+| A stake is renamed or two stakes merge | **Admin → Areas & units → Stakes → Rename** updates the ward rows, the report recipients row, and the stake name on every friend record in one go. | Tell the STLs to use the new name on the sheet. |
 | A zone is dropped or added | Trends, Baptisms and the Publish zone board list zones from stored data in the configured order, so nothing hard-coded goes stale. | Set the order under **Admin → Reporting settings → Zone order**. |
 | An admin attaches an IMOS id to a canonical key that does not exist | Refused with a message. | Create the area first, or tick "New?" in Rollover. |
 | Back-dating a mapping under one that starts later | The new row is closed where the later one begins, so two mappings are never effective on the same week. | Nothing. |
