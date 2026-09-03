@@ -331,6 +331,13 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
                   )
                 ) : f.dropped ? (
                   <span className="chip low">dropped</span>
+                ) : f.missingSince ? (
+                  <span
+                    className="chip medium"
+                    title="Not on the sheet at the last sync. Kept for two days in case the row is being moved between tabs; dropped after that."
+                  >
+                    off the sheet since {f.missingSince.slice(0, 10)}
+                  </span>
                 ) : (
                   <span className="chip">on date</span>
                 )}

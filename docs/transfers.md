@@ -126,6 +126,16 @@ the Publish page.
   sequential. If it ever happens, close the old mapping at the week it changed
   and attach the id to the right canonical area from that week.
 
+## The Baptisms (MLC) sheet during transfer week
+
+STLs delete friends from one zone tab and re-add them on another, often
+hours apart and sometimes with the unit typed differently. Nothing to do: an
+on-date friend who vanishes is kept for 48 hours before being dropped, and a
+re-added row is recognised as the same person by unit and name, or by name
+and baptism date. The sync log notes each move. If a whole zone stops
+arriving (a tab renamed or its name header changed), the Console's sheet step
+turns amber and names the zone. Details: `docs/friends-sheet-bridge.md`.
+
 ## The Monday deck
 
 The MLC Slides script reads zones from the portal, so a transfer needs no

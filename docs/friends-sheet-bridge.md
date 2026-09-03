@@ -1,95 +1,85 @@
-# Friends / on-date — keeping it in sync with the Baptisms (MLC) sheet
+# The Baptisms (MLC) sheet sync
 
 The **Baptisms (MLC)** Google Sheet stays the place Sister Training Leaders
-actually edit. A small Apps Script bound to that sheet pushes a full snapshot to
-the portal every few minutes; the portal's **Friends** page mirrors it
-(read-only) and feeds the on-date / baptism lists on **Stakes**.
+edit. An Apps Script bound to it (`apps_script/baptisms-sync.gs`) posts the
+whole sheet to the portal every 15 minutes; the portal's Baptisms page
+mirrors it and feeds the on-date and baptism lists on the stake reports.
 
-Two states only, matching the sheet: on a baptismal date, or baptized & confirmed.
+## What the script sends
 
-## What syncs
+Tabs are discovered, not listed: any tab containing a cell that reads
+`Name (First and Last)` is a data tab, and the tab name is the zone. Columns
+are found by header text (`FIELD_BY_HEADER` at the top of the script), not by
+position. Helper tabs are named in `SKIP_TABS`; the `Organized Baptisms`
+history tab takes its zone from an "Actual Zone" column.
 
-Each per-zone tab (Alexandria, Annandale, …). The script finds the header row,
-reads `Name / Baptism Date / Address / Time / Attended Church (Y/N) / Baptism
-Calendar (Y/N) / Ward / Stake / Missionaries / Completed Baptism`, and posts them
-to `POST /api/friends/sync`. `syncFriends()` then:
+Per row: name, baptism date, time, address, attended church, baptism
+calendar, unit, stake, missionaries, completed baptism, plus every other
+column as `{header: value}`. Rows whose name is blank or a spreadsheet error
+(`#REF!`, `#N/A`) are skipped. The script waits two minutes after the last
+edit before sending, so a sort or a multi-row move is not caught halfway.
 
-- matches rows two ways: exact `ward|name|date`, then a single unclaimed
-  `ward|name` (so a rescheduled date just updates),
-- writes only the rows that actually changed (an unchanged sheet costs no D1
-  writes and leaves `updated_at` meaningful),
-- **keeps** a confirmed baptism that leaves the sheet (the monthly STL
-  clear-out) and marks an on-date friend who leaves as dropped,
-- skips any row whose name cell is a spreadsheet error (`#REF!`, `#N/A`, …)
-  and blanks such errors in every other cell (the script does the same before
-  sending),
-- refuses a whole pass that looks like a mid-edit or a sort (many inserts and
-  drops at once) rather than guessing,
-- files a snapshot into `friend_week` under the Monday of the current week
-  (mission time zone) whenever something changed, and at least once per week
-  regardless,
-- logs the run to `friend_sync` (drives the "last synced" line on the page);
-  log rows older than 120 days are pruned automatically.
+## What the portal does with it
 
-## When the sheet changes
+Matching, in order, each pass:
 
-- **A new tab** (a new zone) is picked up on the next sync; the zone stored on
-  each friend is the tab name. A tab removed takes its on-date friends off the
-  list (marked dropped) and keeps its confirmed baptisms. Nothing to configure.
-  The only hard-coded list is `SKIP_TABS` (helper tabs to ignore); a new helper
-  tab that happens to contain the header row would be read as a zone, so name
-  helper tabs distinctively or add them there.
-- **A new column** is forwarded automatically as `{header: value}` and stored
-  on each friend (`extra_json`). It shows up as a column on the Baptisms page
-  on the next sync and can be ticked onto the stake report's on-date list at
-  Admin → Stake reports. No code change.
-- **A renamed column** is the one thing that needs attention. The script maps
-  columns by header text (`FIELD_BY_HEADER`). If someone renames "Ward Name" to
-  "Ward", the portal's ward field goes blank on every row and the value arrives
-  as an extra column called "Ward" instead. The sync then warns ("no row carried
-  a value for Ward Name"), the Console's sheet step turns amber, and the fix is
-  either renaming the header back or adding the new spelling to
-  `FIELD_BY_HEADER` (a one-line edit, plain text).
-- **Row order, sorting, blank rows, `#REF!`** are all handled; see the list above.
+1. **Exact**: same unit, name and baptism date.
+2. **Rescheduled**: the one unclaimed row with the same unit and name.
+3. **Moved**: the same name and baptism date on a different unit or zone tab
+   (a transfer, a boundary change, a unit name typed differently), when
+   exactly one candidate exists. The record and its history are kept; the
+   sync log notes the move. A friend dropped within the last 60 days can be
+   revived this way rather than duplicated.
+
+Then:
+
+- Only rows that differ are written, so an unchanged sheet costs nothing.
+- A **confirmed baptism** that leaves the sheet (the monthly clear-out) is
+  kept, stamped with the date it left.
+- An **on-date friend** who leaves the sheet is stamped "missing" and kept for
+  a **48-hour grace period**. They stay on every list. If they reappear on any
+  tab inside the window, nothing happened. After 48 hours of continuous
+  absence they are marked dropped. This is what makes transfer week safe:
+  STLs delete from one zone tab and re-add on another hours apart, and the
+  portal never sees a drop.
+- Columns the portal has no named field for are stored only if the mission
+  ticked them under Admin → Reporting settings; the header names are recorded
+  so the office can decide.
+- A pass that looks like a mid-edit or a sort (many inserts and drops at once)
+  is refused whole and logged; the next tick retries.
+- A **zone that had rows last time and none now** raises a warning and turns
+  the Console's sheet step amber: its tab was renamed, hidden, or lost its
+  name header.
+- A renamed core column (Ward Name, Stake, Baptism Date) warns the same way.
+- A snapshot is filed under the current week for the stake-report trends,
+  whenever something changed and at least once a week.
+
+## If the sheet changes
+
+| Change | Effect |
+|---|---|
+| A column is added | Its header is recorded; values are kept only once ticked under Reporting settings. Nothing breaks. |
+| Columns are reordered or moved | Nothing. Columns are found by header text. |
+| Rows are inserted, sorted, or moved between tabs | Nothing. Matching is by content; moves are recognised. |
+| The header row moves down | Nothing. The script searches for it. |
+| A row is deleted | On date: kept 48 hours, then dropped. Baptized: kept forever. |
+| A core header is renamed (Ward Name, Stake, Baptism Date) | That field goes blank; the sync warns; Console amber. Rename it back or add the new spelling to `FIELD_BY_HEADER`. |
+| Another mapped header is renamed (Time, Address, the Y/N columns) | That field goes blank without a warning; the value arrives as an extra column. Same fix. |
+| `Name (First and Last)` is renamed on a tab | The tab is no longer read; the zone-vanished warning fires; its friends run out the grace period unless fixed. Rename it back. |
+| A tab is renamed | Every friend on it changes zone. Nothing else. |
+| A helper tab gains the name header | It is read as a zone. Add it to `SKIP_TABS`. |
+| A cell shows `#REF!` | The row is skipped if it is the name; other cells are blanked. Fix the formula. |
 
 ## One-time setup
 
-### 1. The sync secret
-
-Already set as a Worker secret (`FRIENDS_SYNC_SECRET`). To see or rotate it:
-
-```bash
-npx wrangler secret put FRIENDS_SYNC_SECRET
-```
-
-(The current value was handed to you in chat; keep it in the vault.)
-
-### 2. Let the webhook through Cloudflare Access
-
-The bridge isn't a logged-in user, so `/api/friends/sync` needs to skip the
-Access login:
-
-1. Zero Trust → **Access → Applications → Add an application → Self-hosted**.
-2. Domain: `dcsm-ki-portal.dcsm-reporting.workers.dev` — **Path**: `api/friends/sync`.
-3. Policy: Action **Bypass**, Include **Everyone**.
-4. Save. (Path apps take precedence, so only that one endpoint is open — and it
-   still requires the bearer secret.)
-
-### 3. The Apps Script
-
-1. Open the **Baptisms (MLC)** sheet → Extensions → **Apps Script**.
-2. Paste `apps_script/baptisms-sync.gs` from this repo.
-3. Project Settings → **Script Properties**:
-   - `PORTAL_URL` = `https://dcsm-ki-portal.dcsm-reporting.workers.dev`
-   - `SYNC_SECRET` = the `FRIENDS_SYNC_SECRET` value
-4. Triggers (clock icon) → **Add Trigger** → function `pushToPortal`, event
-   source **Time-driven**, every **15 minutes**.
-5. Run `pushToPortal` once from the editor to authorize `UrlFetchApp` and do the
-   first push. Check the execution log for `200 {...upserted...}`.
-6. There's also a **KI Portal → Push to portal now** menu item in the sheet.
-
-## Already loaded
-
-The 137 current records (44 baptized, 93 on date) from the workbook were seeded
-into production on 2026-09-01. The first Apps Script run reconciles against the
-live sheet and takes over from there.
+1. `FRIENDS_SYNC_SECRET` is a Worker secret. Rotate with
+   `npx wrangler secret put FRIENDS_SYNC_SECRET`, then update the sheet's
+   Script Property.
+2. Cloudflare Access must let the webhook through: Zero Trust → Access →
+   Applications → Self-hosted, domain
+   `dcsm-ki-portal.dcsm-reporting.workers.dev`, path `api/friends/sync`,
+   policy **Bypass**, Everyone.
+3. In the sheet: Extensions → Apps Script, paste the script, Script
+   Properties `PORTAL_URL` and `SYNC_SECRET`, a time-driven trigger on
+   `pushToPortal` every 15 minutes, run it once to authorize. The sheet also
+   gets a **KI Portal → Push to portal now** menu.

@@ -48,6 +48,8 @@ export type StoredFriend = Friend & {
   active: boolean;
   syncKey: string | null;
   leftSheetAt: string | null;
+  /** when an on-date friend was last seen missing from the sheet (grace period running) */
+  missingSince: string | null;
   /** columns on the sheet the portal has no named field for, {header: value} */
   extra: Record<string, string>;
 };
@@ -56,7 +58,7 @@ const COLS =
   "id, name, zone, canonical_area_key, ward, stake, missionaries, baptism_date, baptism_time, " +
   "baptism_address, attended_church_2x, on_baptism_calendar, baptized_confirmed, dropped, active, " +
   "left_sheet_at, confirmed_at, confidence, notes, source, sync_key, created_at, created_by, " +
-  "updated_at, updated_by, extra_json";
+  "updated_at, updated_by, extra_json, missing_since";
 
 function parseExtra(v: unknown): Record<string, string> {
   if (typeof v !== "string" || !v) return {};
@@ -105,6 +107,7 @@ function toFriend(r: Row): StoredFriend {
     active: Boolean(r.active),
     syncKey: (r.sync_key as string | null) ?? null,
     leftSheetAt: (r.left_sheet_at as string | null) ?? null,
+    missingSince: (r.missing_since as string | null) ?? null,
     confirmedAt: (r.confirmed_at as string | null) ?? null,
     extra: parseExtra(r.extra_json),
   };
@@ -163,7 +166,7 @@ export async function friendsSummary(
     // only the structural ones matter here (a renamed column, a held-back pass);
     // per-row skips are routine
     lastSyncWarnings = (Array.isArray(w) ? w : []).filter(
-      (s: unknown) => typeof s === "string" && /renamed on the sheet|held back/.test(s),
+      (s: unknown) => typeof s === "string" && /renamed on the sheet|held back|none this pass/.test(s),
     );
   } catch {
     /* ignore */
@@ -360,6 +363,14 @@ export interface SheetRow {
 }
 
 /** The sheet columns the portal depends on; a sync with none of them warns loudly. */
+/**
+ * An on-date friend who disappears from the sheet is dropped only after this
+ * long of continuous absence. Transfer-week moves (deleted from one zone tab,
+ * re-added on another hours later) and mid-edit snapshots then never show as
+ * a drop at all; a real removal still lands within two days.
+ */
+export const MISSING_GRACE_HOURS = 48;
+
 const CORE_COLUMNS: { field: keyof SheetRow; header: string }[] = [
   { field: "ward", header: "Ward Name" },
   { field: "stake", header: "Stake" },
@@ -401,6 +412,10 @@ export async function syncFriends(
   changed: number;
   retained: number;
   deactivated: number;
+  /** on-date friends first seen missing this pass (grace period started) */
+  missing: number;
+  /** rows recognised as the same person on a different unit or zone tab */
+  moved: number;
   warnings: string[];
   rejected?: boolean;
 }> {
@@ -540,20 +555,63 @@ export async function syncFriends(
     a.extra !== extraJson(b.extra) ||
     a.full !== (b.syncKey ?? null) ||
     b.leftSheetAt != null ||
+    b.missingSince != null ||
     !b.active ||
     b.dropped;
 
+  // Pass 1 — tier 1: exact ward|name|date; tier 2: the one unclaimed ward|name
+  // (a reschedule). Claim before pass 2 so a move can never steal a row that
+  // matches exactly.
+  const matched = new Map<string, StoredFriend | undefined>();
   for (const r of snap.values()) {
-    // tier 1: exact ward|name|date; tier 2: the one unclaimed ward|name (a reschedule)
     let prev = byFull.get(r.full);
     if (prev && claimed.has(prev.id)) prev = undefined;
     if (!prev) {
       const cand = (byWn.get(r.wn) ?? []).filter((f) => !claimed.has(f.id));
       if (cand.length === 1) prev = cand[0];
     }
+    if (prev) claimed.add(prev.id);
+    matched.set(r.full, prev);
+  }
+
+  // Pass 2 — tier 3, moves: the same name and baptism date on a different unit
+  // or zone tab (a transfer, a boundary change, a unit name typed differently)
+  // is the same person, so keep the record and its history. Only when exactly
+  // one unclaimed candidate exists; anything ambiguous becomes a new row. A
+  // friend already dropped for a while can be revived this way too, as long as
+  // the record is recent enough to plausibly be the same person.
+  const REVIVE_WINDOW_MS = 60 * 86_400_000;
+  const byNameDate = new Map<string, StoredFriend[]>();
+  for (const s of sheetRows) {
+    if (claimed.has(s.id)) continue;
+    if (s.dropped && Date.parse(s.updatedAt) < Date.now() - REVIVE_WINDOW_MS) continue;
+    const k = `${fold(s.name)}|${s.baptismDate ?? ""}`;
+    const list = byNameDate.get(k);
+    if (list) list.push(s);
+    else byNameDate.set(k, [s]);
+  }
+  let moved = 0;
+  const moves: string[] = [];
+  for (const r of snap.values()) {
+    if (matched.get(r.full)) continue;
+    const cand = (byNameDate.get(`${fold(r.name)}|${r.baptismDate ?? ""}`) ?? []).filter(
+      (s) => !claimed.has(s.id),
+    );
+    if (cand.length !== 1) continue;
+    const prev = cand[0]!;
+    claimed.add(prev.id);
+    matched.set(r.full, prev);
+    moved++;
+    moves.push(
+      `${r.name} (${prev.zone ?? "?"} / ${prev.ward ?? "?"} → ${r.zone ?? "?"} / ${r.ward ?? "?"})`,
+    );
+  }
+  if (moves.length) warnings.push(`NOTE: ${moves.length} moved unit or zone: ${moves.join("; ")}`);
+
+  for (const r of snap.values()) {
+    const prev = matched.get(r.full);
 
     if (prev) {
-      claimed.add(prev.id);
       upserted++;
       // Only write when something actually differs. Rewriting every row on
       // every 15-minute tick burned ~10k D1 writes a day and stamped
@@ -568,7 +626,7 @@ export async function syncFriends(
                baptism_time=?, baptism_address=?, attended_church_2x=?, on_baptism_calendar=?,
                baptized_confirmed=?,
                confirmed_at = CASE WHEN ? = 1 AND baptized_confirmed = 0 THEN ? ELSE confirmed_at END,
-               active=1, dropped=0, left_sheet_at=NULL, source='sheet', sync_key=?, extra_json=?,
+               active=1, dropped=0, left_sheet_at=NULL, missing_since=NULL, source='sheet', sync_key=?, extra_json=?,
                updated_at=?, updated_by='sheet-sync'
              WHERE id=?`,
           )
@@ -601,10 +659,14 @@ export async function syncFriends(
   }
 
   // sheet rows nobody claimed: STLs cycle completed baptisms out each month, so
-  // keep those (stamp when they left); an on-date friend removed = not progressing.
+  // keep those (stamp when they left). An on-date friend who is missing is
+  // stamped and kept for the grace period; only continuous absence past it
+  // means they stopped progressing.
   const gone = sheetRows.filter((f) => f.active && !claimed.has(f.id));
   let retained = 0;
   let deactivated = 0;
+  let missing = 0;
+  const graceCutoff = Date.now() - MISSING_GRACE_HOURS * 3_600_000;
   for (const f of gone) {
     if (f.baptizedConfirmed) {
       if (f.leftSheetAt == null) {
@@ -617,7 +679,14 @@ export async function syncFriends(
         );
       }
       retained++;
-    } else {
+    } else if (f.missingSince == null) {
+      stmts.push(
+        db
+          .prepare("UPDATE friend SET missing_since=?, updated_at=?, updated_by='sheet-sync' WHERE id=?")
+          .bind(now, now, f.id),
+      );
+      missing++;
+    } else if (Date.parse(f.missingSince) <= graceCutoff) {
       stmts.push(
         db
           .prepare(
@@ -626,6 +695,25 @@ export async function syncFriends(
           .bind(now, f.id),
       );
       deactivated++;
+    }
+  }
+
+  // A zone whose tab was renamed, hidden, or lost its "Name (First and Last)"
+  // header disappears from the snapshot wholesale. Every friend on it would
+  // quietly run out the grace period, so say it now.
+  const zoneRowsBefore = new Map<string, number>();
+  for (const s of sheetRows) {
+    if (s.active && s.zone && !s.baptizedConfirmed) {
+      zoneRowsBefore.set(s.zone, (zoneRowsBefore.get(s.zone) ?? 0) + 1);
+    }
+  }
+  const zonesNow = new Set([...snap.values()].map((r) => r.zone).filter(Boolean));
+  for (const [zone, n] of zoneRowsBefore) {
+    if (n >= 3 && !zonesNow.has(zone)) {
+      warnings.push(
+        `zone "${zone}" had ${n} on-date row(s) last sync and none this pass — was its tab renamed, ` +
+          `hidden, or its "Name (First and Last)" header changed?`,
+      );
     }
   }
 
@@ -654,7 +742,10 @@ export async function syncFriends(
       )
       .bind(now, rows.length, JSON.stringify(warnings))
       .run();
-    return { rowsIn: rows.length, upserted: 0, changed: 0, retained: 0, deactivated: 0, warnings, rejected: true };
+    return {
+      rowsIn: rows.length, upserted: 0, changed: 0, retained: 0, deactivated: 0, missing: 0, moved: 0,
+      warnings, rejected: true,
+    };
   }
 
   // run in chunks
@@ -669,7 +760,7 @@ export async function syncFriends(
     .prepare("SELECT 1 FROM friend_week WHERE week_start = ? LIMIT 1")
     .bind(snapWeek)
     .first();
-  if (changed > 0 || deactivated > 0 || !haveSnapshot) {
+  if (changed > 0 || deactivated > 0 || missing > 0 || !haveSnapshot) {
     const weekStart = snapWeek;
     const activeNow = await listFriends(db);
     const weekStmts = activeNow.map((f) =>
@@ -705,5 +796,5 @@ export async function syncFriends(
       .bind(new Date(Date.now() - 120 * 86_400_000).toISOString()),
   ]);
 
-  return { rowsIn: rows.length, upserted, changed, retained, deactivated, warnings };
+  return { rowsIn: rows.length, upserted, changed, retained, deactivated, missing, moved, warnings };
 }

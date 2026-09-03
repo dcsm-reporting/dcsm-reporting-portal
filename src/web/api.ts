@@ -391,6 +391,8 @@ export interface FriendRow {
   dropped: boolean;
   source: string;
   leftSheetAt: string | null;
+  /** set while an on-date friend is missing from the sheet and the grace period runs */
+  missingSince?: string | null;
   /** any sheet column the portal has no named field for, {header: value} */
   extra?: Record<string, string>;
 }

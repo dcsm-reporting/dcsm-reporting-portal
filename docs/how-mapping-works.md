@@ -1,116 +1,86 @@
-# How the area / ward mapping works
+# How the area, unit and stake mapping works
 
-The old system used the **teaching-area name** as the thing that tied everything
-together. That name is free text, it's spelled inconsistently (`Alexandria 2 l
-Assistants` vs `Alexandria 2 | Assistants`), and it changes at transfers — so
-every transfer broke five different lookups. This system replaces that with a
-small identity layer the mission owns. Three tables do all the work.
+IMOS reports numbers per teaching area, identified by a numeric area id that
+changes when areas are adjusted, and per unit (`org.id`), which has stayed
+stable across every stored week. It does not say which stake a unit is in.
+Three effective-dated tables supply the rest and survive transfers.
 
 ## The three tables
 
-### 1. `canonical_area` — the stable name
+### 1. `canonical_area`: the stable name
 
-One row per real teaching area, with a **key** the mission owns and never
-changes:
+One row per real teaching area, with a key the mission owns and never changes:
 
-| canonical_area_key | display_name        | created_at | retired_at |
-|--------------------|---------------------|------------|------------|
-| `fairfax`          | Fairfax             | 2026-08-24 | —          |
-| `alexandria-a`     | Alexandria 1A       | 2026-08-24 | —          |
-| `opal-auburn`      | Opal l Auburn       | 2026-06-01 | 2026-08-24 |
+| canonical_area_key | display_name | created_at | retired_at |
+|---|---|---|---|
+| `fairfax` | Fairfax | 2026-08-24 | |
+| `opal-auburn` | Opal l Auburn | 2026-06-01 | 2026-08-24 |
 
-The key is a slug of the name the first time we see it. After that it's frozen —
-IMOS can rename the area, split it, or change its id, and the key stays put.
-`retired_at` is set when an area stops existing (its history stays queryable
-under the key).
+The key is a slug of the name the first time the area is seen. IMOS can
+rename, split, or re-id the area and the key stays. `retired_at` is set when
+the area stops existing; its history stays queryable.
 
-### 2. `area_crosswalk` — IMOS id → key, dated
+### 2. `area_crosswalk`: IMOS area id → key, dated
 
-IMOS identifies each area by a numeric `id` that **changes when the mission
-president adjusts areas** (every few months to a couple years). This table maps
-those churning ids onto the stable key, with a date range:
+| imos_area_id | canonical_area_key | valid_from | valid_to |
+|---|---|---|---|
+| 488608442 | `fairfax` | 2026-06-01 | 2026-08-24 |
+| 500701221 | `fairfax` | 2026-08-24 | |
 
-| imos_area_id | canonical_area_key | valid_from | valid_to   |
-|--------------|--------------------|------------|------------|
-| 488608442    | `fairfax`          | 2026-06-01 | 2026-08-24 |
-| 500701221    | `fairfax`          | 2026-08-24 | —          |
+"For the week of 2026-07-06, id 488608442 is Fairfax; from 2026-08-24, Fairfax
+is id 500701221." An open row has no `valid_to`. Nothing is deleted, so a
+chart across the change resolves every week correctly.
 
-Reading it: "for the week of 2026-07-06, IMOS id **488608442** is Fairfax; from
-2026-08-24 onward, Fairfax is IMOS id **500701221**." A row with `valid_to = —`
-is the currently-open mapping. When an id changes at a transfer you add a new
-row from that week; the old row gets closed at the same date. Nothing is ever
-deleted, so a chart that spans the change still resolves every week correctly.
+### 3. `area_ward`: key → unit → stake, dated
 
-### 3. `area_ward` — key → ward → stake, dated
+| canonical_area_key | ward_unit_id | ward_name | stake | valid_from | valid_to |
+|---|---|---|---|---|---|
+| `fairfax` | 18650 | Fairfax | Annandale | 2026-06-01 | |
+| `opal-auburn` | 55123 | Opal | Gainesville | 2026-06-01 | 2026-08-24 |
+| `opal-area` | 55123 | Opal | Gainesville | 2026-08-24 | |
 
-IMOS gives you the KI numbers but **not the stake** — and a stake report needs
-ward-level numbers grouped by stake. This table supplies that, keyed off the
-IMOS `org.id` (the real Church **unit number**, which is far more stable than
-the area id):
-
-| canonical_area_key | ward_unit_id | ward_name   | stake         | valid_from | valid_to |
-|--------------------|--------------|-------------|---------------|------------|----------|
-| `fairfax`          | 18650        | Fairfax     | Annandale     | 2026-06-01 | —        |
-| `opal-auburn`      | 55123        | Opal        | Gainesville   | 2026-06-01 | 2026-08-24|
-| `opal-area`        | 55123        | Opal        | Gainesville   | 2026-08-24 | —        |
-| `auburn-area`      | 61987        | Auburn      | Gainesville   | 2026-08-24 | —        |
-
-One area can have several wards (a companionship covering two units). A split
-shows up here as the old row closing and two new rows opening.
+One area can cover several units. A split shows as the old row closing and
+two new rows opening. The column is called `ward` in code; a unit may be a
+ward or a branch.
 
 ## How a week resolves
 
-When you open **This Week** or **Stakes** for, say, `2026-07-06`:
+1. Load the week's facts; each carries an `imos_area_id`.
+2. Crosswalk rows effective that week give the key.
+3. Unit rows effective that week give the unit and stake.
+4. Roll up by zone, area, stake.
 
-1. Load the stored KI facts for that week — each carries an `imos_area_id`.
-2. `area_crosswalk` rows effective on `2026-07-06` → `imos_area_id → key`.
-3. `area_ward` rows effective on `2026-07-06` → `key → wards → stake`.
-4. Roll the numbers up by zone, by area, by stake.
+When no row covers a week, the nearest row is used (the soonest later one,
+else the last earlier one), so weeks imported before the first seed still
+resolve. An id that was **never** mapped is shown as "unmapped" on This Week
+and parked under `(unmapped)` on Stakes, never dropped.
 
-Any IMOS id with no crosswalk row for that week is **not dropped** — it's shown
-as "unmapped" on This Week and lands under stake `(unmapped)` on Stakes, so you
-always see it and can fix it.
+## Transfers: Admin → Rollover
 
-## Transfers — the Rollover screen
+Pick the first week of the new transfer. Rollover compares that week's IMOS
+structure with the stored mapping and lists:
 
-`Structure → Rollover` does the whole diff for you. Pick the first week of the
-new transfer and it compares that week's IMOS structure against the crosswalk:
+- **Areas to map**, each with a suggested key: an existing area whose name
+  matches (the same area under a new id), a name known in the Area To Ward
+  Key (a new area with that key), or a fresh key to eyeball. Areas tagged
+  *new* were not in the previous week, usually a split.
+- **Areas gone from IMOS**, with the mapping to close and, when it was the
+  area's only id, the area to retire. A renamed area under a new id is
+  recognised as a successor, not a retirement.
+- **Units to map**, with a suggested stake from the unit's own history, a
+  same-named unit, the CSV and the unit directory, or the area's other unit.
+- **Zone changes** and any new leadership position string, for information.
 
-- **New / retired zones** — listed with a badge.
-- **Areas to map** — every IMOS area with no crosswalk row for the week. Each
-  gets a **suggested canonical key**:
-  - *exact match* (high confidence) — an existing key or display name matches
-    the IMOS name → it's the same area under a new id; accept and it adds a
-    crosswalk row, no new canonical area.
-  - *known in the Area To Ward Key* (medium) — the name is in the CSV → it
-    proposes a new canonical area with that key.
-  - *new area* (low) — nothing matched → proposes a fresh key; you eyeball it.
-  - Areas tagged **new** appeared this week but not last week — usually a
-    **split**. Give each half its own key; its history starts there.
-- **Wards to map** — org ids with no `area_ward` row for the week, each with a
-  suggested stake (from the ward name in the CSV, else the area's row).
+Tick "select suggested", adjust, Apply. Rows are dated from that reporting
+week; the actual transfer day goes into the note. Earlier weeks are untouched.
+Day by day: `docs/transfers.md`.
 
-Tick "select suggested", scan the list, adjust anything, and **Apply effective
-`<week>`**. That writes the crosswalk / ward rows dated from that week — every
-earlier week keeps its old mapping untouched.
+## Between transfers: Admin → Areas & units
 
-## Your three stale areas (Haymarket, Persian C, Loudoun C)
+Quick actions for the events that happen: units moved to a stake (boundary
+change, new stake, merge), a unit renamed or a branch becoming a ward, a unit
+dissolved (with "merged into" recorded), a stake renamed (cascades to
+recipients and friends). Every area can be expanded to rename, retire, see
+its id history, close or add a mapping, and manage its unit rows.
 
-They showed on the Chase list because they had no IMOS `history` entry for the
-week — but all three are **new this transfer** (not in the prior week's
-payload), so a blank first week is expected, not a missed report. The Chase list
-now labels them "new this transfer" and the summary calls that out. In Rollover
-they'll appear under "Areas to map" tagged **new** — map each to its own
-canonical key and you're done.
-
-## Editing by hand — `Structure → Areas & wards`
-
-Every canonical area is listed; expand one to:
-
-- rename its display name, or retire / un-retire it,
-- see its full IMOS-id history, close an open mapping, or attach a new id,
-- see its ward rows, retire one, or add one,
-- (bottom of page) rename a stake — updates every ward row under it.
-
-`Structure → Crosswalk (raw)` is a plain table view of all three tables for
-when you want to see exactly what's stored.
+`Admin → Crosswalk (raw)` is a plain view of the three tables.

@@ -42,8 +42,9 @@ rather than silently running unverified.
 
 ## What changes once it is on
 
-- Every `/api/*` request (except `/api/health` and the sheet webhook
-  `/api/friends/sync`, which uses its own bearer secret) must carry a valid
+- Every `/api/*` request (except `/api/health`, the sheet webhook
+  `/api/friends/sync`, and the Slides feed `/api/slides/*`, which use their
+  own bearer secrets) must carry a valid
   token. The email in the token becomes the signed-in user; the header must
   match it.
 - Keys are fetched from `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`

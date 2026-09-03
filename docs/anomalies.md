@@ -35,12 +35,15 @@ that is not here, add it.
 |---|---|---|
 | A cell shows `#REF!`, `#N/A` or another spreadsheet error | The sheet script skips a row whose name is an error and blanks any other error cell; the portal does the same again. The sync log says how many rows were skipped. | Fix the formula on the sheet. |
 | An STL sorts or restructures a tab while the 15-minute sync fires | The script waits two minutes after the last edit; if a pass still looks like a mass delete-and-reinsert, the portal rejects the whole pass (nothing applied) and logs why. | Nothing; the next tick retries. Use **KI Portal → Push to portal now** to force one. |
-| STLs clear completed baptisms off the working tab at month end | Confirmed baptisms are **kept** (stamped with the date they left the sheet). On-date friends who vanish are marked dropped. | Nothing. Use **doesn't count** on the Baptisms page for a baptism that should not have been recorded. |
+| STLs clear completed baptisms off the working tab at month end | Confirmed baptisms are **kept** (stamped with the date they left the sheet). | Nothing. Use **doesn't count** on the Baptisms page for a baptism that should not have been recorded. |
+| An on-date friend is deleted from the sheet | Kept, marked "off the sheet since", for 48 hours; dropped only after that long of continuous absence. Reappearing on any tab inside the window clears it. | Nothing. |
+| Transfer week: a friend is deleted from one zone tab and added on another, hours apart, sometimes with the unit typed differently | The same record is recognised (unit and name, or name and baptism date) and its zone or unit updated; history stays; the sync log notes the move. No drop, no duplicate. | Nothing. |
+| A whole zone tab is renamed, hidden, or loses its "Name (First and Last)" header | Every friend on it would run out the grace period, so the sync warns that the zone had rows last time and none now; the Console's sheet step turns amber. | Fix the tab or header. |
 | Someone deletes a friend near their baptism date without marking them baptized | Listed under **Removed from the sheet near their date** in the monthly check. | Ask the STL; record the baptism in the portal if it happened. |
 | The stake column is blank or spelled differently ("Mount Vernon Stake", "annandale") | Matched to the known stakes ignoring case, accents and the word "Stake"; else the ward name is looked up; else the friend is listed on the Publish page as **on no stake report**. | Fix the stake on the sheet. |
 | Same person entered twice (name order, accents, a Chinese name in brackets, dates a few weeks apart) | Collapsed to one baptism everywhere it is counted. | Nothing. |
 | The sync stops arriving | Console step "Baptisms (MLC) sheet in sync" turns amber after 8 days. | Check the Apps Script trigger and the Access bypass rule (`friends-sheet-bridge.md`). |
-| STLs add a column to the sheet | Forwarded as-is, shown on the Baptisms page, offered as an on-date column for the stake report. | Tick it onto the report if the president wants it. |
+| STLs add a column to the sheet | The header name is recorded; values are stored only once the office keeps the column under Reporting settings. Kept columns show on the Baptisms page and can go on the stake report. | Keep it if the president wants it; otherwise nothing. |
 | STLs rename a column the portal depends on (Ward Name, Stake, Baptism Date) | The sync warns and the Console's sheet step turns amber; the field is blank until fixed. | Rename the header back, or add the new spelling to `FIELD_BY_HEADER` in the script. |
 | A zone tab is added, renamed, or removed | Picked up on the next sync; zone filters follow. | Nothing. |
 | A unit merges into another | Admin → Areas & units → Unit dissolved, with "merged into" recorded. The surviving unit keeps reporting under its own org id. | Nothing else. |
@@ -70,3 +73,11 @@ Real numbers on the current mission (about 107 areas, 12 zones):
 
 The free D1 tier is 5 GB. Nothing here needs a retention job for the
 foreseeable future; the raw payloads are the audit trail and should stay.
+
+## Comparing with the old decks
+
+Two known, harmless differences. Monthly totals use the four most recent
+imported weeks rather than a rolling calendar window, so a month can differ by
+a few percent from the old sheet. Percentages round half-to-even like the
+Python reference; the old Apps Script rounded half-up, a one-point difference
+only on exact halves.

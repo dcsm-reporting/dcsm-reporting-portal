@@ -1,76 +1,50 @@
-# Next up
+# Next
 
-Deferred work, roughly in priority order. Nothing here is urgent.
+Work not yet done, in priority order. Nothing here is urgent. The habits and
+yearly checks that keep the portal alive are in `docs/longevity.md`.
 
-See `docs/longevity.md` for the habits, credentials, and yearly check that
-keep this running; the items below are work.
+## Hand-offs waiting on Noah
 
-## 0. Two five-minute hand-offs from the 2026-09-03 hardening round
+- **Access token check**: `docs/access-token-check.md`. Two lines in
+  `wrangler.toml`, one deploy.
+- **Weekly backup cron**: two GitHub Actions secrets, `docs/backup.md`.
+- **Decisions for the president or the Data Privacy Officer**: `docs/privacy.md` §6.
 
-- **Paste the updated sheet script.** `apps_script/baptisms-sync.gs` now skips
-  `#REF!` / `#N/A` rows and no longer sends a week key. The portal already
-  copes with the old script, so this is not urgent, but the sync log will keep
-  warning about error-token rows until it is pasted.
-- **Turn on the Access token check** once you have the AUD tag in hand:
-  `docs/access-token-check.md`. Two lines in `wrangler.toml`, one deploy.
-- **Wire the Monday deck to the portal.** Three steps in `docs/slides-deck.md`:
-  an Access Bypass rule for the path `api/slides`, paste
-  `apps_script/slides-refresh.gs` over the Slides script, set its two Script
-  Properties. Then `dumpPortal()` and `dryRun()` before the first `refreshWeekly()`.
-
-## Ideas worth building (Noah asked for the unconstrained list, 2026-09-03)
+## Ideas worth building
 
 Ranked by what they add per hour of work. None are started.
 
-1. **Baptism goals.** A monthly and annual baptism goal per zone and for the
-   mission (config table, edited under Admin), shown as a target line on the
-   Baptisms bar chart, a progress tile on the Baptisms page and the stake
-   report ("14 of 20 this month"), and a year-to-date pace. Optional per
-   stake later. About half a day.
-2. **Data-quality checks before publishing.** A panel on the Console that
-   flags entry mistakes the boards otherwise hide: an area with no goal set
-   on any indicator; an area whose six numbers are identical to last week
-   (copy-forward); an actual more than three times its goal; a zone whose
-   total dropped by half. About half a day.
-3. **Per-area history across id changes.** The canonical-area layer exists
-   but no report reads it. An "Area" page: pick a canonical area, see its
-   weekly numbers across every IMOS id it has had, plus who served there
-   (from `missionary_snapshot`). This is what makes the crosswalk pay for
-   itself. About a day.
+1. **Baptism goals.** A monthly and annual goal per zone and for the mission,
+   edited under Admin, shown as a target on the Baptisms chart, a progress
+   tile on the Baptisms page and the stake report, and a year-to-date pace.
+   Once this exists, the Slides deck's zone rosters and goal chips can come
+   from the portal too, and the deck script stops reading the sheet at all.
+   About half a day.
+2. **Data-quality checks before publishing.** A Console panel that flags
+   entry mistakes the boards hide: an area with no goal on any indicator, an
+   area whose six numbers match last week exactly, an actual more than three
+   times its goal, a zone whose total halved. About half a day.
+3. **Per-area history across id changes.** An Area page: pick a canonical
+   area, see its weekly numbers across every IMOS id it has had, plus who
+   served there. This is what makes the crosswalk pay for itself. About a day.
 4. **Baptismal-date readiness list.** Friends whose date is within 14 days
-   and who lack the calendar tick or the two church attendances — the list
-   an STL needs on Sunday night. Cheap; the data is already there.
+   and who lack the calendar tick or the church attendances. Cheap.
 5. **Year in review.** Once two years exist: totals by month, baptisms by
-   stake, this year vs last, exported as a PDF like the stake report.
-6. **Missionary view.** A missionary's numbers across areas (from the
-   snapshot table). Useful for MLC and for the president; sensitive, so
-   admin-only. About a day.
-7. **Arm the weekly backup cron** (two GitHub secrets, five minutes). Not a
-   feature, but the cheapest durability left on the table.
+   stake, this year against last, exported like the stake report.
+6. **Missionary view.** A missionary's numbers across areas, from the weekly
+   snapshot. Admin-only. About a day.
+7. **A Feeds panel under Admin** showing when each script feed (sheet sync,
+   Slides deck) last connected, and one read-only integration secret with a
+   single Access Bypass path for future tools. An hour.
 
 Deliberately not on the list: anything that sends email or messages on its
-own, anything that logs into IMOS, and a second database. Those are the
-things that made the previous systems fragile.
+own, anything that logs into IMOS, and a second database. Those made the
+previous systems fragile.
 
-## 1. Monday MLC Slides — DONE (2026-09-03)
+## Settled
 
-The deck's numbers now come from `GET /api/slides/weekly` and `/monthly`
-(bearer `SLIDES_READ_SECRET`, Access-bypassed, numbers only). The Apps Script
-moved to `apps_script/slides-refresh.gs` with its three sheet gatherers
-replaced by one fetch; drawing code untouched. Zone order and exclusions
-follow Reporting settings. Setup and Monday steps: `docs/slides-deck.md`.
-
-## 2. Storage retention — settled, nothing to do
-
-Numbers and reasoning are in `docs/anomalies.md` ("Data growth over years").
-`friend_sync` now prunes itself to 120 days; everything else is small enough
-for a decade on the free tier, and `import_run.raw_json` is the audit trail
-and should stay. Revisit only if D1's free storage tier shrinks.
-
-## 3. Roles — DONE (2026-09-02)
-
-Admin access is now an `admin_emails` allowlist, edited at **Admin → Admin
-access**. Empty = everyone who signs in is an admin. A non-empty list hides the
-Admin tab for others and 403s the structure/config/crosswalk/recipients write
-routes; Import, Publish, and the weekly workflow stay open to any signed-in
-user.
+- **Storage retention**: nothing to do. The sync log prunes itself; every
+  other table fits a decade in the free tier; raw payloads are the audit
+  trail and stay (`docs/anomalies.md`, "Data growth over years").
+- **Roles**: viewer list and admin list under Admin → Admin access.
+- **Monday MLC Slides**: reads the portal (`docs/slides-deck.md`).

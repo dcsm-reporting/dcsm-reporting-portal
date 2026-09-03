@@ -33,16 +33,10 @@ Nothing else. No personal account is load-bearing.
 
 ## 3. Five-minute items still open (do them)
 
-- **Set the viewer list** (Admin → Admin access → Who can view). Until it is
-  set, any @missionary.org account in any mission can sign in and see
-  friends' and new members' names. See `docs/privacy.md`.
 - **Arm the weekly backup**: two GitHub Actions secrets
   (`CLOUDFLARE_API_TOKEN` with D1 Edit, `CLOUDFLARE_ACCOUNT_ID`). Then a
   SQL dump lands in the repository every Monday without anyone remembering.
 - **Turn on the Access token check**: `docs/access-token-check.md`.
-- **Wire the Monday deck to the portal**: `docs/slides-deck.md` (an Access
-  Bypass rule, one paste, two Script Properties). Until then the deck still
-  needs the old sheets filled by hand.
 - **Push every commit to GitHub.** The repository is the second copy of the
   code; the Worker is not a backup of itself.
 
@@ -145,4 +139,6 @@ year and this one is expected to last several.
 from the KV cache and a deploy does not invalidate it, so a page can otherwise
 read yesterday's shape and crash with "cannot read properties of undefined".
 This has happened twice (Trends, Areas & wards). The client should also treat
-new fields as optional for the first hour after a deploy.
+new fields as optional for the first hour after a deploy. Fields are only ever
+added, never renamed or removed: other tools read these routes too
+(`docs/api.md`).

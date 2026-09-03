@@ -1021,7 +1021,8 @@ app.post("/api/friends/sync", async (c) => {
   const res = await syncFriends(c.env.DB, body.rows, null);
   await audit(c.env.DB, "sheet-sync", "friends.sync", res);
   // only invalidate the friends cache when the snapshot actually changed something
-  if (res.changed > 0 || res.deactivated > 0) await bumpFriends(c.env);
+  // (a grace-period stamp shows on the Baptisms page, so it counts)
+  if (res.changed > 0 || res.deactivated > 0 || res.missing > 0) await bumpFriends(c.env);
   return c.json({ ok: true, ...res });
 });
 

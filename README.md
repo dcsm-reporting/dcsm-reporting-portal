@@ -1,55 +1,69 @@
 # WDCSM Reporting
 
-Washington DC South Mission — weekly Key Indicators reporting. One web app,
-role-account owned, $0 to run. React SPA + Cloudflare Worker + D1 (SQLite).
+Weekly Key Indicators reporting for the Washington DC South Mission. One web
+app: React in the browser, a Cloudflare Worker for the API, D1 (SQLite) for
+the data, Cloudflare Access for sign-in. Free to run, owned by a role account.
 
-- **Architecture & rationale:** [ARCHITECTURE.md](ARCHITECTURE.md)
-- **How the area / ward mapping works:** [docs/how-mapping-works.md](docs/how-mapping-works.md)
-- **What's built / what's next / your setup steps:** [STATUS.md](STATUS.md)
-- **Spec + test oracle:** the Python at `../ki-pipeline/` (do not run it in prod)
+## Read this first
 
-## Quickstart (local)
+| Page | What it answers |
+|---|---|
+| `STATUS.md` | What is live right now, what is still open |
+| `ARCHITECTURE.md` | How it is built and why |
+| `docs/longevity.md` | The habits, accounts and yearly check that keep it running |
+| `docs/anomalies.md` | What the portal does, and what a person does, when something unusual happens |
+| `docs/transfers.md` | Transfer week, day by day |
+| `docs/how-mapping-works.md` | Areas, units, stakes, and why transfers do not break it |
+| `docs/friends-sheet-bridge.md` | The Baptisms (MLC) sheet sync |
+| `docs/slides-deck.md` | The Monday MLC Slides deck |
+| `docs/api.md` | Every API route, for anyone building on the portal |
+| `docs/backup.md` | Backups and recovery |
+| `docs/privacy.md` | Church data-privacy assessment |
+| `docs/access-token-check.md` | Optional hardening of sign-in |
+| `NEXT.md` | Ideas not yet built |
+
+## Run it locally
 
 ```bash
 npm install
 npm run db:migrate:local     # create the local D1 database
-npm run build                # build the SPA (wrangler dev serves it)
+npm run build                # build the SPA that wrangler dev serves
 npm run dev:api              # http://localhost:8787
-npm run seed:local           # load 12 sample weeks + seed the crosswalk
+npm run seed:local           # 12 sample weeks + the crosswalk
 ```
 
-Open <http://localhost:8787>. For UI work with hot reload run `npm run dev`
-(Vite :5173, proxies `/api` to :8787) alongside `npm run dev:api`.
+`.dev.vars` (git-ignored) needs `DEV_USER`, `FRIENDS_SYNC_SECRET`, and
+`SLIDES_READ_SECRET` for the local server. For UI work with hot reload run
+`npm run dev` alongside `npm run dev:api`.
 
-## Tests
+## Test and deploy
 
 ```bash
-npm run oracle       # regenerate test/oracle/*.json from the Python (needs python + ../ki-pipeline)
-npm test             # 78 tests: unit ports + TS-vs-Python diff over all 12 weeks
+npm test                     # 117 tests, including the diff against the Python reference
 npm run typecheck
-```
-
-## Deploy (first time)
-
-```bash
-npx wrangler login
-npx wrangler d1 create dcsm_ki          # put the database_id in wrangler.toml
-npx wrangler d1 migrations apply dcsm_ki --remote
+npm run db:migrate:remote    # only when migrations/ gained a file
 npm run deploy
 ```
 
-Then put **Cloudflare Access** in front of the deployed URL (Zero Trust
-dashboard, free plan) with the leader email allowlist. See STATUS.md.
+Apply a new migration to production **before** deploying code that reads the
+new column. Bump a route's cache key when its response shape changes
+(`docs/longevity.md` §11).
 
 ## Layout
 
 ```
-src/pipeline/   pure ported core (ingest, identity, crosswalk, rollups, resolve)
-src/server/     Hono Worker: db.ts (D1), service.ts (views), index.ts (routes)
-src/web/        React SPA: pages/{ThisWeek,Month,Stakes,Trends,Chase,Import,Admin}
-src/shared/     KI vocabulary shared by server + web
-migrations/     D1 schema
-scripts/        gen_oracle.py, seed_local.ts
-samples/        12 real IMOS weeks (2026-06-01 … 08-24)
-test/           vitest + oracle fixtures
+src/pipeline/    pure reporting core (ingest, identity, mapping, rollups, rollover)
+src/server/      Hono Worker: routes, D1 access, views, publish, sheet sync, slides feed
+src/web/         React SPA
+src/shared/      indicator vocabulary, dates, report layout (server + web)
+apps_script/     the two Google Apps Scripts (Baptisms sheet sync, Slides deck)
+migrations/      D1 schema, applied in order
+resources/       Area To Ward Key, unit directory, stake recipients (source workbooks are git-ignored)
+samples/         12 real IMOS weeks used by the tests
+scripts/         oracle generator, local seed, backup
+test/            vitest, incl. the Python oracle diff
+docs/            the pages listed above
 ```
+
+The Python at `../ki-pipeline/` is the specification and test oracle for the
+pipeline. It is not deployed.
