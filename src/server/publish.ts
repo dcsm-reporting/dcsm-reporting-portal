@@ -33,6 +33,7 @@ export interface StakeReport {
     baptismDate: string | null;
     attendedChurch2x: boolean;
     onBaptismCalendar: boolean;
+    extra: Record<string, string>;
   }[];
   baptized6mo: { name: string; ward: string | null; baptismDate: string | null; confidence: string | null }[];
   baptizedThisMonth: number;
@@ -107,6 +108,7 @@ export async function buildPublish(db: D1Database, week: string) {
           baptismDate: f.baptismDate,
           attendedChurch2x: f.attendedChurch2x,
           onBaptismCalendar: f.onBaptismCalendar,
+          extra: f.extra,
         })),
       baptized6mo: myBaptized
         .filter((f) => (f.baptismDate ?? "") >= cutoff)
@@ -128,6 +130,8 @@ export async function buildPublish(db: D1Database, week: string) {
     hasPriorWeek: all.filter((w) => w < week).length > 0,
     emailTemplate: emailTemplate ?? DEFAULT_EMAIL_TEMPLATE,
     layout,
+    /** sheet column headers seen on active friends that the portal has no named field for */
+    extraKeys: [...new Set(friends.filter((f) => f.active).flatMap((f) => Object.keys(f.extra)))].sort(),
     board: {
       zones: weekView.zones,
       byZone: weekView.byZone,

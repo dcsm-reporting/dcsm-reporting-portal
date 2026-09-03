@@ -41,9 +41,10 @@ export function AccessPage() {
     <>
       <h3 style={{ margin: 0 }}>Admin access</h3>
       <p className="muted" style={{ maxWidth: "72ch" }}>
-        One address per line (or comma-separated). These people see the <strong>Admin</strong> tab and
-        can change structure, crosswalk, recipients, and reporting settings. Everyone else who signs
-        in keeps full read access to the rest of the portal, plus Import and the weekly workflow.
+        One address per line (or comma-separated). These people see the <strong>Console</strong> and{" "}
+        <strong>Admin</strong> tabs and can change structure, units, recipients, the report layout, and
+        reporting settings. Everyone else who signs in keeps full read access to the rest of the
+        portal, plus Import, Publish, and the baptism actions.
       </p>
       <div className="note">
         {data.admins.length === 0 ? (

@@ -210,8 +210,8 @@ export const api = {
     jpost<{ ok: true; changed: number; unknown: number[] }>("/api/ward/move", { wardUnitIds, stake, validFrom }),
   renameWard: (wardUnitId: number, wardName: string) =>
     jpost<{ ok: true; changed: number }>("/api/ward/rename", { wardUnitId, wardName }),
-  retireWard: (wardUnitId: number, validTo: string) =>
-    jpost<{ ok: true; changed: number }>("/api/ward/retire", { wardUnitId, validTo }),
+  retireWard: (wardUnitId: number, validTo: string, mergedInto?: number | null) =>
+    jpost<{ ok: true; changed: number }>("/api/ward/retire", { wardUnitId, validTo, mergedInto: mergedInto ?? null }),
   seed: (weekStart: string, validFrom?: string) =>
     jpost<{ ok: true; validFrom: string; counts: Record<string, number>; unresolved: string[] }>(
       "/api/seed",
@@ -297,6 +297,7 @@ export interface StakeReport {
     baptismDate: string | null;
     attendedChurch2x: boolean;
     onBaptismCalendar: boolean;
+    extra?: Record<string, string>;
   }[];
   baptized6mo: { name: string; ward: string | null; baptismDate: string | null; confidence: string | null }[];
   baptizedThisMonth: number;
@@ -320,6 +321,8 @@ export interface PublishView {
   reports: StakeReport[];
   emailTemplate: EmailTemplate;
   layout?: StakeReportLayout;
+  /** sheet columns the portal has no named field for (available as on-date columns) */
+  extraKeys?: string[];
   /** active on-date / recently baptized friends whose stake matches no report */
   unassigned?: {
     name: string;
@@ -386,6 +389,8 @@ export interface FriendRow {
   dropped: boolean;
   source: string;
   leftSheetAt: string | null;
+  /** any sheet column the portal has no named field for, {header: value} */
+  extra?: Record<string, string>;
 }
 export interface FriendsSummary {
   onDateTotal: number;

@@ -31,6 +31,27 @@ to `POST /api/friends/sync`. `syncFriends()` then:
 - logs the run to `friend_sync` (drives the "last synced" line on the page);
   log rows older than 120 days are pruned automatically.
 
+## When the sheet changes
+
+- **A new tab** (a new zone) is picked up on the next sync; the zone stored on
+  each friend is the tab name. A tab removed takes its on-date friends off the
+  list (marked dropped) and keeps its confirmed baptisms. Nothing to configure.
+  The only hard-coded list is `SKIP_TABS` (helper tabs to ignore); a new helper
+  tab that happens to contain the header row would be read as a zone, so name
+  helper tabs distinctively or add them there.
+- **A new column** is forwarded automatically as `{header: value}` and stored
+  on each friend (`extra_json`). It shows up as a column on the Baptisms page
+  on the next sync and can be ticked onto the stake report's on-date list at
+  Admin → Stake reports. No code change.
+- **A renamed column** is the one thing that needs attention. The script maps
+  columns by header text (`FIELD_BY_HEADER`). If someone renames "Ward Name" to
+  "Ward", the portal's ward field goes blank on every row and the value arrives
+  as an extra column called "Ward" instead. The sync then warns ("no row carried
+  a value for Ward Name"), the Console's sheet step turns amber, and the fix is
+  either renaming the header back or adding the new spelling to
+  `FIELD_BY_HEADER` (a one-line edit, plain text).
+- **Row order, sorting, blank rows, `#REF!`** are all handled; see the list above.
+
 ## One-time setup
 
 ### 1. The sync secret

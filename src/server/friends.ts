@@ -48,13 +48,36 @@ export type StoredFriend = Friend & {
   active: boolean;
   syncKey: string | null;
   leftSheetAt: string | null;
+  /** columns on the sheet the portal has no named field for, {header: value} */
+  extra: Record<string, string>;
 };
 
 const COLS =
   "id, name, zone, canonical_area_key, ward, stake, missionaries, baptism_date, baptism_time, " +
   "baptism_address, attended_church_2x, on_baptism_calendar, baptized_confirmed, dropped, active, " +
   "left_sheet_at, confirmed_at, confidence, notes, source, sync_key, created_at, created_by, " +
-  "updated_at, updated_by";
+  "updated_at, updated_by, extra_json";
+
+function parseExtra(v: unknown): Record<string, string> {
+  if (typeof v !== "string" || !v) return {};
+  try {
+    const o = JSON.parse(v);
+    return o && typeof o === "object" && !Array.isArray(o) ? (o as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+/** Stable JSON (sorted keys) so "unchanged" compares equal. */
+function extraJson(extra: Record<string, string> | undefined | null): string | null {
+  if (!extra) return null;
+  const keys = Object.keys(extra)
+    .filter((k) => k.trim() && String(extra[k] ?? "").trim())
+    .sort();
+  if (!keys.length) return null;
+  const o: Record<string, string> = {};
+  for (const k of keys.slice(0, 40)) o[k.trim().slice(0, 80)] = String(extra[k]).trim().slice(0, 200);
+  return JSON.stringify(o);
+}
 
 function toFriend(r: Row): StoredFriend {
   return {
@@ -83,6 +106,7 @@ function toFriend(r: Row): StoredFriend {
     syncKey: (r.sync_key as string | null) ?? null,
     leftSheetAt: (r.left_sheet_at as string | null) ?? null,
     confirmedAt: (r.confirmed_at as string | null) ?? null,
+    extra: parseExtra(r.extra_json),
   };
 }
 
@@ -126,12 +150,25 @@ export async function getFriend(db: D1Database, id: string): Promise<StoredFrien
 export async function friendsSummary(
   db: D1Database,
   weekStart: string | null,
-): Promise<FriendsSummary & { lastSyncedAt: string | null }> {
+): Promise<FriendsSummary & { lastSyncedAt: string | null; lastSyncWarnings: string[] }> {
   const [friends, lastSync] = await Promise.all([
     listFriends(db),
-    db.prepare("SELECT at FROM friend_sync ORDER BY id DESC LIMIT 1").first<{ at: string }>(),
+    db
+      .prepare("SELECT at, warnings FROM friend_sync ORDER BY id DESC LIMIT 1")
+      .first<{ at: string; warnings: string | null }>(),
   ]);
-  return { ...summarise(friends, weekStart), lastSyncedAt: lastSync?.at ?? null };
+  let lastSyncWarnings: string[] = [];
+  try {
+    const w = lastSync?.warnings ? JSON.parse(lastSync.warnings) : [];
+    // only the structural ones matter here (a renamed column, a held-back pass);
+    // per-row skips are routine
+    lastSyncWarnings = (Array.isArray(w) ? w : []).filter(
+      (s: unknown) => typeof s === "string" && /renamed on the sheet|held back/.test(s),
+    );
+  } catch {
+    /* ignore */
+  }
+  return { ...summarise(friends, weekStart), lastSyncedAt: lastSync?.at ?? null, lastSyncWarnings };
 }
 
 /**
@@ -318,7 +355,16 @@ export interface SheetRow {
   attendedChurch2x?: unknown;
   onBaptismCalendar?: unknown;
   baptizedConfirmed?: unknown;
+  /** every other column on the sheet, {header: value} */
+  extra?: Record<string, unknown>;
 }
+
+/** The sheet columns the portal depends on; a sync with none of them warns loudly. */
+const CORE_COLUMNS: { field: keyof SheetRow; header: string }[] = [
+  { field: "ward", header: "Ward Name" },
+  { field: "stake", header: "Stake" },
+  { field: "baptismDate", header: "Baptism Date" },
+];
 
 const norm = (s: unknown) => String(s ?? "").trim();
 
@@ -379,6 +425,15 @@ export async function syncFriends(
         baptismTime: norm(scrub(r.baptismTime)),
         baptismAddress: norm(scrub(r.baptismAddress)),
       };
+      const extraIn: Record<string, string> = {};
+      if (r.extra && typeof r.extra === "object") {
+        for (const [k, v] of Object.entries(r.extra)) {
+          if (isSheetError(v)) continue;
+          const s = norm(v);
+          if (k.trim() && s) extraIn[k.trim()] = s;
+        }
+      }
+      const extra = extraJson(extraIn);
       return {
         wn: wnKeyOf(ward, name),
         full: fullKeyOf(ward, name, baptismDate),
@@ -393,6 +448,7 @@ export async function syncFriends(
         attendedChurch2x: yn(r.attendedChurch2x),
         onBaptismCalendar: yn(r.onBaptismCalendar),
         baptizedConfirmed: yn(r.baptizedConfirmed),
+        extra,
       };
     })
     .filter((r) => {
@@ -411,6 +467,19 @@ export async function syncFriends(
     warnings.push(
       `${skippedJunk} row(s) had a blank name or a spreadsheet error (#REF!, #N/A) in the name column; skipped`,
     );
+  }
+  // A renamed header on the sheet makes a core field silently blank on every
+  // row. Say so, because the stake reports depend on it.
+  if (rows.length >= 5) {
+    for (const col of CORE_COLUMNS) {
+      const present = rows.filter((r) => norm(r[col.field]) !== "").length;
+      if (present === 0) {
+        warnings.push(
+          `no row carried a value for "${col.header}" — was that column renamed on the sheet? ` +
+            `The script maps columns by header text (see FIELD_BY_HEADER in baptisms-sync.gs).`,
+        );
+      }
+    }
   }
 
   // dedupe the snapshot on the exact key (a true duplicate entry collapses)
@@ -449,6 +518,7 @@ export async function syncFriends(
     a.attendedChurch2x !== b.attendedChurch2x ||
     a.onBaptismCalendar !== b.onBaptismCalendar ||
     a.baptizedConfirmed !== b.baptizedConfirmed ||
+    a.extra !== extraJson(b.extra) ||
     a.full !== (b.syncKey ?? null) ||
     b.leftSheetAt != null ||
     !b.active ||
@@ -479,14 +549,14 @@ export async function syncFriends(
                baptism_time=?, baptism_address=?, attended_church_2x=?, on_baptism_calendar=?,
                baptized_confirmed=?,
                confirmed_at = CASE WHEN ? = 1 AND baptized_confirmed = 0 THEN ? ELSE confirmed_at END,
-               active=1, dropped=0, left_sheet_at=NULL, source='sheet', sync_key=?,
+               active=1, dropped=0, left_sheet_at=NULL, source='sheet', sync_key=?, extra_json=?,
                updated_at=?, updated_by='sheet-sync'
              WHERE id=?`,
           )
           .bind(
             r.name, r.zone, r.ward, r.stake, r.missionaries, r.baptismDate, r.baptismTime,
             r.baptismAddress, r.attendedChurch2x ? 1 : 0, r.onBaptismCalendar ? 1 : 0,
-            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? 1 : 0, now, r.full, now, prev.id,
+            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? 1 : 0, now, r.full, r.extra, now, prev.id,
           ),
       );
     } else {
@@ -495,14 +565,14 @@ export async function syncFriends(
           .prepare(
             `INSERT INTO friend (id, name, zone, ward, stake, missionaries, baptism_date,
                baptism_time, baptism_address, attended_church_2x, on_baptism_calendar,
-               baptized_confirmed, confirmed_at, dropped, active, source, sync_key, created_at,
+               baptized_confirmed, confirmed_at, dropped, active, source, sync_key, extra_json, created_at,
                created_by, updated_at, updated_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 'sheet', ?, ?, 'sheet-sync', ?, 'sheet-sync')`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 'sheet', ?, ?, ?, 'sheet-sync', ?, 'sheet-sync')`,
           )
           .bind(
             crypto.randomUUID(), r.name, r.zone, r.ward, r.stake, r.missionaries, r.baptismDate,
             r.baptismTime, r.baptismAddress, r.attendedChurch2x ? 1 : 0, r.onBaptismCalendar ? 1 : 0,
-            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? now : null, r.full, now, now,
+            r.baptizedConfirmed ? 1 : 0, r.baptizedConfirmed ? now : null, r.full, r.extra, now, now,
           ),
       );
       changed++;

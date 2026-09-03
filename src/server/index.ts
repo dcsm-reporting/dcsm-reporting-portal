@@ -104,6 +104,7 @@ function needsAdmin(method: string, path: string): boolean {
   if (path === "/api/export") return true;
   if (method === "GET" || method === "HEAD") return false;
   if (/^\/api\/rollover\/[^/]+\/apply$/.test(path)) return true;
+  if (path === "/api/console/check") return true; // the office's checklist
   return ADMIN_WRITE_PREFIXES.some((p) => path.startsWith(p));
 }
 
@@ -629,12 +630,19 @@ app.post("/api/ward/rename", async (c) => {
 });
 
 app.post("/api/ward/retire", async (c) => {
-  const b = await c.req.json<{ wardUnitId: number; validTo: string }>();
+  const b = await c.req.json<{ wardUnitId: number; validTo: string; mergedInto?: number | null }>();
   if (!Number.isInteger(b.wardUnitId) || !isIsoDate(b.validTo)) {
     throw new HTTPException(400, { message: "wardUnitId and validTo (YYYY-MM-DD) are required" });
   }
   const changed = await retireWard(c.env.DB, b.wardUnitId, b.validTo);
-  await audit(c.env.DB, c.get("user"), "ward.retire", { ...b, changed });
+  // "merged into" is a fact for the record (audit log); the surviving unit
+  // keeps reporting under its own org id, so nothing else changes
+  await audit(c.env.DB, c.get("user"), "ward.retire", {
+    wardUnitId: b.wardUnitId,
+    validTo: b.validTo,
+    mergedInto: Number.isInteger(b.mergedInto) ? b.mergedInto : null,
+    changed,
+  });
   await bumpData(c.env);
   return c.json({ ok: true, changed });
 });

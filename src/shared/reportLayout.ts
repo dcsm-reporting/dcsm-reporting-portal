@@ -31,8 +31,8 @@ export interface StakeReportLayout {
   baptizedMonths: number;
   /** headline tiles */
   stats: { baptizedThisMonth: boolean; baptizedThisYear: boolean; onDate: boolean };
-  /** columns in the on-date list */
-  onDate: { church2x: boolean; calendar: boolean; ward: boolean };
+  /** columns in the on-date list; `extra` = sheet column headers the portal has no named field for */
+  onDate: { church2x: boolean; calendar: boolean; ward: boolean; extra: string[] };
   /** flag legacy unverified names in the baptized list */
   showUnverified: boolean;
   /** free text above the numbers (blank = nothing) */
@@ -67,7 +67,7 @@ export const DEFAULT_STAKE_REPORT_LAYOUT: StakeReportLayout = {
   trendWeeks: 12,
   baptizedMonths: 6,
   stats: { baptizedThisMonth: true, baptizedThisYear: true, onDate: true },
-  onDate: { church2x: true, calendar: true, ward: true },
+  onDate: { church2x: true, calendar: true, ward: true, extra: [] },
   showUnverified: true,
   introText: "",
   noteText: "",
@@ -113,6 +113,10 @@ export function normalizeLayout(v: unknown): { layout: StakeReportLayout; proble
       church2x: o.onDate?.church2x ?? d.onDate.church2x,
       calendar: o.onDate?.calendar ?? d.onDate.calendar,
       ward: o.onDate?.ward ?? d.onDate.ward,
+      extra: (Array.isArray(o.onDate?.extra) ? o.onDate.extra : [])
+        .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+        .map((s) => s.trim().slice(0, 80))
+        .slice(0, 8),
     },
     showUnverified: o.showUnverified ?? d.showUnverified,
     introText: str(o.introText, d.introText),

@@ -8,6 +8,9 @@ import { ThisWeekPage } from "./pages/ThisWeek.js";
 const ConsolePage = lazy(() => import("./pages/Console.js").then((m) => ({ default: m.ConsolePage })));
 const StakesPage = lazy(() => import("./pages/Stakes.js").then((m) => ({ default: m.StakesPage })));
 const FriendsPage = lazy(() => import("./pages/Friends.js").then((m) => ({ default: m.FriendsPage })));
+const BaptismCheckPage = lazy(() =>
+  import("./pages/BaptismCheck.js").then((m) => ({ default: m.BaptismCheckPage })),
+);
 const TrendsPage = lazy(() => import("./pages/Trends.js").then((m) => ({ default: m.TrendsPage })));
 const ChasePage = lazy(() => import("./pages/Chase.js").then((m) => ({ default: m.ChasePage })));
 const ImportPage = lazy(() => import("./pages/Import.js").then((m) => ({ default: m.ImportPage })));
@@ -26,8 +29,9 @@ const CrosswalkRawPage = lazy(() =>
   import("./pages/admin/CrosswalkRaw.js").then((m) => ({ default: m.CrosswalkRawPage })),
 );
 
-/** grouped: review · produce · run · configure. `admin` is true only for the
- *  Admin tab, which is hidden for non-admins. */
+/** grouped: review · produce · run · configure. `admin` marks the tabs that
+ *  belong to the office (the weekly checklist and structure/config); they are
+ *  hidden for everyone else. */
 const TABS: [string, string, boolean?][] = [
   ["/", "This Week"],
   ["/stakes", "Stakes"],
@@ -35,7 +39,7 @@ const TABS: [string, string, boolean?][] = [
   ["/trends", "Trends"],
   ["/publish", "Publish"],
   ["/import", "Import"],
-  ["/weekly", "Console"],
+  ["/weekly", "Console", true],
   ["/admin", "Admin", true],
 ];
 
@@ -106,10 +110,11 @@ export function App() {
             <Suspense fallback={<p className="muted">loading…</p>}>
               <Routes>
                 <Route path="/" element={<ThisWeekPage />} />
-                <Route path="/weekly" element={<ConsolePage />} />
+                <Route path="/weekly" element={isAdmin ? <ConsolePage /> : <Navigate to="/" replace />} />
                 <Route path="/month" element={<Navigate to="/?window=month" replace />} />
                 <Route path="/stakes" element={<StakesPage />} />
                 <Route path="/baptisms" element={<FriendsPage />} />
+                <Route path="/baptisms/check" element={<BaptismCheckPage />} />
                 <Route path="/friends" element={<Navigate to="/baptisms" replace />} />
                 <Route path="/trends" element={<TrendsPage />} />
                 <Route path="/not-reported" element={<ChasePage />} />

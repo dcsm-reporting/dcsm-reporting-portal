@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { NavLink, useSearchParams } from "react-router-dom";
 import { api, type FriendRow } from "../api.js";
 import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 import { todayIso } from "@shared/dates";
 
-const MONTHS = [
+export const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
@@ -12,10 +13,39 @@ const fmtShort = (iso: string) => {
   return `${MONTHS[m! - 1]!.slice(0, 3)} ${d}`;
 };
 
+export function fmtDate(iso: string | null): string {
+  if (!iso) return "–";
+  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
+  if (!y || !m || !d) return iso;
+  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1];
+  return `${mon} ${d}, ${y}`;
+}
+
+/** The two halves of Baptisms: the live list, and the monthly check. */
+export function BaptismsSubnav() {
+  return (
+    <nav className="subnav" style={{ marginTop: 0 }}>
+      <NavLink to="/baptisms" end className={({ isActive }) => (isActive ? "active" : "")}>
+        Friends &amp; baptisms
+      </NavLink>
+      <NavLink to="/baptisms/check" className={({ isActive }) => (isActive ? "active" : "")}>
+        Monthly check
+      </NavLink>
+    </nav>
+  );
+}
+
 export function FriendsPage() {
   const { zones: dataZones } = useWeek();
-  const [zone, setZone] = useState("");
-  const [status, setStatus] = useState<"on-date" | "baptized" | "all">("on-date");
+  const [params, setParams] = useSearchParams();
+  const zone = params.get("zone") ?? "";
+  const status = (params.get("show") as "on-date" | "baptized" | "all" | null) ?? "on-date";
+  const setParam = (k: string, v: string) => {
+    const next = new URLSearchParams(params);
+    if (v) next.set(k, v);
+    else next.delete(k);
+    setParams(next, { replace: true });
+  };
 
   const summary = useAsync(() => api.friendsSummary(), []);
   const list = useAsync(
@@ -45,10 +75,26 @@ export function FriendsPage() {
 
   return (
     <>
-      <PageHead title="Baptisms" />
+      <PageHead title="Baptisms">
+        <label className="field" style={{ margin: 0 }}>
+          <span className="k mono">Zone</span>
+          <select value={zone} onChange={(e) => setParam("zone", e.target.value)}>
+            <option value="">All zones</option>
+            {ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
+          </select>
+        </label>
+        <span className="seg">
+          {(["on-date", "baptized", "all"] as const).map((s) => (
+            <button key={s} className={status === s ? "on" : ""} onClick={() => setParam("show", s === "on-date" ? "" : s)}>
+              {s === "on-date" ? "On date" : s === "baptized" ? "Baptized" : "All"}
+            </button>
+          ))}
+        </span>
+      </PageHead>
+      <BaptismsSubnav />
 
       {summary.data && (
-        <div className="note">
+        <div className="note" style={{ marginTop: ".8rem" }}>
           {summary.data.lastSyncedAt ? (
             <>
               Mirrored from the <strong>Baptisms (MLC)</strong> sheet. Last sync{" "}
@@ -109,7 +155,7 @@ export function FriendsPage() {
                 <thead>
                   <tr>
                     <th className="row-head">Name</th>
-                    <th className="row-head">Ward · Zone</th>
+                    <th className="row-head">Unit · Zone</th>
                     <th className="row-head">Was dated</th>
                     <th className="row-head">Missionaries</th>
                   </tr>
@@ -130,30 +176,10 @@ export function FriendsPage() {
         </div>
       )}
 
-      <div className="row" style={{ marginTop: "1rem" }}>
-        <label className="field" style={{ margin: 0 }}>
-          <span className="k mono">Zone</span>
-          <select value={zone} onChange={(e) => setZone(e.target.value)}>
-            <option value="">All zones</option>
-            {ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
-          </select>
-        </label>
-        <label className="field" style={{ margin: 0 }}>
-          <span className="k mono">Show</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-            <option value="on-date">On date</option>
-            <option value="baptized">Baptized</option>
-            <option value="all">All</option>
-          </select>
-        </label>
-      </div>
-
       {list.loading && <Loading what="friends" />}
       {list.err && <ErrorNote err={list.err} />}
       {list.data && status === "baptized" && <BaptizedSections rows={list.data.friends} onChange={refresh} />}
       {list.data && status !== "baptized" && <FriendTable rows={list.data.friends} onChange={refresh} />}
-
-      <Reconciliation onChange={refresh} />
     </>
   );
 }
@@ -162,16 +188,7 @@ export function FriendsPage() {
  * The "Baptized" list mixes three very different kinds of record, and
  * flattening them into one table is what made the page feel wrong: it put a
  * year of pre-portal backfill ahead of what's actually on the Baptisms (MLC)
- * sheet right now. Split by what each record actually is instead:
- *   - still on the sheet today (exactly matches the live sheet)
- *   - confirmed, then cleared off the sheet by an STL (the normal monthly
- *     cycle-out — shown plainly for a glance, not as a warning; there's no
- *     reliable way to guess from timing alone whether a clear-out is
- *     routine or a mistake, since STLs typically confirm-and-clear in the
- *     same sitting, so "doesn't count" is the real tool, not a flag)
- *   - historical, from before the sheet was the source of truth (loaded
- *     once from old records; won't ever match the current sheet, and isn't
- *     trying to)
+ * sheet right now. Split by what each record actually is instead.
  */
 const isCurrentSource = (source: string) => source === "sheet" || source === "portal";
 
@@ -219,279 +236,13 @@ function BaptizedSections({ rows, onChange }: { rows: FriendRow[]; onChange: () 
   );
 }
 
-function Reconciliation({ onChange }: { onChange: () => void }) {
-  const { week } = useWeek();
-  const defaultMonth = (week ?? todayIso()).slice(0, 7);
-  const [month, setMonth] = useState(defaultMonth);
-  const [nonce, setNonce] = useState(0);
-  const { data, err, loading } = useAsync(() => api.reconcile(month), [month, nonce]);
-
-  const monthLabel = (m: string) => {
-    const [y, mm] = m.split("-").map((n) => parseInt(n, 10));
-    return `${MONTHS[mm! - 1]} ${y}`;
-  };
-
-  return (
-    <>
-      <h3 style={{ marginTop: "2.4rem" }}>Monthly baptism check</h3>
-      <p className="muted" style={{ maxWidth: "74ch", fontSize: ".88rem" }}>
-        Before the month’s baptism report goes out, make sure every baptism the Mission Portal
-        counted has a name on our list. If the Portal counted more than we have names for, those
-        baptisms need to be tracked down with the STLs (or added here).
-      </p>
-      <div className="row">
-        <label className="field" style={{ margin: 0 }}>
-          <span className="k mono">Month</span>
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-        </label>
-      </div>
-
-      {loading && <Loading what="the check" />}
-      {err && <ErrorNote err={err} />}
-      {data && (() => {
-        const unmapped = data.byStake.find((r) => r.stake === "(unmapped)");
-        const stakes = data.byStake
-          .filter((r) => r.stake !== "(unmapped)")
-          .map((r) => ({ ...r, missing: Math.max(0, r.kiFeedBC - r.namedCount) }));
-        const missionMissing = Math.max(0, data.mission.kiFeedBC - data.mission.namedCount);
-        const stakesToChase = stakes.filter((r) => r.missing > 0);
-        const stakesOk = stakes.filter((r) => r.missing === 0 && (r.kiFeedBC > 0 || r.namedCount > 0));
-
-        return (
-          <>
-            {missionMissing === 0 ? (
-              <div className="note ok">
-                <strong>Everything the Mission Portal counted for {monthLabel(data.month)} has a name.</strong>{" "}
-                {data.mission.namedCount > data.mission.kiFeedBC
-                  ? `Our list has ${data.mission.namedCount - data.mission.kiFeedBC} more than the Portal, which is normal: our list is the more complete one.`
-                  : "Nothing to track down."}
-              </div>
-            ) : (
-              <div className="note warn">
-                <strong>
-                  {missionMissing} baptism{missionMissing === 1 ? "" : "s"} the Mission Portal counted
-                  {missionMissing === 1 ? " is" : " are"} not on our list yet.
-                </strong>{" "}
-                Get the name{missionMissing === 1 ? "" : "s"} from the STLs and add {missionMissing === 1 ? "it" : "them"} below.
-              </div>
-            )}
-
-            <div className="cards">
-              <div className="card">
-                <div className="k">On our list</div>
-                <div className="v">{data.mission.namedCount}</div>
-                <div className="sub">names for {monthLabel(data.month)}</div>
-              </div>
-              <div className="card">
-                <div className="k">Mission Portal</div>
-                <div className="v">{data.mission.kiFeedBC}</div>
-                <div className="sub">their aggregate count</div>
-              </div>
-              <div className="card">
-                <div className="k">Names to find</div>
-                <div
-                  className="v"
-                  style={{ color: missionMissing === 0 ? "var(--band-hi)" : "var(--band-mid)" }}
-                >
-                  {missionMissing}
-                </div>
-                <div className="sub">{missionMissing === 0 ? "all accounted for" : "on the Portal, not our list"}</div>
-              </div>
-              {data.mission.unverifiedCount > 0 && (
-                <div className="card">
-                  <div className="k">Old unverified names</div>
-                  <div className="v">{data.mission.unverifiedCount}</div>
-                  <div className="sub">not counted, need a source</div>
-                </div>
-              )}
-            </div>
-
-            {unmapped && unmapped.kiFeedBC > 0 && (
-              <div className="note">
-                {unmapped.kiFeedBC} of the Mission Portal’s baptisms this month are in areas not yet
-                mapped to a stake, so the per-stake breakdown below is incomplete. Map those areas in{" "}
-                <strong>Structure → Rollover</strong>.
-              </div>
-            )}
-
-            {stakesToChase.length > 0 ? (
-              <>
-                <h4 style={{ marginTop: "1.4rem", fontWeight: 600 }}>Stakes with names to find</h4>
-                <div className="board-wrap">
-                  <table className="board">
-                    <thead>
-                      <tr>
-                        <th className="row-head">Stake</th>
-                        <th>On our list</th>
-                        <th>Mission Portal</th>
-                        <th>Names to find</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stakesToChase.map((r) => (
-                        <tr key={r.stake}>
-                          <td className="row-head">{r.stake}</td>
-                          <td>{r.namedCount}</td>
-                          <td>{r.kiFeedBC}</td>
-                          <td><span className="pct mid">{r.missing}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              stakes.length > 0 && (
-                <div className="note ok" style={{ marginTop: "1rem" }}>
-                  Every stake’s named list covers what the Mission Portal counted.
-                </div>
-              )
-            )}
-            {stakesOk.length > 0 && stakesToChase.length > 0 && (
-              <p className="muted" style={{ fontSize: ".82rem" }}>
-                {stakesOk.length} other stake{stakesOk.length === 1 ? "" : "s"} fully accounted for.
-              </p>
-            )}
-
-            <RecordBaptism
-              onRecorded={() => {
-                setNonce((n) => n + 1);
-                onChange();
-              }}
-            />
-
-            <h4 style={{ marginTop: "1.8rem", fontWeight: 600 }}>
-              Removed from the sheet near their date ({data.disappeared.length})
-            </h4>
-            {data.disappeared.length === 0 ? (
-              <div className="note ok">
-                No one dropped off the Baptisms (MLC) sheet near a past baptism date without being
-                marked baptized.
-              </div>
-            ) : (
-              <>
-                <div className="note warn">
-                  These friends had a baptism date that has now passed, then disappeared from the
-                  sheet without being marked baptized. Either the baptism happened and wasn’t
-                  recorded, or the date slipped. Check each with the STL.
-                </div>
-                <div className="board-wrap">
-                  <table className="board">
-                    <thead>
-                      <tr>
-                        <th className="row-head">Name</th>
-                        <th className="row-head">Ward · Stake</th>
-                        <th className="row-head">Was dated</th>
-                        <th className="row-head">Last seen</th>
-                        <th className="row-head">Missionaries</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.disappeared.map((d) => (
-                        <tr key={d.id}>
-                          <td className="row-head">{d.name}</td>
-                          <td className="row-head muted">{[d.ward, d.stake].filter(Boolean).join(" · ")}</td>
-                          <td className="row-head mono">{fmtDate(d.baptismDate)}</td>
-                          <td className="row-head mono muted">{d.leftAt.slice(0, 10)}</td>
-                          <td className="row-head muted" style={{ fontSize: ".82rem" }}>{d.missionaries ?? "–"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </>
-        );
-      })()}
-    </>
-  );
-}
-
-function RecordBaptism({ onRecorded }: { onRecorded: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [f, setF] = useState({
-    name: "", baptismDate: "", ward: "", stake: "", missionaries: "", notes: "",
-  });
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setF((s) => ({ ...s, [k]: e.target.value }));
-
-  const submit = async () => {
-    if (!f.name.trim() || !f.baptismDate) {
-      setMsg("Name and baptism date are required.");
-      return;
-    }
-    setBusy(true);
-    setMsg(null);
-    try {
-      const r = await api.recordBaptism({
-        name: f.name.trim(),
-        baptismDate: f.baptismDate,
-        ward: f.ward.trim() || undefined,
-        stake: f.stake.trim() || undefined,
-        missionaries: f.missionaries.trim() || undefined,
-        notes: f.notes.trim() || undefined,
-      });
-      setMsg(r.duplicate ? "Already on record – nothing added." : "Recorded. Gap updated.");
-      setF({ name: "", baptismDate: "", ward: "", stake: "", missionaries: "", notes: "" });
-      onRecorded();
-    } catch (e) {
-      setMsg(`Failed: ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!open) {
-    return (
-      <div style={{ marginTop: "1rem" }}>
-        <button className="btn" onClick={() => setOpen(true)}>
-          + Record a baptism the sheet is missing
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="drawer" style={{ marginTop: "1rem" }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <strong>Record a completed baptism</strong>
-        <button className="btn" onClick={() => setOpen(false)}>Close</button>
-      </div>
-      <p className="muted" style={{ fontSize: ".82rem", maxWidth: "68ch" }}>
-        Use this only when a baptism truly happened but isn't on the Baptisms (MLC) sheet (STL
-        deleted the row, late confirmation). It's saved as an authoritative portal record and counts
-        toward the named total. If the STL later re-adds them to the sheet, remove this entry from
-        the list below to avoid a double-count.
-      </p>
-      <div className="inline-form">
-        <label className="field"><span className="k mono">Name *</span>
-          <input value={f.name} onChange={set("name")} /></label>
-        <label className="field"><span className="k mono">Baptism date *</span>
-          <input type="date" value={f.baptismDate} onChange={set("baptismDate")} /></label>
-        <label className="field"><span className="k mono">Ward</span>
-          <input value={f.ward} onChange={set("ward")} /></label>
-        <label className="field"><span className="k mono">Stake</span>
-          <input value={f.stake} onChange={set("stake")} /></label>
-        <label className="field"><span className="k mono">Missionaries</span>
-          <input value={f.missionaries} onChange={set("missionaries")} /></label>
-        <label className="field"><span className="k mono">Note</span>
-          <input value={f.notes} onChange={set("notes")} placeholder="why it's being added by hand" /></label>
-      </div>
-      <div className="row" style={{ marginTop: ".6rem" }}>
-        <button className="btn primary" disabled={busy} onClick={submit}>
-          {busy ? "Saving…" : "Record baptism"}
-        </button>
-        {msg && <span className="muted" style={{ fontSize: ".85rem" }}>{msg}</span>}
-      </div>
-    </div>
-  );
-}
-
 function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
+  // any sheet column the portal has no named field for becomes a column here
+  const extraKeys = useMemo(
+    () => [...new Set(rows.flatMap((f) => Object.keys(f.extra ?? {})))].sort().slice(0, 8),
+    [rows],
+  );
   if (rows.length === 0) return <p className="muted">No records.</p>;
 
   const remove = async (id: string, name: string) => {
@@ -508,7 +259,7 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
   const correct = async (id: string, name: string) => {
     const reason = window.prompt(
       `Why doesn't ${name}'s baptism count? (didn't happen, duplicate, not a convert baptism, etc.) ` +
-        `This un-marks it everywhere: reports, reconciliation, Trends. The record stays, with your note.`,
+        `This un-marks it everywhere: reports, the monthly check, Trends. The record stays, with your note.`,
     );
     if (reason == null) return; // cancelled
     if (!reason.trim()) {
@@ -532,11 +283,12 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
           <tr>
             <th className="row-head">Name</th>
             <th className="row-head">Zone · Stake</th>
-            <th className="row-head">Ward</th>
+            <th className="row-head">Unit</th>
             <th className="row-head">Missionaries</th>
             <th className="row-head">Baptism</th>
             <th>Church 2×</th>
             <th>Calendar</th>
+            {extraKeys.map((k) => <th key={k} className="row-head" title="from the sheet">{k}</th>)}
             <th className="row-head">Status</th>
           </tr>
         </thead>
@@ -555,6 +307,9 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
               </td>
               <td>{f.attendedChurch2x ? "✓" : ""}</td>
               <td>{f.onBaptismCalendar ? "✓" : ""}</td>
+              {extraKeys.map((k) => (
+                <td key={k} className="row-head muted" style={{ fontSize: ".82rem" }}>{f.extra?.[k] ?? ""}</td>
+              ))}
               <td className="row-head">
                 {f.baptizedConfirmed ? (
                   f.confidence === "unverified" ? (
@@ -606,14 +361,6 @@ function FriendTable({ rows, onChange }: { rows: FriendRow[]; onChange: () => vo
       </table>
     </div>
   );
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "–";
-  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
-  if (!y || !m || !d) return iso;
-  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1];
-  return `${mon} ${d}, ${y}`;
 }
 
 function Stat({ k, v, sub }: { k: string; v: React.ReactNode; sub?: string }) {

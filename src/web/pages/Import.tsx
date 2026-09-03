@@ -243,7 +243,7 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
         <Stat k="Week" v={s.weekLabel} sub={`${s.weekStart} → ${s.weekEnd} · ${span} days`} />
         <Stat k="Active areas" v={s.activeAreas} />
         <Stat k="Data points" v={s.nFacts} />
-        <Stat k="Ward rows" v={s.nWardFacts} />
+        <Stat k="Unit rows" v={s.nWardFacts} />
         <Stat k="Missionaries" v={s.nMissionaries} />
       </div>
       {s.weekly === false && (
@@ -298,7 +298,7 @@ function TransferBlock({ d }: { d: StructureDiff }) {
     <div className="note">
       <strong>Structure changed since {d.week}</strong> ({n} change{n === 1 ? "" : "s"}). Numbers
       import fine; after committing, run <Link to="/admin/rollover">Admin → Rollover</Link> for this
-      week so the new areas and wards are mapped.
+      week so the new areas and units are mapped.
       <ul style={{ margin: ".4rem 0 0", fontSize: ".85rem" }}>
         {d.zonesNew.length > 0 && <li>New zone{d.zonesNew.length === 1 ? "" : "s"}: {d.zonesNew.join(", ")}</li>}
         {d.zonesGone.length > 0 && <li>Zone{d.zonesGone.length === 1 ? "" : "s"} gone: {d.zonesGone.join(", ")}</li>}
@@ -320,8 +320,8 @@ function TransferBlock({ d }: { d: StructureDiff }) {
         {d.renamed.length > 0 && (
           <li>Renamed: {d.renamed.map((a) => `${a.from} → ${a.to}`).join(", ")}</li>
         )}
-        {d.wardsNew.length > 0 && <li>New ward{d.wardsNew.length === 1 ? "" : "s"}: {d.wardsNew.map((w) => w.name).join(", ")}</li>}
-        {d.wardsGone.length > 0 && <li>Ward{d.wardsGone.length === 1 ? "" : "s"} no longer covered: {d.wardsGone.map((w) => w.name).join(", ")}</li>}
+        {d.wardsNew.length > 0 && <li>New unit{d.wardsNew.length === 1 ? "" : "s"}: {d.wardsNew.map((w) => w.name).join(", ")}</li>}
+        {d.wardsGone.length > 0 && <li>Unit{d.wardsGone.length === 1 ? "" : "s"} no longer covered: {d.wardsGone.map((w) => w.name).join(", ")}</li>}
       </ul>
     </div>
   );

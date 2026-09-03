@@ -2,6 +2,22 @@
 
 _Last updated: 2026-09-03 — hardening round: import correctness, mission-time-zone dates, sheet hygiene, gap detection, optional Access token check._
 
+## 2026-09-03 follow-ups (units, sheet columns, Console, Baptisms split)
+
+- **"Unit" everywhere a person reads it** (ward or branch); code keeps `ward`.
+  Unit dissolved can record "merged into" (audit log); the surviving unit keeps
+  reporting under its own org id so nothing else changes.
+- **Console is admin-only** (tab hidden, route guarded, checklist ticks
+  gated). Import and Publish stay open to every signed-in user.
+- **Sheet columns are forwarded automatically.** Any column on the Baptisms
+  (MLC) sheet the portal has no named field for arrives as `{header: value}`,
+  is stored on the friend (`extra_json`, migration 0012), shows as a column on
+  the Baptisms page, and is offered as an on-date column for the stake report
+  (Admin → Stake reports). A renamed core column (Ward Name / Stake / Baptism
+  Date) now warns in the sync log and turns the Console's sheet step amber.
+- **Baptisms page split**: Friends & baptisms (list, filters in the page
+  head, zone and show state in the URL) and **Monthly check** (`/baptisms/check`).
+
 ## 2026-09-03 "easy to adjust" round
 
 Noah's questions: how modular is the stake report, how easy are ward and

@@ -554,7 +554,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       state: rollover.summary.clean ? ("done" as const) : ("attention" as const),
       detail: rollover.summary.clean
         ? "No structural changes to resolve."
-        : `${rollover.summary.areasUnmapped} area(s) to map, ${rollover.summary.wardsUnmapped} ward(s) to map, ` +
+        : `${rollover.summary.areasUnmapped} area(s) to map, ${rollover.summary.wardsUnmapped} unit(s) to map, ` +
           `${rollover.summary.areasVanished} area(s) gone, ` +
           `${rollover.summary.zonesNew} new / ${rollover.summary.zonesRetired} retired zone(s).` +
           (rollover.excludedZonesMissing.length
@@ -576,14 +576,17 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       state:
         syncAgeH === null
           ? ("attention" as const)
-          : syncAgeH > 24 * 8
+          : syncAgeH > 24 * 8 || (friends?.lastSyncWarnings?.length ?? 0) > 0
             ? ("attention" as const)
             : ("done" as const),
       detail:
         syncAgeH === null
           ? "No sheet sync has landed yet; check the Apps Script bridge."
           : `Last sync ${syncAgeH < 1 ? "under an hour" : `${Math.round(syncAgeH)} h`} ago · ` +
-            `${friends?.onDateTotal ?? 0} on date, ${friends?.baptizedThisMonth ?? 0} baptized this month.`,
+            `${friends?.onDateTotal ?? 0} on date, ${friends?.baptizedThisMonth ?? 0} baptized this month.` +
+            (friends?.lastSyncWarnings?.length
+              ? ` Last sync warned: ${friends.lastSyncWarnings.join(" · ")}`
+              : ""),
     },
     {
       id: "overdue",
@@ -622,7 +625,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
       detail:
         stake.wardMapSize > 0
           ? `${stake.stakes.length} stakes ready. Publish → Stake reports.`
-          : "No ward→stake rows for this week; seed the crosswalk.",
+          : "No unit→stake rows for this week; seed the crosswalk.",
     },
   ].map((s) => ({ ...s, checked: checks.has(s.id) }));
 

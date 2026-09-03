@@ -40,6 +40,10 @@ that is not here, add it.
 | The stake column is blank or spelled differently ("Mount Vernon Stake", "annandale") | Matched to the known stakes ignoring case, accents and the word "Stake"; else the ward name is looked up; else the friend is listed on the Publish page as **on no stake report**. | Fix the stake on the sheet. |
 | Same person entered twice (name order, accents, a Chinese name in brackets, dates a few weeks apart) | Collapsed to one baptism everywhere it is counted. | Nothing. |
 | The sync stops arriving | Console step "Baptisms (MLC) sheet in sync" turns amber after 8 days. | Check the Apps Script trigger and the Access bypass rule (`friends-sheet-bridge.md`). |
+| STLs add a column to the sheet | Forwarded as-is, shown on the Baptisms page, offered as an on-date column for the stake report. | Tick it onto the report if the president wants it. |
+| STLs rename a column the portal depends on (Ward Name, Stake, Baptism Date) | The sync warns and the Console's sheet step turns amber; the field is blank until fixed. | Rename the header back, or add the new spelling to `FIELD_BY_HEADER` in the script. |
+| A zone tab is added, renamed, or removed | Picked up on the next sync; zone filters follow. | Nothing. |
+| A unit merges into another | Admin → Areas & units → Unit dissolved, with "merged into" recorded. The surviving unit keeps reporting under its own org id. | Nothing else. |
 | It is Sunday evening | "This week", "this month" and "overdue" are measured on Eastern time, so nothing rolls over until midnight in the mission. | Nothing. |
 
 ## Accounts, access, hosting

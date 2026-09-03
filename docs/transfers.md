@@ -6,6 +6,9 @@ on its own, and the one thing a person does. It is written from what was
 measured on the twelve stored weeks (June–August 2026, including the 27 August
 restructure), not from theory.
 
+A note on words: the portal's screens say **unit** for a ward or branch (an
+IMOS org id). The code and this page sometimes say "ward" for the same thing.
+
 ## The three identifiers, and how stable each one is
 
 | Identifier | Where it comes from | What it is used for | Observed churn over 12 weeks |

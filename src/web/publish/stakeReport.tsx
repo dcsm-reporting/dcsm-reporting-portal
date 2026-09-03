@@ -167,11 +167,11 @@ function renderSection(id: StakeReportLayout["sections"][number]["id"], c: Ctx):
     case "wardTable":
       return (
         <div key={id}>
-          <div style={sectionHead}>This week by ward</div>
+          <div style={sectionHead}>This week by unit</div>
           <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr>
-                <th style={{ ...th, textAlign: "left" }}>Ward</th>
+                <th style={{ ...th, textAlign: "left" }}>Unit</th>
                 {L.kis.map((ki) => (
                   <th key={ki} style={th} title={KI_NAME[ki]}>
                     {KI_CODE[ki]}
@@ -229,10 +229,13 @@ function renderSection(id: StakeReportLayout["sections"][number]["id"], c: Ctx):
               <thead>
                 <tr>
                   <th style={{ ...th, textAlign: "left" }}>Name</th>
-                  {L.onDate.ward && <th style={{ ...th, textAlign: "left" }}>Ward</th>}
+                  {L.onDate.ward && <th style={{ ...th, textAlign: "left" }}>Unit</th>}
                   <th style={{ ...th, textAlign: "left" }}>Date</th>
                   {L.onDate.church2x && <th style={th}>Church 2×</th>}
                   {L.onDate.calendar && <th style={th}>Calendar</th>}
+                  {L.onDate.extra.map((k) => (
+                    <th key={k} style={{ ...th, textAlign: "left" }}>{k}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -251,6 +254,9 @@ function renderSection(id: StakeReportLayout["sections"][number]["id"], c: Ctx):
                         {f.onBaptismCalendar ? "✓" : "–"}
                       </td>
                     )}
+                    {L.onDate.extra.map((k) => (
+                      <td key={k} style={tdL}>{f.extra?.[k] ?? "–"}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -272,7 +278,7 @@ function renderSection(id: StakeReportLayout["sections"][number]["id"], c: Ctx):
               <thead>
                 <tr>
                   <th style={{ ...th, textAlign: "left" }}>Name</th>
-                  <th style={{ ...th, textAlign: "left" }}>Ward</th>
+                  <th style={{ ...th, textAlign: "left" }}>Unit</th>
                   <th style={{ ...th, textAlign: "left" }}>Date</th>
                 </tr>
               </thead>

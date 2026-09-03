@@ -93,7 +93,7 @@ function RolloverBody({
       };
       const res = await api.applyRollover(week, body);
       setMsg(
-        `Applied ${res.applied.areas} area mapping(s), ${res.applied.wards} ward row(s), ` +
+        `Applied ${res.applied.areas} area mapping(s), ${res.applied.wards} unit row(s), ` +
           `closed ${res.applied.closed} mapping(s), retired ${res.applied.retired} area(s).` +
           (res.applied.skipped?.length ? ` Skipped: ${res.applied.skipped.join("; ")}.` : ""),
       );
@@ -130,7 +130,7 @@ function RolloverBody({
       ["Areas to map", plan.summary.areasUnmapped],
       ["…new this transfer", plan.summary.areasNew],
       ["Areas gone", plan.summary.areasVanished],
-      ["Wards to map", plan.summary.wardsUnmapped],
+      ["Units to map", plan.summary.wardsUnmapped],
       ["New / retired zones", `${plan.summary.zonesNew} / ${plan.summary.zonesRetired}`],
     ],
     [plan],
@@ -239,7 +239,7 @@ function RolloverBody({
           <p className="muted" style={{ fontSize: ".85rem", maxWidth: "74ch" }}>
             These IMOS ids are mapped but no longer appear in the report. Closing the mapping dates the
             end of that id at {week}; when it was the area's only id the area is retired (its history
-            stays; un-retire in Areas &amp; wards if it comes back). Leave one unticked if the area is
+            stays; un-retire in Areas &amp; units if it comes back). Leave one unticked if the area is
             only paused for a transfer.
           </p>
           <div className="tbl-scroll">
@@ -389,7 +389,7 @@ function RolloverBody({
       {plan.wards.length > 0 && (
         <>
           <div className="row" style={{ justifyContent: "space-between", marginTop: "1.6rem" }}>
-            <h4 style={{ margin: 0 }}>Wards to map ({plan.wards.length})</h4>
+            <h4 style={{ margin: 0 }}>Units to map ({plan.wards.length})</h4>
             <span className="row">
               <button className="btn" onClick={selectSuggestedWards}>Select suggested</button>
               <button className="btn" onClick={() => setWardSel(new Set())}>Clear</button>
@@ -400,10 +400,10 @@ function RolloverBody({
               <thead>
                 <tr>
                   <th style={{ width: "2rem" }}></th>
-                  <th>Org (ward)</th>
+                  <th>Org (unit)</th>
                   <th>Area</th>
                   <th>Canonical key</th>
-                  <th>Ward name</th>
+                  <th>Unit name</th>
                   <th>Stake</th>
                   <th>Suggestion</th>
                 </tr>
@@ -455,7 +455,7 @@ function RolloverBody({
           <button className="btn primary" disabled={!canApply || busy} onClick={apply}>
             {busy
               ? "Applying…"
-              : `Apply ${areaSel.size} area${areaSel.size === 1 ? "" : "s"} + ${wardSel.size} ward${wardSel.size === 1 ? "" : "s"}` +
+              : `Apply ${areaSel.size} area${areaSel.size === 1 ? "" : "s"} + ${wardSel.size} unit${wardSel.size === 1 ? "" : "s"}` +
                 (goneSel.size ? ` + close ${goneSel.size} gone` : "") +
                 ` effective ${week}`}
           </button>

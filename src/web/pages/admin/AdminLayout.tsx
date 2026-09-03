@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 
 const SUB: [string, string][] = [
   ["/admin/rollover", "Rollover"],
-  ["/admin/areas", "Areas & wards"],
+  ["/admin/areas", "Areas & units"],
   ["/admin/recipients", "Stake reports"],
   ["/admin/config", "Reporting settings"],
   ["/admin/access", "Admin access"],

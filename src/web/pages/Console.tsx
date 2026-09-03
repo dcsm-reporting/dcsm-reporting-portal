@@ -17,7 +17,7 @@ const LINK_FOR: Record<string, string> = {
   chase: "/not-reported",
   friends: "/baptisms",
   overdue: "/baptisms",
-  reconcile: "/baptisms",
+  reconcile: "/baptisms/check",
   boards: "/publish",
   stakes: "/publish",
 };

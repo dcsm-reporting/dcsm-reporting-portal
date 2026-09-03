@@ -64,7 +64,7 @@ export function AreasPage() {
             Teaching areas ({data.areas.filter((a) => !a.retiredAt).length})
           </button>
           <button className={view === "wards" ? "on" : ""} onClick={() => setView("wards")}>
-            Wards ({(data.wards ?? []).length})
+            Units ({(data.wards ?? []).length})
           </button>
         </span>
         <input placeholder="filter by area, ward, stake, zone…" value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 260 }} />
@@ -85,7 +85,7 @@ export function AreasPage() {
                   <th>Area</th>
                   <th>Zone</th>
                   <th>IMOS id</th>
-                  <th>Ward(s)</th>
+                  <th>Unit(s)</th>
                   <th>Stake</th>
                   <th>Last reported</th>
                   <th>Status</th>
@@ -145,16 +145,16 @@ export function AreasPage() {
       ) : (
         <>
           <p className="muted" style={{ fontSize: ".82rem", maxWidth: "76ch" }}>
-            One row per ward (IMOS org id). The stake here is what puts a ward's numbers on a stake
-            president's report. Use the quick actions above to move, rename, or retire a ward; a
-            brand-new ward appears in <Link to="/admin/rollover">Rollover</Link> the week IMOS first
+            One row per unit, ward or branch (IMOS org id). The stake here is what puts a unit’s numbers on a stake
+            president’s report. Use the quick actions above to move, rename, or retire a unit; a
+            brand-new unit appears in <Link to="/admin/rollover">Rollover</Link> the week IMOS first
             reports it.
           </p>
           <div className="tbl-scroll">
             <table className="grid">
               <thead>
                 <tr>
-                  <th>Ward</th>
+                  <th>Unit</th>
                   <th>Stake</th>
                   <th>Covered by</th>
                   <th>Org id</th>
@@ -204,13 +204,13 @@ function QuickActions({ data, onDone }: { data: Structure; onDone: (m: string) =
         <strong>Something changed?</strong>
         <span className="row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
           <button className={`btn${action === "move" ? " primary" : ""}`} onClick={() => setAction(action === "move" ? null : "move")}>
-            Wards moved to a stake
+            Units moved to a stake
           </button>
           <button className={`btn${action === "rename" ? " primary" : ""}`} onClick={() => setAction(action === "rename" ? null : "rename")}>
-            Ward renamed / branch became a ward
+            Unit renamed / branch became a ward
           </button>
           <button className={`btn${action === "retire" ? " primary" : ""}`} onClick={() => setAction(action === "retire" ? null : "retire")}>
-            Ward dissolved
+            Unit dissolved
           </button>
           <button className={`btn${action === "stake" ? " primary" : ""}`} onClick={() => setAction(action === "stake" ? null : "stake")}>
             Stake renamed
@@ -264,7 +264,7 @@ function WardPicker({
       }
       style={{ minWidth: 320, fontSize: ".85rem" }}
     >
-      {!multi && <option value="">choose a ward…</option>}
+      {!multi && <option value="">choose a unit…</option>}
       {byStake.map(([stake, wards]) => (
         <optgroup key={stake} label={stake}>
           {wards.map((w) => (
@@ -305,7 +305,7 @@ function MoveWards({ data, defaultWeek, onDone }: { data: Structure; defaultWeek
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        For a boundary change, a new stake, or a stake merging into another. Pick the wards (Ctrl-click
+        For a boundary change, a new stake, or a stake merging into another. Pick the units (Ctrl-click
         for several), type the stake they now belong to, and the first reporting week it applies. Their
         numbers land on the new stake's report from that week; the old stake keeps the earlier weeks.
       </p>
@@ -330,12 +330,12 @@ function MoveWards({ data, defaultWeek, onDone }: { data: Structure; defaultWeek
             onClick={async () => {
               const m = await run(async () => {
                 const r = await api.moveWards(ids, stake.trim(), mondayOf(from));
-                return `Moved ${ids.length} ward${ids.length === 1 ? "" : "s"} to ${stake.trim()} from ${mondayOf(from)} (${r.changed} row${r.changed === 1 ? "" : "s"} updated).`;
+                return `Moved ${ids.length} unit${ids.length === 1 ? "" : "s"} to ${stake.trim()} from ${mondayOf(from)} (${r.changed} row${r.changed === 1 ? "" : "s"} updated).`;
               });
               if (m) onDone(m);
             }}
           >
-            {busy ? "Moving…" : `Move ${ids.length} ward${ids.length === 1 ? "" : "s"}`}
+            {busy ? "Moving…" : `Move ${ids.length} unit${ids.length === 1 ? "" : "s"}`}
           </button>
           {msg && <div className="note stop" style={{ marginTop: ".5rem" }}>{msg}</div>}
         </div>
@@ -352,7 +352,7 @@ function RenameWard({ data, onDone }: { data: Structure; onDone: (m: string) => 
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        Changes the name shown on the stake reports. The ward keeps its org id and its history, so this
+        Changes the name shown on the stake reports. The unit keeps its org id and its history, so this
         is also the right action when a branch becomes a ward (or the reverse). The name IMOS reports
         is unaffected and still shows on the This Week board.
       </p>
@@ -380,35 +380,44 @@ function RenameWard({ data, onDone }: { data: Structure; onDone: (m: string) => 
 
 function RetireWard({ data, defaultWeek, onDone }: { data: Structure; defaultWeek: string; onDone: (m: string) => void }) {
   const [ids, setIds] = useState<number[]>([]);
+  const [into, setInto] = useState<number[]>([]);
   const [to, setTo] = useState(defaultWeek);
   const { busy, msg, run } = useBusy();
   const cur = (data.wards ?? []).find((w) => w.wardUnitId === ids[0]);
+  const target = (data.wards ?? []).find((w) => w.wardUnitId === into[0]);
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        For a ward dissolved or merged away. Its rows are closed from the week you give; earlier weeks
-        keep it on its stake. If the Church created a new unit in its place, that unit arrives through
-        the weekly import and is mapped in Rollover. If IMOS keeps reporting under the old org id, do
-        not retire it; rename it instead.
+        For a unit dissolved, or merged into another unit. Its rows are closed from the week you
+        give; earlier weeks keep it on its stake. Members who moved to another unit are reported by
+        that unit from now on, under its own org id, so nothing else needs to change. If the Church
+        created a brand-new unit in its place, it arrives through the weekly import and is mapped in
+        Rollover. If IMOS keeps reporting under the old org id, do not retire it; rename it instead.
       </p>
-      <div className="inline-form">
-        <WardPicker data={data} value={ids} onChange={setIds} multi={false} />
+      <div className="inline-form" style={{ alignItems: "flex-end" }}>
+        <label className="field" style={{ margin: 0 }}><span className="k mono">Unit</span>
+          <WardPicker data={data} value={ids} onChange={setIds} multi={false} />
+        </label>
+        <label className="field" style={{ margin: 0 }}><span className="k mono">Merged into (optional)</span>
+          <WardPicker data={data} value={into} onChange={setInto} multi={false} />
+        </label>
         <label className="field" style={{ margin: 0 }}><span className="k mono">Last week on report</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
         <button
           className="btn"
-          disabled={busy || !cur || !to}
+          disabled={busy || !cur || !to || (!!target && target.wardUnitId === cur.wardUnitId)}
           onClick={async () => {
-            if (!window.confirm(`Retire ${cur!.wardName} from ${mondayOf(to)} onward?`)) return;
+            const what = target ? `Merge ${cur!.wardName} into ${target.wardName} and retire it` : `Retire ${cur!.wardName}`;
+            if (!window.confirm(`${what} from ${mondayOf(to)} onward?`)) return;
             const m = await run(async () => {
-              const r = await api.retireWard(cur!.wardUnitId, mondayOf(to));
-              return `Retired ${cur!.wardName} at ${mondayOf(to)} (${r.changed} row${r.changed === 1 ? "" : "s"} closed).`;
+              const r = await api.retireWard(cur!.wardUnitId, mondayOf(to), target?.wardUnitId ?? null);
+              return `${target ? `Merged ${cur!.wardName} into ${target.wardName}; retired` : `Retired ${cur!.wardName}`} at ${mondayOf(to)} (${r.changed} row${r.changed === 1 ? "" : "s"} closed).`;
             });
             if (m) onDone(m);
           }}
         >
-          {busy ? "Retiring…" : "Retire ward"}
+          {busy ? "Working…" : target ? "Merge and retire" : "Retire unit"}
         </button>
       </div>
       {msg && <div className="note stop" style={{ marginTop: ".5rem" }}>{msg}</div>}
@@ -423,7 +432,7 @@ function RenameStake({ data, onDone }: { data: Structure; onDone: (m: string) =>
   return (
     <div style={{ marginTop: ".8rem" }}>
       <p className="muted" style={{ fontSize: ".82rem", maxWidth: "80ch" }}>
-        Renames the stake everywhere it is stored by name: every ward row, the report recipients, and
+        Renames the stake everywhere it is stored by name: every unit row, the report recipients, and
         the stake on baptism records. Tell the STLs to use the new spelling on the sheet.
       </p>
       <div className="inline-form">
@@ -438,7 +447,7 @@ function RenameStake({ data, onDone }: { data: Structure; onDone: (m: string) =>
           onClick={async () => {
             const m = await run(async () => {
               const r = await api.renameStake(from, to.trim());
-              return `Renamed ${from} to ${to.trim()} (${r.changed} ward row${r.changed === 1 ? "" : "s"}).`;
+              return `Renamed ${from} to ${to.trim()} (${r.changed} unit row${r.changed === 1 ? "" : "s"}).`;
             });
             if (m) onDone(m);
           }}
@@ -515,9 +524,9 @@ function AreaDrawer({ area, onChange }: { area: StructureArea; onChange: () => v
       </table>
       <AttachMapping areaKey={area.key} vf={vf} onDone={onChange} />
 
-      <h4>Wards this area covers</h4>
+      <h4>Units this area covers</h4>
       <table className="grid">
-        <thead><tr><th>Org id</th><th>Ward</th><th>Stake</th><th>From</th><th>To</th><th></th></tr></thead>
+        <thead><tr><th>Org id</th><th>Unit</th><th>Stake</th><th>From</th><th>To</th><th></th></tr></thead>
         <tbody>
           {area.wards.map((w) => (
             <tr key={`${w.wardUnitId}-${w.validFrom}`} className={w.open ? "" : "strike"}>
@@ -580,7 +589,7 @@ function AddWard({ areaKey, vf, onDone }: { areaKey: string; vf: string; onDone:
   return (
     <div className="inline-form">
       <input placeholder="org id" value={f.wardUnitId} onChange={(e) => setF({ ...f, wardUnitId: e.target.value })} style={{ width: 110 }} />
-      <input placeholder="ward name" value={f.wardName} onChange={(e) => setF({ ...f, wardName: e.target.value })} />
+      <input placeholder="unit name" value={f.wardName} onChange={(e) => setF({ ...f, wardName: e.target.value })} />
       <input placeholder="stake" value={f.stake} onChange={(e) => setF({ ...f, stake: e.target.value })} />
       <button
         className="btn"
@@ -602,7 +611,7 @@ function AddWard({ areaKey, vf, onDone }: { areaKey: string; vf: string; onDone:
           }
         }}
       >
-        Add a ward this area covers from {vf}
+        Add a unit this area covers from {vf}
       </button>
     </div>
   );

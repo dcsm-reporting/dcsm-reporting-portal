@@ -35,7 +35,7 @@ export function StakesPage() {
       </PageHead>
       {stake === "(unmapped)" && (
         <div className="note warn">
-          These wards have no crosswalk row for this week. Resolve them in Structure → Crosswalk.
+          These units have no stake yet. Map them in Admin → Rollover (or Admin → Areas &amp; units).
         </div>
       )}
 
@@ -43,7 +43,7 @@ export function StakesPage() {
         <table className="board">
           <thead>
             <tr>
-              <th className="row-head">Ward</th>
+              <th className="row-head">Unit</th>
               {KI_IDS.map((ki) => <th key={ki} className="ki-group">{KI_CODE[ki]}</th>)}
             </tr>
           </thead>

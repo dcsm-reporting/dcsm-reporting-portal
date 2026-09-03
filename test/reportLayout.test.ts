@@ -26,6 +26,13 @@ describe("stake report layout", () => {
     expect(layout.trendWeeks).toBe(26);
     expect(layout.baptizedMonths).toBe(1);
     expect(layout.introText).toBe("");
+    expect(layout.onDate.extra).toEqual([]);
+  });
+
+  it("keeps extra on-date columns (sheet headers), trimmed and capped", () => {
+    const { layout } = normalizeLayout({ onDate: { extra: [" Phone ", "", 5, "Referral", "a", "b", "c", "d", "e", "f", "g"] } });
+    expect(layout.onDate.extra.slice(0, 2)).toEqual(["Phone", "Referral"]);
+    expect(layout.onDate.extra.length).toBe(8);
   });
 
   it("refuses a layout with no indicators", () => {

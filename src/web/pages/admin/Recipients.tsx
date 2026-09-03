@@ -189,7 +189,7 @@ function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
               {(["ward", "church2x", "calendar"] as const).map((k) => (
                 <label key={k} className="row" style={{ gap: ".3rem" }}>
                   <input type="checkbox" checked={L.onDate[k]} onChange={(e) => set({ onDate: { ...L.onDate, [k]: e.target.checked } })} />
-                  <span style={{ fontSize: ".85rem" }}>{k === "ward" ? "Ward" : k === "church2x" ? "Church 2×" : "Calendar"}</span>
+                  <span style={{ fontSize: ".85rem" }}>{k === "ward" ? "Unit" : k === "church2x" ? "Church 2×" : "Calendar"}</span>
                 </label>
               ))}
               <label className="row" style={{ gap: ".3rem" }}>
@@ -197,6 +197,36 @@ function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
                 <span style={{ fontSize: ".85rem" }}>Flag unverified legacy names</span>
               </label>
             </div>
+            {(pub.data?.extraKeys?.length ?? 0) > 0 && (
+              <>
+                <div className="muted mono" style={{ fontSize: ".72rem", marginTop: "1rem" }}>
+                  OTHER COLUMNS ON THE BAPTISMS SHEET
+                </div>
+                <p className="muted" style={{ fontSize: ".78rem", margin: "0 0 .3rem", maxWidth: "60ch" }}>
+                  Every column the sheet has that the portal has no named field for. Tick one to add
+                  it to the on-date list. A column the STLs add next month shows up here on its own.
+                </p>
+                <div className="row" style={{ gap: ".4rem 1rem" }}>
+                  {pub.data!.extraKeys!.map((k) => (
+                    <label key={k} className="row" style={{ gap: ".3rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={L.onDate.extra.includes(k)}
+                        onChange={(e) =>
+                          set({
+                            onDate: {
+                              ...L.onDate,
+                              extra: e.target.checked ? [...L.onDate.extra, k] : L.onDate.extra.filter((x) => x !== k),
+                            },
+                          })
+                        }
+                      />
+                      <span style={{ fontSize: ".85rem" }}>{k}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div className="field" style={{ marginTop: "1rem", maxWidth: 460 }}>
               <label>Subtitle line ({"{week}"} = the week label)</label>

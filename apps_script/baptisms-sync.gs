@@ -111,9 +111,16 @@ function readTab_(ss, tabName, fallbackZone, tz, out, seen) {
   if (hdrRow < 0) return;
 
   var cols = {};
+  var extraCols = [];   // [colIndex, headerText] for every column the portal has no named field for
   for (var c = 0; c < values[hdrRow].length; c++) {
-    var key = String(values[hdrRow][c] || '').trim().toLowerCase();
-    if (FIELD_BY_HEADER[key] && cols[FIELD_BY_HEADER[key]] === undefined) cols[FIELD_BY_HEADER[key]] = c;
+    var hdrText = String(values[hdrRow][c] || '').trim();
+    var key = hdrText.toLowerCase();
+    if (!key) continue;
+    if (FIELD_BY_HEADER[key]) {
+      if (cols[FIELD_BY_HEADER[key]] === undefined) cols[FIELD_BY_HEADER[key]] = c;
+    } else {
+      extraCols.push([c, hdrText]);
+    }
   }
   if (cols.name === undefined) return;
 
@@ -135,6 +142,20 @@ function readTab_(ss, tabName, fallbackZone, tz, out, seen) {
         rec[field] = /^(y|yes|true|1)/i.test(String(raw).trim());
       else { var v = String(raw == null ? '' : raw).trim(); if (v) rec[field] = v; }
     }
+    // Every other column goes along as {header: value}. A new column the STLs
+    // add therefore shows up in the portal on the next sync with no code
+    // change; the office can then tick it onto the stake report if wanted.
+    var extra = {};
+    var hasExtra = false;
+    for (var x = 0; x < extraCols.length; x++) {
+      var ev = values[r][extraCols[x][0]];
+      if (ev == null || ev === '' || isSheetError_(ev)) continue;
+      var es = ev instanceof Date ? isoDate_(ev) : String(ev).trim();
+      if (!es) continue;
+      extra[extraCols[x][1]] = es.slice(0, 200);
+      hasExtra = true;
+    }
+    if (hasExtra) rec.extra = extra;
     // dedupe on ward|name across tabs (working tab wins — it's read first)
     var k = String(rec.ward || '').toLowerCase() + '|' + name.toLowerCase();
     if (seen[k]) continue;
