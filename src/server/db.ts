@@ -784,6 +784,10 @@ export interface StructureArea {
   displayName: string;
   createdAt: string;
   retiredAt: string | null;
+  /** zone of the area's current IMOS id in the most recent week it appeared */
+  zone: string | null;
+  /** most recent stored week in which any of this area's IMOS ids reported */
+  lastSeen: string | null;
   mappings: {
     imosAreaId: number;
     imosAreaName: string;
@@ -801,21 +805,37 @@ export interface StructureArea {
     open: boolean;
   }[];
 }
+/** A ward as the portal knows it: one IMOS org id, its current stake, the areas covering it. */
+export interface StructureWard {
+  wardUnitId: number;
+  wardName: string;
+  stake: string;
+  /** canonical keys of the areas with an open row for this ward */
+  areas: { key: string; displayName: string }[];
+  since: string;
+  /** most recent stored week in which this org reported numbers */
+  lastSeen: string | null;
+}
+
 export interface Structure {
   areas: StructureArea[];
+  wards: StructureWard[];
   stakes: string[];
   zones: string[];
   positionsSeen: string[];
+  latestWeek: string | null;
 }
 
 export async function getStructure(db: D1Database): Promise<Structure> {
-  const [canonical, crosswalk, areaWard, names, zones, positionsSeen] = await Promise.all([
+  const [canonical, crosswalk, areaWard, names, zones, positionsSeen, orgSeen, weeks] = await Promise.all([
     getCanonicalRowsFull(db),
     getCrosswalkRows(db),
     getAreaWardRows(db),
     latestAreaNames(db),
     distinctZones(db),
     distinctPositions(db),
+    latestOrgWeeks(db),
+    weeksAvailable(db),
   ]);
 
   const byKey = new Map<string, StructureArea>();
@@ -825,6 +845,8 @@ export async function getStructure(db: D1Database): Promise<Structure> {
       displayName: c.displayName,
       createdAt: c.createdAt,
       retiredAt: c.retiredAt,
+      zone: null,
+      lastSeen: null,
       mappings: [],
       wards: [],
     });
@@ -832,14 +854,19 @@ export async function getStructure(db: D1Database): Promise<Structure> {
   for (const m of crosswalk) {
     const a = byKey.get(m.canonicalAreaKey);
     if (!a) continue;
+    const seen = names.get(m.imosAreaId);
     a.mappings.push({
       imosAreaId: m.imosAreaId,
-      imosAreaName: names.get(m.imosAreaId) ?? `#${m.imosAreaId}`,
+      imosAreaName: seen?.name ?? `#${m.imosAreaId}`,
       validFrom: m.validFrom,
       validTo: m.validTo,
       note: m.note,
       open: m.validTo === null,
     });
+    if (seen && (a.lastSeen === null || seen.week > a.lastSeen)) {
+      a.lastSeen = seen.week;
+      a.zone = seen.zone;
+    }
   }
   for (const w of areaWard) {
     const a = byKey.get(w.canonicalAreaKey);
@@ -858,8 +885,97 @@ export async function getStructure(db: D1Database): Promise<Structure> {
     a.mappings.sort((x, y) => y.validFrom.localeCompare(x.validFrom));
     a.wards.sort((x, y) => x.wardName.localeCompare(y.wardName));
   }
-  const stakes = [...new Set(areaWard.map((w) => w.stake))].sort();
-  return { areas, stakes, zones, positionsSeen };
+  // ward-centric view: one row per org id from its open rows
+  const wardsByUnit = new Map<number, StructureWard>();
+  for (const w of areaWard) {
+    if (w.validTo !== null) continue;
+    let row = wardsByUnit.get(w.wardUnitId);
+    if (!row) {
+      row = {
+        wardUnitId: w.wardUnitId,
+        wardName: w.wardName,
+        stake: w.stake,
+        areas: [],
+        since: w.validFrom,
+        lastSeen: orgSeen.get(w.wardUnitId) ?? null,
+      };
+      wardsByUnit.set(w.wardUnitId, row);
+    }
+    if (w.validFrom < row.since) row.since = w.validFrom;
+    const area = byKey.get(w.canonicalAreaKey);
+    if (area && !row.areas.some((x) => x.key === area.key)) row.areas.push({ key: area.key, displayName: area.displayName });
+  }
+  const wards = [...wardsByUnit.values()].sort((a, b) => a.stake.localeCompare(b.stake) || a.wardName.localeCompare(b.wardName));
+  const stakes = [...new Set(areaWard.filter((w) => w.validTo === null).map((w) => w.stake))].sort();
+  return { areas, wards, stakes, zones, positionsSeen, latestWeek: weeks[weeks.length - 1] ?? null };
+}
+
+async function latestOrgWeeks(db: D1Database): Promise<Map<number, string>> {
+  const { results } = await db
+    .prepare("SELECT org_id, MAX(week_start) AS w FROM ward_fact GROUP BY org_id")
+    .all<{ org_id: number; w: string }>();
+  return new Map((results ?? []).map((r) => [r.org_id, r.w]));
+}
+
+// --- ward events (Admin → Areas & wards quick actions) -------------------
+/**
+ * A ward changes stake (boundary change, new stake, stake merge). Close every
+ * open row for the unit at `validFrom` and reopen the same area coverage under
+ * the new stake. Returns how many rows were reopened.
+ */
+export async function moveWardToStake(
+  db: D1Database,
+  wardUnitId: number,
+  stake: string,
+  validFrom: string,
+): Promise<number> {
+  const rows = (await getAreaWardRows(db)).filter((r) => r.wardUnitId === wardUnitId && r.validTo === null);
+  if (rows.length === 0) return 0;
+  const stmts: D1PreparedStatement[] = [];
+  for (const r of rows) {
+    if (r.stake === stake) continue;
+    if (r.validFrom >= validFrom) {
+      // the open row starts on/after the move: just change it in place
+      stmts.push(
+        db
+          .prepare("UPDATE area_ward SET stake = ? WHERE canonical_area_key = ? AND ward_unit_id = ? AND valid_from = ?")
+          .bind(stake, r.canonicalAreaKey, r.wardUnitId, r.validFrom),
+      );
+    } else {
+      stmts.push(
+        db
+          .prepare("UPDATE area_ward SET valid_to = ? WHERE canonical_area_key = ? AND ward_unit_id = ? AND valid_from = ?")
+          .bind(validFrom, r.canonicalAreaKey, r.wardUnitId, r.validFrom),
+        db
+          .prepare(
+            `INSERT INTO area_ward (canonical_area_key, ward_unit_id, ward_name, stake, valid_from, valid_to)
+             VALUES (?, ?, ?, ?, ?, NULL)
+             ON CONFLICT (canonical_area_key, ward_unit_id, valid_from) DO UPDATE SET stake = excluded.stake`,
+          )
+          .bind(r.canonicalAreaKey, r.wardUnitId, r.wardName, stake, validFrom),
+      );
+    }
+  }
+  if (stmts.length) await db.batch(stmts);
+  return rows.filter((r) => r.stake !== stake).length;
+}
+
+/** A ward renamed, or a branch that became a ward: the name on every row for that unit. */
+export async function renameWard(db: D1Database, wardUnitId: number, wardName: string): Promise<number> {
+  const res = await db
+    .prepare("UPDATE area_ward SET ward_name = ? WHERE ward_unit_id = ?")
+    .bind(wardName, wardUnitId)
+    .run();
+  return res.meta.changes ?? 0;
+}
+
+/** A ward dissolved (merged away): close every open row at `validTo`. */
+export async function retireWard(db: D1Database, wardUnitId: number, validTo: string): Promise<number> {
+  const res = await db
+    .prepare("UPDATE area_ward SET valid_to = ? WHERE ward_unit_id = ? AND valid_to IS NULL AND valid_from < ?")
+    .bind(validTo, wardUnitId, validTo)
+    .run();
+  return res.meta.changes ?? 0;
 }
 
 interface CanonicalFull {
@@ -880,16 +996,20 @@ async function getCanonicalRowsFull(db: D1Database): Promise<CanonicalFull[]> {
   }));
 }
 
-async function latestAreaNames(db: D1Database): Promise<Map<number, string>> {
+async function latestAreaNames(
+  db: D1Database,
+): Promise<Map<number, { name: string; zone: string; week: string }>> {
   // SQLite bare-column rule: with a single MAX() aggregate, the other selected
   // columns come from the row holding that max. One scan, no correlated subquery.
   const { results } = await db
     .prepare(
-      `SELECT imos_area_id, imos_area_name, MAX(week_start) AS w
+      `SELECT imos_area_id, imos_area_name, imos_zone_name, MAX(week_start) AS w
        FROM ki_fact GROUP BY imos_area_id`,
     )
-    .all<{ imos_area_id: number; imos_area_name: string }>();
-  return new Map((results ?? []).map((r) => [r.imos_area_id, r.imos_area_name]));
+    .all<{ imos_area_id: number; imos_area_name: string; imos_zone_name: string; w: string }>();
+  return new Map(
+    (results ?? []).map((r) => [r.imos_area_id, { name: r.imos_area_name, zone: r.imos_zone_name ?? "", week: r.w }]),
+  );
 }
 
 async function distinctZones(db: D1Database): Promise<string[]> {

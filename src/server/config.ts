@@ -12,6 +12,11 @@ import {
   ZONE_ORDER,
 } from "../pipeline/constants.js";
 import { getConfig } from "./db.js";
+import {
+  DEFAULT_STAKE_REPORT_LAYOUT,
+  normalizeLayout,
+  type StakeReportLayout,
+} from "../shared/reportLayout.js";
 
 export interface ResolvedConfig {
   mlcPositions: string[];
@@ -23,6 +28,8 @@ export interface ResolvedConfig {
   };
   /** An import warns when the active-area count falls outside [low, high]. */
   areaBand: { low: number; high: number };
+  /** sections + options of the stake-president report (Admin → Stake reports) */
+  stakeReportLayout: StakeReportLayout;
 }
 
 export const CONFIG_DEFAULTS: ResolvedConfig = {
@@ -34,9 +41,17 @@ export const CONFIG_DEFAULTS: ResolvedConfig = {
     mlcShare: { low: BANDS.mlcShare.low, mid: BANDS.mlcShare.mid },
   },
   areaBand: { low: 80, high: 130 },
+  stakeReportLayout: DEFAULT_STAKE_REPORT_LAYOUT,
 };
 
-export const CONFIG_KEYS = ["mlc_positions", "zone_order", "zone_exclude", "bands", "area_band"] as const;
+export const CONFIG_KEYS = [
+  "mlc_positions",
+  "zone_order",
+  "zone_exclude",
+  "bands",
+  "area_band",
+  "stake_report_layout",
+] as const;
 
 /** Reject a config write that would break the pipeline (wrong shape / type). */
 export function validateConfigValue(key: (typeof CONFIG_KEYS)[number], value: unknown): string | null {
@@ -67,16 +82,19 @@ export function validateConfigValue(key: (typeof CONFIG_KEYS)[number], value: un
         return "area_band must be {low, high} whole numbers with low ≤ high";
       return null;
     }
+    case "stake_report_layout":
+      return normalizeLayout(value).problem;
   }
 }
 
 export async function loadConfig(db: D1Database): Promise<ResolvedConfig> {
-  const [mlcPositions, zoneOrder, zoneExclude, bands, areaBand] = await Promise.all([
+  const [mlcPositions, zoneOrder, zoneExclude, bands, areaBand, layoutRaw] = await Promise.all([
     getConfig(db, "mlc_positions", CONFIG_DEFAULTS.mlcPositions),
     getConfig(db, "zone_order", CONFIG_DEFAULTS.zoneOrder),
     getConfig(db, "zone_exclude", CONFIG_DEFAULTS.zoneExclude),
     getConfig(db, "bands", CONFIG_DEFAULTS.bands),
     getConfig(db, "area_band", CONFIG_DEFAULTS.areaBand),
+    getConfig<unknown>(db, "stake_report_layout", CONFIG_DEFAULTS.stakeReportLayout),
   ]);
   // A stored value that has drifted from the expected shape must not take the
   // whole portal down; fall back to the default for that one key.
@@ -86,5 +104,6 @@ export async function loadConfig(db: D1Database): Promise<ResolvedConfig> {
     zoneExclude: validateConfigValue("zone_exclude", zoneExclude) ? CONFIG_DEFAULTS.zoneExclude : zoneExclude,
     bands: validateConfigValue("bands", bands) ? CONFIG_DEFAULTS.bands : bands,
     areaBand: validateConfigValue("area_band", areaBand) ? CONFIG_DEFAULTS.areaBand : areaBand,
+    stakeReportLayout: normalizeLayout(layoutRaw).layout,
   };
 }

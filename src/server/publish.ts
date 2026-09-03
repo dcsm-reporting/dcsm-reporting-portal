@@ -15,6 +15,7 @@ import { buildStakeView, buildWeekView, weekLabel } from "./service.js";
 import { getStakeRecipients } from "./db.js";
 import { getConfig } from "./db.js";
 import { addMonthsClamped } from "../shared/dates.js";
+import { DEFAULT_STAKE_REPORT_LAYOUT, normalizeLayout } from "../shared/reportLayout.js";
 
 const confirmedTier = (c: string | null) => c === null || c === "confirmed";
 
@@ -39,9 +40,12 @@ export interface StakeReport {
 }
 
 export async function buildPublish(db: D1Database, week: string) {
+  const { layout } = normalizeLayout(
+    await getConfig<unknown>(db, "stake_report_layout", DEFAULT_STAKE_REPORT_LAYOUT),
+  );
   const [weekView, stakeView, areaWard, friends, ccAll, emailTemplate] = await Promise.all([
     buildWeekView(db, week),
-    buildStakeView(db, week),
+    buildStakeView(db, week, layout.trendWeeks),
     getAreaWardRows(db),
     listFriends(db, { includeInactive: true }),
     getConfig<string[]>(db, "report_cc_all", []),
@@ -57,7 +61,7 @@ export async function buildPublish(db: D1Database, week: string) {
 
   const month = week.slice(0, 7);
   const year = week.slice(0, 4);
-  const cutoff = addMonthsClamped(week, -6);
+  const cutoff = addMonthsClamped(week, -layout.baptizedMonths);
 
   // Active friends whose stake does not match any stake with a report — they
   // would otherwise silently appear on no report at all. Surfaced on the
@@ -123,6 +127,7 @@ export async function buildPublish(db: D1Database, week: string) {
     generatedAt: new Date().toISOString(),
     hasPriorWeek: all.filter((w) => w < week).length > 0,
     emailTemplate: emailTemplate ?? DEFAULT_EMAIL_TEMPLATE,
+    layout,
     board: {
       zones: weekView.zones,
       byZone: weekView.byZone,

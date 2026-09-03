@@ -2,6 +2,9 @@
 
 Deferred work, roughly in priority order. Nothing here is urgent.
 
+See `docs/longevity.md` for the habits, credentials, and yearly check that
+keep this running; the items below are work.
+
 ## 0. Two five-minute hand-offs from the 2026-09-03 hardening round
 
 - **Paste the updated sheet script.** `apps_script/baptisms-sync.gs` now skips

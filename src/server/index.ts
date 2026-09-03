@@ -17,7 +17,7 @@ import type { Env, Vars } from "./env.js";
 import { CONFIG_DEFAULTS, CONFIG_KEYS, loadConfig, validateConfigValue } from "./config.js";
 import { bumpData, bumpFriends, cached } from "./cache.js";
 import { accessMode, verifyAccessJwt } from "./auth.js";
-import { lastCompleteWeekOf, missingMondays, todayIso } from "../shared/dates.js";
+import { isIsoDate, lastCompleteWeekOf, missingMondays, todayIso } from "../shared/dates.js";
 import {
   addWard,
   attachArea,
@@ -37,8 +37,11 @@ import {
   getRawPayload,
   getStructure,
   loadFacts,
+  moveWardToStake,
   renameCanonical,
   renameStake,
+  renameWard,
+  retireWard,
   seedCrosswalk,
   setCanonicalRetired,
   setConfig,
@@ -93,6 +96,7 @@ const ADMIN_WRITE_PREFIXES = [
   "/api/crosswalk",
   "/api/seed",
   "/api/stake/",
+  "/api/ward/",
   "/api/recipients",
   "/api/admins",
 ];
@@ -536,12 +540,15 @@ app.post("/api/rollover/:week/apply", async (c) => {
     }[];
     wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
     retire?: { imosAreaId: number; canonicalAreaKey: string; validFrom: string }[];
+    /** the actual transfer day, for the record; mappings are still dated by reporting week */
+    transferDate?: string;
   }>();
   const res = await applyRollover(c.env.DB, c.get("user"), {
     validFrom: b.validFrom || week,
     areas: b.areas ?? [],
     wards: b.wards ?? [],
     retire: b.retire ?? [],
+    transferDate: isIsoDate(b.transferDate) ? b.transferDate : null,
   });
   await bumpData(c.env);
   return c.json({ ok: true, applied: res, plan: await buildRollover(c.env.DB, week, areaKey) });
@@ -587,6 +594,49 @@ app.post("/api/crosswalk/ward/close", async (c) => {
   await audit(c.env.DB, c.get("user"), "crosswalk.ward.close", b);
   await bumpData(c.env);
   return c.json({ ok: true });
+});
+
+// --- ward events (Admin → Areas & wards quick actions) -----------------
+app.post("/api/ward/move", async (c) => {
+  const b = await c.req.json<{ wardUnitIds: number[]; stake: string; validFrom: string }>();
+  const stake = String(b.stake ?? "").trim();
+  const ids = (Array.isArray(b.wardUnitIds) ? b.wardUnitIds : []).filter((n) => Number.isInteger(n));
+  if (!stake || ids.length === 0 || !isIsoDate(b.validFrom)) {
+    throw new HTTPException(400, { message: "wardUnitIds[], stake and validFrom (YYYY-MM-DD) are required" });
+  }
+  let changed = 0;
+  const unknown: number[] = [];
+  for (const id of ids) {
+    const n = await moveWardToStake(c.env.DB, id, stake, b.validFrom);
+    if (n === 0) unknown.push(id);
+    changed += n;
+  }
+  await audit(c.env.DB, c.get("user"), "ward.move", { ids, stake, validFrom: b.validFrom, changed });
+  await bumpData(c.env);
+  return c.json({ ok: true, changed, unknown });
+});
+
+app.post("/api/ward/rename", async (c) => {
+  const b = await c.req.json<{ wardUnitId: number; wardName: string }>();
+  const name = String(b.wardName ?? "").trim();
+  if (!Number.isInteger(b.wardUnitId) || !name) {
+    throw new HTTPException(400, { message: "wardUnitId and wardName are required" });
+  }
+  const changed = await renameWard(c.env.DB, b.wardUnitId, name);
+  await audit(c.env.DB, c.get("user"), "ward.rename", { ...b, changed });
+  await bumpData(c.env);
+  return c.json({ ok: true, changed });
+});
+
+app.post("/api/ward/retire", async (c) => {
+  const b = await c.req.json<{ wardUnitId: number; validTo: string }>();
+  if (!Number.isInteger(b.wardUnitId) || !isIsoDate(b.validTo)) {
+    throw new HTTPException(400, { message: "wardUnitId and validTo (YYYY-MM-DD) are required" });
+  }
+  const changed = await retireWard(c.env.DB, b.wardUnitId, b.validTo);
+  await audit(c.env.DB, c.get("user"), "ward.retire", { ...b, changed });
+  await bumpData(c.env);
+  return c.json({ ok: true, changed });
 });
 
 app.post("/api/stake/rename", async (c) => {

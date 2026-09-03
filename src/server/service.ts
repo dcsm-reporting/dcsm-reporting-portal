@@ -331,6 +331,8 @@ export interface RolloverApply {
   wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
   /** open mappings to close at validFrom; the canonical area is retired when no open id remains */
   retire?: { imosAreaId: number; canonicalAreaKey: string; validFrom: string }[];
+  /** the actual transfer day (usually the Thursday), recorded in the mapping note and audit log */
+  transferDate?: string | null;
 }
 
 export async function applyRollover(
@@ -339,6 +341,7 @@ export async function applyRollover(
   body: RolloverApply,
 ): Promise<{ areas: number; wards: number; closed: number; retired: number; skipped: string[] }> {
   const vf = body.validFrom;
+  const note = body.transferDate ? `rollover (transfer ${body.transferDate})` : "rollover";
   const skipped: string[] = [];
   for (const a of body.areas) {
     // a hand-typed key: fold it to the slug form every other key uses
@@ -350,7 +353,7 @@ export async function applyRollover(
     if (a.isNew || !(await canonicalKeyExists(db, key))) {
       await createCanonicalArea(db, key, a.displayName || a.canonicalAreaKey, vf);
     }
-    await attachArea(db, a.imosAreaId, key, vf, "rollover");
+    await attachArea(db, a.imosAreaId, key, vf, note);
   }
   for (const w of body.wards) {
     const key = slug(w.canonicalAreaKey);
@@ -385,6 +388,7 @@ export async function applyRollover(
   }
   await audit(db, actor, "rollover.apply", {
     validFrom: vf,
+    transferDate: body.transferDate ?? null,
     areas: body.areas.length,
     wards: body.wards.length - skipped.filter((s) => s.startsWith("ward")).length,
     closed,

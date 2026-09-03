@@ -36,6 +36,11 @@ function RolloverBody({
   const [wardSel, setWardSel] = useState<Set<number>>(new Set());
   const [goneSel, setGoneSel] = useState<Set<number>>(new Set());
   const [zoneMsg, setZoneMsg] = useState<string | null>(null);
+  // the actual transfer day, usually the Thursday of the week; recorded, not used for dating
+  const [transferDate, setTransferDate] = useState(() => {
+    const thu = new Date(Date.parse(`${week}T00:00:00Z`) + 3 * 86_400_000);
+    return thu.toISOString().slice(0, 10);
+  });
   const [areaOv, setAreaOv] = useState<Record<number, AreaOverride>>({});
   const [wardOv, setWardOv] = useState<Record<number, WardOverride>>({});
   const [busy, setBusy] = useState(false);
@@ -84,6 +89,7 @@ function RolloverBody({
         retire: plan.vanished
           .filter((v) => goneSel.has(v.imosAreaId))
           .map((v) => ({ imosAreaId: v.imosAreaId, canonicalAreaKey: v.canonicalAreaKey, validFrom: v.validFrom })),
+        transferDate: transferDate || undefined,
       };
       const res = await api.applyRollover(week, body);
       setMsg(
@@ -453,10 +459,19 @@ function RolloverBody({
                 (goneSel.size ? ` + close ${goneSel.size} gone` : "") +
                 ` effective ${week}`}
           </button>
-          <span className="muted" style={{ fontSize: ".8rem" }}>
-            Effective-dated from {week}; earlier weeks keep their old mapping.
-          </span>
+          <label className="row" style={{ gap: ".4rem", fontSize: ".8rem" }}>
+            <span className="muted">Transfer day</span>
+            <input type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} style={{ fontSize: ".8rem" }} />
+          </label>
         </div>
+      )}
+      {(unmappedAreas.length > 0 || plan.wards.length > 0 || plan.vanished.length > 0) && (
+        <p className="muted" style={{ fontSize: ".8rem", maxWidth: "80ch" }}>
+          Mappings are dated by reporting week, so everything above takes effect from Monday {week}
+          and earlier weeks keep their old mapping. The transfer day is written into the record for
+          anyone reading the history later; it does not change any number, because numbers are only
+          ever stored per week.
+        </p>
       )}
     </>
   );

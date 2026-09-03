@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, type EmailTemplate, type StakeRecipient } from "../../api.js";
+import { api, type EmailTemplate, type StakeRecipient, type StakeReportLayout } from "../../api.js";
 import { buildEmail } from "../../publish/email.js";
-import { ErrorNote, Loading, useAsync } from "../../lib.js";
+import { StakeReportDoc } from "../../publish/stakeReport.js";
+import { ErrorNote, KI_CODE, KI_IDS, KI_NAME, Loading, useAsync, useWeek } from "../../lib.js";
+import { DEFAULT_STAKE_REPORT_LAYOUT, SECTION_LABELS } from "@shared/reportLayout";
+import "../../publish/publish.css";
 
 export function RecipientsPage() {
   const { data, err, loading, reload } = useAsync(() => api.recipients(), []);
@@ -16,12 +19,16 @@ export function RecipientsPage() {
 
   return (
     <>
-      <h3 style={{ margin: 0 }}>Stake-report email</h3>
+      <h3 style={{ margin: 0 }}>Stake-president reports</h3>
       <p className="muted" style={{ fontSize: ".85rem", maxWidth: "72ch" }}>
-        Everything the Publish page's "Open in Gmail" link uses. Comma-separate multiple addresses.
+        What the report contains, the cover email that carries it, and who each stake's copy goes
+        to. All of it is settings, not code: change it here and the Publish page follows.
       </p>
       {msg && <div className="note">{msg}</div>}
 
+      <LayoutEditor onSaved={(m) => flash(m)} />
+
+      <h4 style={{ marginTop: "2rem", fontWeight: 600 }}>Cover email</h4>
       <CcEditor initial={data.ccAll} onSaved={(m) => (flash(m), reload())} />
 
       <TemplateEditor
@@ -41,6 +48,192 @@ export function RecipientsPage() {
         <StakeRow key={r.stake} row={r} onSaved={(m) => (flash(m), reload())} />
       ))}
     </>
+  );
+}
+
+/**
+ * The report's sections, order, and options, with a live preview on the
+ * latest week's first stake. Saved to config `stake_report_layout`.
+ */
+function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
+  const { week } = useWeek();
+  const cfg = useAsync(() => api.config(), []);
+  const pub = useAsync(() => (week ? api.publish(week) : Promise.resolve(null)), [week]);
+  const [draft, setDraft] = useState<StakeReportLayout | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [previewStake, setPreviewStake] = useState<string>("");
+
+  useEffect(() => {
+    if (cfg.data) setDraft(cfg.data.config.stakeReportLayout ?? DEFAULT_STAKE_REPORT_LAYOUT);
+  }, [cfg.data]);
+
+  if (cfg.loading || !draft) return <Loading what="the report layout" />;
+  const saved = cfg.data?.config.stakeReportLayout ?? DEFAULT_STAKE_REPORT_LAYOUT;
+  const L = draft;
+  const set = (patch: Partial<StakeReportLayout>) => setDraft({ ...L, ...patch });
+  const moveSection = (i: number, d: -1 | 1) => {
+    const arr = [...L.sections];
+    const j = i + d;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+    set({ sections: arr });
+  };
+  const reports = pub.data?.reports ?? [];
+  const r = reports.find((x) => x.stake === previewStake) ?? reports[0];
+
+  const save = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.setConfig("stake_report_layout", L);
+      setEditing(false);
+      onSaved("Report layout saved. Publish uses it from now on.");
+      cfg.reload();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="drawer">
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <strong>What the report contains</strong>
+        <EditToggle
+          editing={editing}
+          busy={busy}
+          onEdit={() => setEditing(true)}
+          onCancel={() => (setDraft(saved), setEditing(false), setErr(null))}
+          onSave={save}
+        />
+      </div>
+      <p className="muted" style={{ fontSize: ".8rem", maxWidth: "76ch" }}>
+        Tick the sections the president wants, put them in order, and choose which indicators the
+        table and trend show. The preview below is the real latest-week report for one stake. A new
+        <em> kind</em> of section (a chart, a different table) still needs a developer; the file to
+        change is named at the top of <code>src/web/publish/stakeReport.tsx</code>.
+      </p>
+      {err && <div className="note stop">{err}</div>}
+
+      {editing && (
+        <div className="row" style={{ alignItems: "flex-start", gap: "2rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+          <div>
+            <div className="muted mono" style={{ fontSize: ".72rem" }}>SECTIONS, IN ORDER</div>
+            <table className="grid" style={{ maxWidth: 460 }}>
+              <tbody>
+                {L.sections.map((s, i) => (
+                  <tr key={s.id}>
+                    <td style={{ width: "2rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={s.enabled}
+                        onChange={(e) =>
+                          set({ sections: L.sections.map((x) => (x.id === s.id ? { ...x, enabled: e.target.checked } : x)) })
+                        }
+                      />
+                    </td>
+                    <td style={{ textAlign: "left" }}>{SECTION_LABELS[s.id]}</td>
+                    <td style={{ width: "6rem" }}>
+                      <button className="btn" onClick={() => moveSection(i, -1)} disabled={i === 0}>↑</button>{" "}
+                      <button className="btn" onClick={() => moveSection(i, 1)} disabled={i === L.sections.length - 1}>↓</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="muted mono" style={{ fontSize: ".72rem", marginTop: "1rem" }}>INDICATORS SHOWN</div>
+            <div className="row" style={{ gap: ".4rem 1rem" }}>
+              {KI_IDS.map((ki) => (
+                <label key={ki} className="row" style={{ gap: ".3rem" }} title={KI_NAME[ki]}>
+                  <input
+                    type="checkbox"
+                    checked={L.kis.includes(ki)}
+                    onChange={(e) =>
+                      set({ kis: e.target.checked ? [...KI_IDS].filter((k) => k === ki || L.kis.includes(k)) : L.kis.filter((k) => k !== ki) })
+                    }
+                  />
+                  <span className="mono" style={{ fontSize: ".8rem" }}>{KI_CODE[ki]}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="row" style={{ marginTop: "1rem", gap: "1rem" }}>
+              <label className="field" style={{ margin: 0 }}>
+                <span className="k mono">Trend weeks</span>
+                <input type="number" min={4} max={26} value={L.trendWeeks} onChange={(e) => set({ trendWeeks: parseInt(e.target.value, 10) || 12 })} style={{ width: 80 }} />
+              </label>
+              <label className="field" style={{ margin: 0 }}>
+                <span className="k mono">Baptized, months back</span>
+                <input type="number" min={1} max={24} value={L.baptizedMonths} onChange={(e) => set({ baptizedMonths: parseInt(e.target.value, 10) || 6 })} style={{ width: 80 }} />
+              </label>
+            </div>
+
+            <div className="muted mono" style={{ fontSize: ".72rem", marginTop: "1rem" }}>HEADLINE TILES</div>
+            <div className="row" style={{ gap: ".4rem 1rem" }}>
+              {(["baptizedThisMonth", "baptizedThisYear", "onDate"] as const).map((k) => (
+                <label key={k} className="row" style={{ gap: ".3rem" }}>
+                  <input type="checkbox" checked={L.stats[k]} onChange={(e) => set({ stats: { ...L.stats, [k]: e.target.checked } })} />
+                  <span style={{ fontSize: ".85rem" }}>
+                    {k === "baptizedThisMonth" ? "Baptized this month" : k === "baptizedThisYear" ? "Baptized this year" : "On a baptismal date"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="muted mono" style={{ fontSize: ".72rem", marginTop: "1rem" }}>ON-DATE LIST COLUMNS</div>
+            <div className="row" style={{ gap: ".4rem 1rem" }}>
+              {(["ward", "church2x", "calendar"] as const).map((k) => (
+                <label key={k} className="row" style={{ gap: ".3rem" }}>
+                  <input type="checkbox" checked={L.onDate[k]} onChange={(e) => set({ onDate: { ...L.onDate, [k]: e.target.checked } })} />
+                  <span style={{ fontSize: ".85rem" }}>{k === "ward" ? "Ward" : k === "church2x" ? "Church 2×" : "Calendar"}</span>
+                </label>
+              ))}
+              <label className="row" style={{ gap: ".3rem" }}>
+                <input type="checkbox" checked={L.showUnverified} onChange={(e) => set({ showUnverified: e.target.checked })} />
+                <span style={{ fontSize: ".85rem" }}>Flag unverified legacy names</span>
+              </label>
+            </div>
+
+            <div className="field" style={{ marginTop: "1rem", maxWidth: 460 }}>
+              <label>Subtitle line ({"{week}"} = the week label)</label>
+              <input value={L.subtitle} onChange={(e) => set({ subtitle: e.target.value })} />
+            </div>
+            <div className="field" style={{ maxWidth: 460 }}>
+              <label>Introductory paragraph (shown when that section is ticked)</label>
+              <textarea className="paste" style={{ minHeight: 70 }} value={L.introText} onChange={(e) => set({ introText: e.target.value })} />
+            </div>
+            <div className="field" style={{ maxWidth: 460 }}>
+              <label>Closing note (shown when that section is ticked)</label>
+              <textarea className="paste" style={{ minHeight: 70 }} value={L.noteText} onChange={(e) => set({ noteText: e.target.value })} />
+            </div>
+            <button className="btn" onClick={() => setDraft(DEFAULT_STAKE_REPORT_LAYOUT)}>Reset to default</button>
+          </div>
+        </div>
+      )}
+
+      <div className="row" style={{ justifyContent: "space-between", marginTop: "1rem" }}>
+        <span className="muted mono" style={{ fontSize: ".72rem" }}>
+          PREVIEW{editing ? " (unsaved draft)" : ""}{pub.data ? ` · ${pub.data.weekLabel}` : ""}
+        </span>
+        {reports.length > 1 && (
+          <select value={r?.stake ?? ""} onChange={(e) => setPreviewStake(e.target.value)} style={{ fontSize: ".8rem" }}>
+            {reports.map((x) => <option key={x.stake} value={x.stake}>{x.stake}</option>)}
+          </select>
+        )}
+      </div>
+      {pub.loading && <Loading what="a preview" />}
+      {pub.err && <ErrorNote err={pub.err} />}
+      {r && pub.data && (
+        <div className="publish-preview" style={{ overflow: "auto", maxHeight: 640 }}>
+          <StakeReportDoc r={r} weekLabel={pub.data.weekLabel} generatedAt={pub.data.generatedAt} layout={L} />
+        </div>
+      )}
+      {!pub.loading && !r && <p className="muted">Import a week to see a preview.</p>}
+    </div>
   );
 }
 

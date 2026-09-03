@@ -5,8 +5,9 @@ import type {
   ZoneGrid,
 } from "@pipeline/types";
 import type { EmailTemplate } from "@shared/emailTemplate";
+import type { StakeReportLayout } from "@shared/reportLayout";
 
-export type { EmailTemplate };
+export type { EmailTemplate, StakeReportLayout };
 
 async function jget<T>(url: string): Promise<T> {
   const r = await fetch(url, { headers: { accept: "application/json" } });
@@ -205,6 +206,12 @@ export const api = {
     }),
   renameStake: (from: string, to: string) =>
     jpost<{ ok: true; changed: number }>("/api/stake/rename", { from, to }),
+  moveWards: (wardUnitIds: number[], stake: string, validFrom: string) =>
+    jpost<{ ok: true; changed: number; unknown: number[] }>("/api/ward/move", { wardUnitIds, stake, validFrom }),
+  renameWard: (wardUnitId: number, wardName: string) =>
+    jpost<{ ok: true; changed: number }>("/api/ward/rename", { wardUnitId, wardName }),
+  retireWard: (wardUnitId: number, validTo: string) =>
+    jpost<{ ok: true; changed: number }>("/api/ward/retire", { wardUnitId, validTo }),
   seed: (weekStart: string, validFrom?: string) =>
     jpost<{ ok: true; validFrom: string; counts: Record<string, number>; unresolved: string[] }>(
       "/api/seed",
@@ -312,6 +319,7 @@ export interface PublishView {
   };
   reports: StakeReport[];
   emailTemplate: EmailTemplate;
+  layout?: StakeReportLayout;
   /** active on-date / recently baptized friends whose stake matches no report */
   unassigned?: {
     name: string;
@@ -445,6 +453,7 @@ export interface PortalConfig {
   zoneExclude: string[];
   bands: { goalPct: { low: number; mid: number }; mlcShare: { low: number; mid: number } };
   areaBand: { low: number; high: number };
+  stakeReportLayout?: StakeReportLayout;
 }
 export interface ConfigResponse {
   config: PortalConfig;
@@ -458,6 +467,8 @@ export interface StructureArea {
   displayName: string;
   createdAt: string;
   retiredAt: string | null;
+  zone: string | null;
+  lastSeen: string | null;
   mappings: {
     imosAreaId: number;
     imosAreaName: string;
@@ -475,11 +486,21 @@ export interface StructureArea {
     open: boolean;
   }[];
 }
+export interface StructureWard {
+  wardUnitId: number;
+  wardName: string;
+  stake: string;
+  areas: { key: string; displayName: string }[];
+  since: string;
+  lastSeen: string | null;
+}
 export interface Structure {
   areas: StructureArea[];
+  wards: StructureWard[];
   stakes: string[];
   zones: string[];
   positionsSeen: string[];
+  latestWeek: string | null;
 }
 
 // --- rollover -----------------------------------------------
@@ -546,4 +567,5 @@ export interface RolloverApplyBody {
   areas: { imosAreaId: number; canonicalAreaKey: string; isNew: boolean; displayName: string }[];
   wards: { orgId: number; canonicalAreaKey: string; wardName: string; stake: string }[];
   retire?: { imosAreaId: number; canonicalAreaKey: string; validFrom: string }[];
+  transferDate?: string;
 }

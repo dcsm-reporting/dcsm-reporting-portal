@@ -280,7 +280,7 @@ function Reports({ data }: { data: PublishView }) {
       )}
 
       <div className="publish-preview print-target" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
-        <StakeReportDoc ref={ref} r={r} weekLabel={data.weekLabel} generatedAt={data.generatedAt} />
+        <StakeReportDoc ref={ref} r={r} weekLabel={data.weekLabel} generatedAt={data.generatedAt} layout={data.layout} />
       </div>
     </>
   );

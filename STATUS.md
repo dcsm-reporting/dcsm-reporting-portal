@@ -2,6 +2,32 @@
 
 _Last updated: 2026-09-03 — hardening round: import correctness, mission-time-zone dates, sheet hygiene, gap detection, optional Access token check._
 
+## 2026-09-03 "easy to adjust" round
+
+Noah's questions: how modular is the stake report, how easy are ward and
+stake changes, what should the Areas page show, does the rollover date match
+the transfer day. Answers, now built:
+
+- **The stake report is configuration.** Admin → Stake reports → "What the
+  report contains": sections on/off and in order, which indicators, trend
+  weeks, months of baptisms, headline tiles, on-date columns, an intro
+  paragraph, a closing note, the subtitle, with a live preview on real data.
+  Stored as `stake_report_layout`, validated on save, repaired on read. A new
+  *kind* of section is still code: `src/shared/reportLayout.ts` + one case in
+  `src/web/publish/stakeReport.tsx`.
+- **Areas & wards is organised by event.** Quick actions at the top: wards
+  moved to a stake (boundary change, new stake, merge; multi-select; a new
+  stake is just a new name), ward renamed / branch became a ward, ward
+  dissolved, stake renamed, and a pointer to Rollover for teaching-area
+  changes. Two views: teaching areas (zone, IMOS id, ward names, stake, last
+  reported, status) and wards (stake, covered by, org id, stake since, last
+  reported). Endpoints `/api/ward/move|rename|retire`, admin-gated,
+  effective-dated by reporting week.
+- **Rollover records the transfer day.** Mappings stay dated by reporting
+  week (numbers only exist per week); the actual transfer day (defaults to
+  the Thursday) is written into each mapping's note and the audit log.
+- `docs/longevity.md`: the list.
+
 ## 2026-09-03 transfer-proofing round
 
 Measured on the twelve stored weeks (including the 27 August restructure):
