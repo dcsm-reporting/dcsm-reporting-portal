@@ -1,13 +1,21 @@
 /**
- * DCSM KI Slides — declarative render engine
+ * DCSM MLC Slides — declarative render engine
  * Washington DC South Mission · Office Elders
  *
- * Format lives here as constants. Data comes from the KI spreadsheets.
+ * Format lives here as constants. The weekly and 4-week numbers come from
+ * the WDCSM Reporting portal (GET /api/slides/weekly and /monthly); the
+ * baptismal-date rosters come straight from the Baptisms (MLC) sheet.
  * Slides are drawn from scratch every run. No slide is ever read as a
  * style source, and no geometry is inferred from existing shapes.
  *
- * Zones are discovered from the sheets, not hardcoded. Retiring a zone:
- * hide its tab, or add the name to SRC.ZONE_EXCLUDE.
+ * Zones, their order, and any excluded zone come from the portal
+ * (Admin → Reporting settings), so a transfer needs no change here. A
+ * zone with no roster tab in Baptisms (MLC) still appears on the mission
+ * slide; only its zone slide is skipped, and the log says so.
+ *
+ * SETUP (once): Project Settings → Script Properties
+ *     PORTAL_URL      https://dcsm-ki-portal.dcsm-reporting.workers.dev
+ *     SLIDES_SECRET   the value set with `wrangler secret put SLIDES_READ_SECRET`
  *
  * buildSpecs_() produces the complete slide list, in the order they will
  * be drawn: zones first, then MLC share, then the mission overview. Both
@@ -17,7 +25,7 @@
  * separately, after drawing, by pinSocialMediaSlideToEnd_().
  *
  * DIAGNOSTICS (write nothing):
- *   dumpAll()          raw grids of all source sheets
+ *   dumpPortal()       the numbers the portal returned, both modes
  *   dumpRosters()      baptismal-date rosters, per zone
  *   dryRun()           previews every slide, cell by cell
  *
@@ -26,8 +34,6 @@
  *   refreshMonthly()   4-week totals — zones + MLC share + mission overview
  *   refreshAll()       both
  *
- * Column layouts verified against live sheets 8/7/2026.
- *
  * !! DECK below points at the LIVE decks. Swap in test copies before
  *    experimenting.
  */
@@ -35,19 +41,15 @@
 /*** DATA SOURCES ***/
 
 var SRC = {
-  SS_THIS_WEEK: '1qkwjuoixiU32aC3KxYp-OsUP8eoqRCAUjq1xn88IP0g',
-  TAB_THIS_WEEK: "This Week's KIs",
-
-  SS_LAST4: '15QK5QPKvX_COSu6BlKgjKIl0udJSYDvuOR018_gljUo',
-  TAB_LAST4_SUFFIX: ' Formatted',
-
-  SS_KI_REPORT: '1RRQ0kdRPZ7Ht20APVOn2BSC7_uA5-pe8OTMXcoVOzm8',
-  TAB_LEADERSHIP: 'LeadershipKIs',
+  /**
+   * Leave blank to build the latest week imported into the portal. Set a
+   * Monday ("2026-08-24") to rebuild a past week's deck, then blank it again.
+   */
+  WEEK: '',
 
   /**
-   * Baptisms (MLC). One tab per zone, named "[Zone] Formatting".
-   * The Last 4 Weeks book uses "Formatted" instead — the matcher below
-   * accepts either so a rename in one book can't silently blank a deck.
+   * Baptisms (MLC). One tab per zone, named "[Zone] Formatting"
+   * ("[Zone] Formatted" is accepted too, so a rename cannot blank a deck).
    *
    *   B2 zone name   D2 goal string ("4/8" = completed of goal)
    *   row 3 headers  row 4+ people, columns B through H
@@ -60,34 +62,16 @@ var SRC = {
   NAME_PARTICLES: /^(de|del|la|las|los|y|da|das|do|dos|van|von|di|el|al|bin)$/i,
 
   /**
-   * Key indicators in slide order.
+   * Key indicators in slide order. The portal sends exactly these codes
+   * (its KI_DECK_LABEL table); fetchPortal_() refuses a response that lacks one.
    *   BC  Baptized and Confirmed
    *   BD  Baptismal Date
-   *   SAC Sacrament Attendance                (sheets call this SA)
+   *   SAC Sacrament Attendance
    *   NP  New People Found
-   *   LWM Lessons with Member Participation   (sheets call this LMP)
-   *   RCA Recent Convert Attendance           (sheets call this NMS)
+   *   LWM Lessons with Member Participation
+   *   RCA Recent Convert Attendance
    */
-  KIS: ['BC', 'BD', 'SAC', 'NP', 'LWM', 'RCA'],
-
-  /**
-   * Column layout per KI, as offsets from the first data column of the
-   * range being read. Verified 8/3/2026 against both sheets: each KI
-   * occupies three columns in the order goal, actual, percent, starting
-   * one column right of the row label.
-   *
-   *   This Week's KIs     B=zone, C=BC goal, D=BC actual, E=BC pct, ...
-   *   [Zone] Formatted    B=week, C=BC goal, D=BC actual, E=BC pct, ...
-   */
-  LAYOUT_WEEK:  { FIRST: 1, STRIDE: 3, GOAL_OFF: 0, ACT_OFF: 1 },
-  LAYOUT_LAST4: { FIRST: 1, STRIDE: 3, GOAL_OFF: 0, ACT_OFF: 1 },
-
-  ZONE_ORDER: [
-    'Alexandria', 'Annandale', 'Bull Run', 'Great Falls', 'Langley',
-    'Loudoun', 'Woodbridge', 'Bella Vista East', 'Bella Vista West'
-  ],
-
-  ZONE_EXCLUDE: ['Bella Vista North']
+  KIS: ['BC', 'BD', 'SAC', 'NP', 'LWM', 'RCA']
 };
 
 /*** FORMAT — the single source of design truth ***/
@@ -412,22 +396,25 @@ function buildSpecs_(mode) {
   }
 
   // 2 — MLC share. Always this-week / last-week, in both decks.
-  try {
-    var mlc = readMLC_();
+  //     goal = mission total, actual = MLC areas; the portal sends it that way.
+  if (data.mlc && data.mlc.thisWeek) {
+    if (!data.mlc.lastWeek) {
+      notes.push('NOTE: the portal has no earlier week; the LAST WEEK block shows zeros.');
+    }
     specs.push({
       kind: 'mlc',
       title: 'MLC Key Indicators',
       subtitle: data.subtitle,
       colHeaders: SRC.KIS.slice(),
       blocks: [
-        { label: 'THIS WEEK', kis: mlc.thisWeek },
-        { label: 'LAST WEEK', kis: mlc.lastWeek }
+        { label: 'THIS WEEK', kis: data.mlc.thisWeek },
+        { label: 'LAST WEEK', kis: data.mlc.lastWeek || zeroKis_() }
       ],
       bands: FMT.BANDS_SHARE,
       legend: FMT.LEGEND_SHARE
     });
-  } catch (e) {
-    notes.push('MLC slide skipped: ' + e.message);
+  } else {
+    notes.push('MLC slide skipped: the portal response had no MLC figures.');
   }
 
   // 3 — Mission overview last among the autogenerated slides: zones down
@@ -1045,103 +1032,81 @@ function isSoon_(v, win) {
   return d >= win.from && d <= win.to;
 }
 
-/** Reads one row into {KI: {goal, actual}} using the given column layout. */
-function parseKIRow_(row, layout) {
-  var L = layout || SRC.LAYOUT_WEEK;
-  var out = {};
-  for (var i = 0; i < SRC.KIS.length; i++) {
-    var base = L.FIRST + i * L.STRIDE;
-    out[SRC.KIS[i]] = {
-      goal:   num_(row[base + L.GOAL_OFF]),
-      actual: num_(row[base + L.ACT_OFF])
-    };
+/*** PORTAL READER ***/
+
+/**
+ * GET {PORTAL_URL}/api/slides/{mode}[?week=] with the bearer secret.
+ * The response is numbers only (see src/server/slides.ts in the portal
+ * repository for the shape). Throws with the portal's message on anything
+ * but 200, and names the usual causes.
+ */
+function fetchPortal_(mode) {
+  var props = PropertiesService.getScriptProperties();
+  var base = props.getProperty('PORTAL_URL');
+  var secret = props.getProperty('SLIDES_SECRET');
+  if (!base || !secret) {
+    throw new Error('Set PORTAL_URL and SLIDES_SECRET in Project Settings → Script Properties.');
   }
+
+  var path = '/api/slides/' + mode + (SRC.WEEK ? '?week=' + encodeURIComponent(SRC.WEEK) : '');
+  var res = UrlFetchApp.fetch(base.replace(/\/+$/, '') + path, {
+    method: 'get',
+    headers: { Authorization: 'Bearer ' + secret },
+    muteHttpExceptions: true
+  });
+  var code = res.getResponseCode();
+  var body = res.getContentText();
+  if (code !== 200) {
+    var msg = body;
+    try { msg = JSON.parse(body).error || body; } catch (e) {}
+    var hint = code === 401 ? ' (check SLIDES_SECRET)'
+             : /<html/i.test(body) ? ' (Cloudflare Access is in the way: add a Bypass rule for the path api/slides)'
+             : '';
+    throw new Error('Portal ' + path + ' answered ' + code + ': ' + String(msg).slice(0, 200) + hint);
+  }
+  var data;
+  try { data = JSON.parse(body); } catch (e) { throw new Error('Portal ' + path + ' did not return JSON.'); }
+  checkShape_(data, path);
+  return data;
+}
+
+/** Every zone and the mission row must carry all of SRC.KIS. */
+function checkShape_(data, path) {
+  if (!data || !Array.isArray(data.zones) || !data.mission) {
+    throw new Error('Portal ' + path + ' response is missing zones or mission.');
+  }
+  var rows = data.zones.map(function (z) { return z.kis; }).concat([data.mission]);
+  rows.forEach(function (kis) {
+    SRC.KIS.forEach(function (ki) {
+      if (!kis || !kis[ki] || typeof kis[ki].actual !== 'number') {
+        throw new Error('Portal ' + path + ' response lacks ' + ki + ' on a row; ' +
+                        'the portal and this script disagree on the indicator codes.');
+      }
+    });
+  });
+}
+
+function zeroKis_() {
+  var out = {};
+  SRC.KIS.forEach(function (ki) { out[ki] = { goal: 0, actual: 0 }; });
   return out;
 }
 
-/** The Monday on or before a date. */
-function mondayOf_(d) {
-  if (!(d instanceof Date)) return null;
-  var m = new Date(d.getTime());
-  m.setHours(0, 0, 0, 0);
-  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
-  return m;
-}
-
-/**
- * The Monday of the last COMPLETE week.
- *
- * The sheets label a week by the Monday on which it was compiled, so the
- * figures in a sheet stamped 8/3 describe 7/27–8/2. Slides therefore label
- * by the previous Monday, computed from today rather than read from the
- * sheet. checkWeekDrift_() catches the case where the sheet has not been
- * refreshed and the computed label would overstate how current it is.
- */
-function lastCompleteWeekMonday_() {
-  var m = mondayOf_(new Date());
-  m.setDate(m.getDate() - 7);
-  return m;
-}
-
-function weekLabel_(v) {
-  if (!(v instanceof Date)) return String(v || '');
-  return 'Week of ' + (v.getMonth() + 1) + '/' + v.getDate();
-}
-
-function checkWeekDrift_(sheetDate, shown, notes) {
-  if (!(sheetDate instanceof Date)) {
-    notes.push('WARNING: sheet week cell is not a date (' + sheetDate +
-               '); label falls back to the computed week.');
-    return;
+/** The roster whose tab name matches a portal zone name, ignoring case. */
+function rosterFor_(rosters, zone) {
+  if (rosters[zone]) return rosters[zone];
+  var want = String(zone).toLowerCase();
+  var keys = Object.keys(rosters);
+  for (var i = 0; i < keys.length; i++) {
+    if (keys[i].toLowerCase() === want) return rosters[keys[i]];
   }
-  var sheetWeek = mondayOf_(sheetDate);
-  sheetWeek.setDate(sheetWeek.getDate() - 7);
-  var days = Math.round((shown - sheetWeek) / 86400000);
-  if (days !== 0) {
-    notes.push('WARNING: label says ' + weekLabel_(shown) + ' but the sheet is ' +
-               'stamped ' + fmtDate_(sheetDate) + ', which covers ' +
-               weekLabel_(sheetWeek) + '. Off by ' + days + ' day(s) — refresh ' +
-               "This Week's KIs before publishing.");
-  }
+  return null;
 }
-
-function periodLabel_(dates) {
-  var tally = {}, best = '', bestN = 0;
-  dates.forEach(function (d) {
-    if (!(d instanceof Date)) return;
-    var key = Utilities.formatDate(d, Session.getScriptTimeZone(), 'MMMM yyyy');
-    tally[key] = (tally[key] || 0) + 1;
-    if (tally[key] > bestN) { bestN = tally[key]; best = key; }
-  });
-  return best;
-}
-
-function orderZones_(found, notes) {
-  var pref = SRC.ZONE_ORDER || [];
-  var known = pref.filter(function (z) { return found.indexOf(z) !== -1; });
-  var extra = found.filter(function (z) { return pref.indexOf(z) === -1; });
-
-  if (pref.length && extra.length) {
-    notes.push('New/unlisted zone(s), appended in sheet order: ' + extra.join(', '));
-  }
-  var missing = pref.filter(function (z) { return found.indexOf(z) === -1; });
-  if (missing.length) {
-    notes.push('Listed in ZONE_ORDER but not in the sheet: ' + missing.join(', '));
-  }
-  notes.push('Zones rendered (' + found.length + '): ' + known.concat(extra).join(', '));
-  return known.concat(extra);
-}
-
-function excluded_(zone) {
-  return (SRC.ZONE_EXCLUDE || []).indexOf(zone) !== -1;
-}
-
-/*** BAPTISMAL-DATE ROSTERS ***/
 
 /**
  * One tab per zone in Baptisms (MLC). Discovered by name, so a transfer
  * that changes who is on the list needs no code change; only a tab rename
- * would. Returns {zone: {goal, people[]}}.
+ * would. Hidden tabs are skipped. Returns {zone: {goal, people[]}}.
  */
 function readRosters_(notes) {
   var out = {};
@@ -1158,7 +1123,7 @@ function readRosters_(notes) {
     var m = name.match(SRC.ROSTER_TAB_RE);
     if (!m) return;
     var zone = m[1].trim();
-    if (sh.isSheetHidden() || excluded_(zone)) return;
+    if (sh.isSheetHidden()) return;
     out[zone] = readRoster_(sh, zone, notes);
     matched.push(name);
   });
@@ -1207,106 +1172,48 @@ function readRoster_(sh, zone, notes) {
 /*** GATHERERS ***/
 
 function gatherWeekly_() {
-  var notes = [];
-  var sh = SpreadsheetApp.openById(SRC.SS_THIS_WEEK).getSheetByName(SRC.TAB_THIS_WEEK);
-  if (!sh) throw new Error('Tab not found: ' + SRC.TAB_THIS_WEEK);
+  var data = fetchPortal_('weekly');
+  var notes = (data.notes || []).slice();
+  notes.push('Portal: ' + data.subtitle + ' (week of ' + data.week + '), ' +
+             data.zones.length + ' zone(s).');
 
-  var vals = sh.getRange('B2:T40').getValues();
-  var weekDate = vals[0][0];
-  var map = {}, found = [], skipped = [], mission = null;
-
-  for (var r = 1; r < vals.length; r++) {
-    var name = String(vals[r][0]).trim();
-    if (!name) continue;
-    if (/^mission$/i.test(name)) { mission = parseKIRow_(vals[r], SRC.LAYOUT_WEEK); continue; }
-    if (/^(total|totals)$/i.test(name)) continue;
-    if (excluded_(name)) { skipped.push(name); continue; }
-    map[name] = parseKIRow_(vals[r], SRC.LAYOUT_WEEK);
-    found.push(name);
-  }
-  if (!found.length) throw new Error('No zone rows found in ' + SRC.TAB_THIS_WEEK);
-  if (skipped.length) notes.push('Excluded zone(s): ' + skipped.join(', '));
-
-  var shown = lastCompleteWeekMonday_();
-  checkWeekDrift_(weekDate, shown, notes);
-
-  var order = orderZones_(found, notes);
   var rosters = readRosters_(notes);
+  var zoneNames = data.zones.map(function (z) { return z.name.toLowerCase(); });
+  var orphans = Object.keys(rosters).filter(function (k) {
+    return zoneNames.indexOf(k.toLowerCase()) === -1;
+  });
+  if (orphans.length) {
+    notes.push('Roster tab(s) with no matching zone in the portal (renamed?): ' + orphans.join(', '));
+  }
 
   return {
-    subtitle: weekLabel_(shown),
-    periodLabel: periodLabel_([shown]),
-    weekMonday: shown,
-    zones: order.map(function (z) {
-      return { name: z, kis: map[z], detail: null, roster: rosters[z] || null };
+    subtitle: data.subtitle,
+    zones: data.zones.map(function (z) {
+      return { name: z.name, kis: z.kis, detail: null, roster: rosterFor_(rosters, z.name) };
     }),
-    mission: mission || sumKis_(order.map(function (z) { return map[z]; })),
+    mission: data.mission,
+    mlc: data.mlc,
     notes: notes
   };
 }
 
 function gatherMonthly_() {
-  var notes = [];
-  var ss = SpreadsheetApp.openById(SRC.SS_LAST4);
-
-  var tabs = {}, found = [], skipped = [];
-  ss.getSheets().forEach(function (sh) {
-    var n = sh.getName();
-    if (n.slice(-SRC.TAB_LAST4_SUFFIX.length) !== SRC.TAB_LAST4_SUFFIX) return;
-    var zone = n.slice(0, n.length - SRC.TAB_LAST4_SUFFIX.length).trim();
-    if (!zone) return;
-    if (sh.isSheetHidden() || excluded_(zone)) { skipped.push(zone); return; }
-    tabs[zone] = sh;
-    found.push(zone);
-  });
-  if (!found.length) {
-    throw new Error('No tabs ending in "' + SRC.TAB_LAST4_SUFFIX + '" in Last 4 Weeks Report.');
-  }
-  if (skipped.length) notes.push('Excluded / hidden zone(s): ' + skipped.join(', '));
-
-  var order = orderZones_(found, notes);
-  var seenDates = [];
-
-  var zones = order.map(function (z) {
-    var vals = tabs[z].getRange('B2:T8').getValues();
-    var weeks = [];
-    for (var i = 1; i <= 4; i++) {
-      seenDates.push(vals[i][0]);
-      weeks.push({ label: weekLabel_(vals[i][0]), kis: parseKIRow_(vals[i], SRC.LAYOUT_LAST4) });
-    }
-    // Sheet lists newest first; slides read oldest left to newest right.
-    weeks.reverse();
-    return { name: z, kis: parseKIRow_(vals[6], SRC.LAYOUT_LAST4), detail: weeks };
-  });
-
-  var period = periodLabel_(seenDates);
+  var data = fetchPortal_('monthly');
+  var notes = (data.notes || []).slice();
+  notes.push('Portal: ' + data.subtitle + ', weeks of ' + (data.window || []).join(', ') + '.');
   return {
-    subtitle: period,
-    periodLabel: period,
-    zones: zones,
-    mission: sumKis_(zones.map(function (z) { return z.kis; })),
+    subtitle: data.subtitle,
+    zones: data.zones.map(function (z) {
+      return {
+        name: z.name,
+        kis: z.kis,
+        detail: (z.detail || []).map(function (w) { return { label: w.label, kis: w.kis }; })
+      };
+    }),
+    mission: data.mission,
+    mlc: data.mlc,
     notes: notes
   };
-}
-
-/**
- * MLC areas vs mission totals. goal = mission total, actual = MLC areas.
- * LeadershipKIs layout: R3:W3 mission this week, R4:W4 MLC this week,
- * R7:W7 mission last week, R8:W8 MLC last week.
- */
-function readMLC_() {
-  var sh = SpreadsheetApp.openById(SRC.SS_KI_REPORT).getSheetByName(SRC.TAB_LEADERSHIP);
-  if (!sh) throw new Error('Tab not found: ' + SRC.TAB_LEADERSHIP);
-  var v = sh.getRange('R3:W9').getValues();
-
-  function pair(missionRow, mlcRow) {
-    var out = {};
-    for (var i = 0; i < SRC.KIS.length; i++) {
-      out[SRC.KIS[i]] = { goal: num_(missionRow[i]), actual: num_(mlcRow[i]) };
-    }
-    return out;
-  }
-  return { thisWeek: pair(v[0], v[1]), lastWeek: pair(v[4], v[5]) };
 }
 
 function sumKis_(list) {
@@ -1348,65 +1255,30 @@ function fitNote_(m) {
          (m.overflow ? '   <-- last ' + m.hidden + ' spill off the bottom' : '');
 }
 
-function colLetter_(i) {
-  var s = '';
-  i += 1;
-  while (i > 0) {
-    var r = (i - 1) % 26;
-    s = String.fromCharCode(65 + r) + s;
-    i = Math.floor((i - 1) / 26);
-  }
-  return s;
-}
+/** The numbers the portal returned, both modes. */
+function dumpPortal() {
+  var out = [];
+  ['weekly', 'monthly'].forEach(function (mode) {
+    out.push('--- portal /api/slides/' + mode + ' ---');
+    var d;
+    try { d = fetchPortal_(mode); }
+    catch (e) { out.push('ERROR: ' + e.message); out.push(''); return; }
 
-function dumpRange_(sh, a1, label) {
-  var rng = sh.getRange(a1);
-  var vals = rng.getValues();
-  var startCol = rng.getColumn() - 1;
-  var startRow = rng.getRow();
-  var out = ['--- ' + label + '  [' + a1 + '] ---'];
-
-  var head = [];
-  for (var c = 0; c < vals[0].length; c++) head.push(padL_(colLetter_(startCol + c), 10));
-  out.push('      ' + head.join(''));
-
-  vals.forEach(function (row, r) {
-    var line = row.map(function (v) {
-      if (v instanceof Date) {
-        return padL_(Utilities.formatDate(v, Session.getScriptTimeZone(), 'M/d'), 10);
-      }
-      return padL_(String(v === '' ? '.' : v).slice(0, 9), 10);
-    }).join('');
-    out.push(padL_('r' + (startRow + r), 6) + line);
+    out.push('week ' + d.week + '   subtitle "' + d.subtitle + '"   weeks summed: ' +
+             (d.window || []).join(', '));
+    (d.notes || []).forEach(function (n) { out.push('  ' + n); });
+    var cell = function (k) { return function (c) { return padL_(c[k].actual + '/' + c[k].goal, 12); }; };
+    var line = function (label, kis) {
+      return pad_(label, 20) + SRC.KIS.map(function (k) { return cell(k)(kis); }).join('');
+    };
+    out.push(pad_('', 20) + SRC.KIS.map(function (k) { return padL_(k, 12); }).join(''));
+    d.zones.forEach(function (z) { out.push(line(z.name, z.kis)); });
+    out.push(line('MISSION', d.mission));
+    if (d.mlc && d.mlc.thisWeek) out.push(line('MLC this week', d.mlc.thisWeek));
+    if (d.mlc && d.mlc.lastWeek) out.push(line('MLC last week', d.mlc.lastWeek));
+    out.push('');
   });
-  return out.join('\n');
-}
-
-function dumpWeekly() {
-  var sh = SpreadsheetApp.openById(SRC.SS_THIS_WEEK).getSheetByName(SRC.TAB_THIS_WEEK);
-  if (!sh) throw new Error('Tab not found: ' + SRC.TAB_THIS_WEEK);
-  var text = dumpRange_(sh, 'A1:U16', SRC.TAB_THIS_WEEK);
-  Logger.log(text);
-  return text;
-}
-
-function dumpLast4() {
-  var ss = SpreadsheetApp.openById(SRC.SS_LAST4);
-  var sh = null;
-  ss.getSheets().forEach(function (s) {
-    if (!sh && s.getName().slice(-SRC.TAB_LAST4_SUFFIX.length) === SRC.TAB_LAST4_SUFFIX
-        && !s.isSheetHidden()) sh = s;
-  });
-  if (!sh) throw new Error('No visible "' + SRC.TAB_LAST4_SUFFIX + '" tab found.');
-  var text = dumpRange_(sh, 'A1:U10', sh.getName());
-  Logger.log(text);
-  return text;
-}
-
-function dumpMLC() {
-  var sh = SpreadsheetApp.openById(SRC.SS_KI_REPORT).getSheetByName(SRC.TAB_LEADERSHIP);
-  if (!sh) throw new Error('Tab not found: ' + SRC.TAB_LEADERSHIP);
-  var text = dumpRange_(sh, 'P1:X12', SRC.TAB_LEADERSHIP);
+  var text = out.join('\n');
   Logger.log(text);
   return text;
 }
@@ -1439,8 +1311,7 @@ function dumpRosters() {
 
 function dumpAll() {
   var parts = [];
-  [['WEEKLY', dumpWeekly], ['LAST 4', dumpLast4],
-   ['MLC', dumpMLC], ['ROSTERS', dumpRosters]].forEach(function (p) {
+  [['PORTAL', dumpPortal], ['ROSTERS', dumpRosters]].forEach(function (p) {
     try { parts.push(p[1]()); }
     catch (e) { parts.push('--- ' + p[0] + ' ---\nERROR: ' + e.message); }
     parts.push('');

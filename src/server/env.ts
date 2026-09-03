@@ -9,6 +9,8 @@ export interface Env {
   ALLOWED_EMAILS?: string;
   /** Bearer secret the Baptisms-sheet Apps Script presents to POST /api/friends/sync. */
   FRIENDS_SYNC_SECRET?: string;
+  /** Bearer secret the Slides-deck Apps Script presents to GET /api/slides/:mode. */
+  SLIDES_READ_SECRET?: string;
   /**
    * Optional, set together: verify the Cf-Access-Jwt-Assertion header against
    * the team's published keys + this app's audience tag (see src/server/auth.ts).

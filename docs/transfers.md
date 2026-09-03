@@ -125,3 +125,10 @@ the Publish page.
 - **An IMOS id reused for a different area.** Never observed; ids look
   sequential. If it ever happens, close the old mapping at the week it changed
   and attach the id to the right canonical area from that week.
+
+## The Monday deck
+
+The MLC Slides script reads zones from the portal, so a transfer needs no
+change there. Rename or add the zone's "[Zone] Formatting" tab in Baptisms
+(MLC) to match the new zone name; the script's log names any mismatch.
+Details: `docs/slides-deck.md`.

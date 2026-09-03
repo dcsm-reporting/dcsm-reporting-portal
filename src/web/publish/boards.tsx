@@ -4,8 +4,7 @@ import type { KiCell, ZoneGrid } from "@pipeline/types";
 
 type Bands = { low: number; mid: number };
 
-/* Palette matches the Monday Slides deck (see resources/DCSM Key Indicator
-   Reports - Slides Refresh.gs) so the board images read the same as the deck. */
+/* Palette matches the Monday Slides deck (see apps_script/slides-refresh.gs) so the board images read the same as the deck. */
 const INK = "#1c2530";
 const SOFT = "#53606b";
 const FAINT = "#8a95a0";

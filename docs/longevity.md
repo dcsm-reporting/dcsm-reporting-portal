@@ -26,6 +26,7 @@ people able to run it. Written 2026-09-03. Add to it.
 | Cloudflare (Workers, D1, KV, Access) | Hosts the portal and the data | Signs in with the role Gmail |
 | GitHub `dcsm-reporting/dcsm-reporting-portal` | The code and, once armed, the weekly database backup | Signs in with the role Gmail; Noah added as admin collaborator |
 | `FRIENDS_SYNC_SECRET` | Lets the Baptisms sheet push to the portal | Rotate any time with `wrangler secret put`; paste the new value into the sheet's Script Properties |
+| `SLIDES_READ_SECRET` | Lets the Monday deck's script read the numbers | Same: rotate with `wrangler secret put`, paste into the Slides script's Script Properties (`docs/slides-deck.md`) |
 | Access AUD tag | Needed only if the token check is turned on | Zero Trust → Access → Applications |
 
 Nothing else. No personal account is load-bearing.
@@ -39,6 +40,9 @@ Nothing else. No personal account is load-bearing.
   (`CLOUDFLARE_API_TOKEN` with D1 Edit, `CLOUDFLARE_ACCOUNT_ID`). Then a
   SQL dump lands in the repository every Monday without anyone remembering.
 - **Turn on the Access token check**: `docs/access-token-check.md`.
+- **Wire the Monday deck to the portal**: `docs/slides-deck.md` (an Access
+  Bypass rule, one paste, two Script Properties). Until then the deck still
+  needs the old sheets filled by hand.
 - **Push every commit to GitHub.** The repository is the second copy of the
   code; the Worker is not a backup of itself.
 
@@ -56,6 +60,7 @@ validated on save so a mistake cannot take the portal down.
 | Which missionary positions make an MLC area, zone display order, zones excluded from mission totals, colour thresholds, expected active-area range | Admin → Reporting settings |
 | Who is an admin | Admin → Admin access |
 | Which tabs and columns the Baptisms sheet sync reads | The header-name table at the top of `apps_script/baptisms-sync.gs` (plain text, no code beyond the list) |
+| The Monday deck after a zone change | Nothing: it reads zones from the portal. Only the zone's roster tab in Baptisms (MLC) needs its name to match |
 
 ## 5. What needs a developer (or an AI session with the repository)
 
@@ -68,6 +73,7 @@ and point at the file.
 | A seventh Key Indicator the mission wants to report on | `src/shared/ki.ts` (id, code, name); every grid follows | an hour |
 | A new *kind* of section on the stake report (a chart, a different table) | `src/shared/reportLayout.ts` (id + label) and `renderSection` in `src/web/publish/stakeReport.tsx` | half a day |
 | A new board layout for the Monday deck | `src/web/publish/boards.tsx` | half a day |
+| A different slide layout in the Google Slides deck | `apps_script/slides-refresh.gs` (`FMT` constants and the `draw*_` functions; the data feed does not change) | half a day |
 | Zone renames that should keep one trend line across the rename (a zone alias table) | `src/server/config.ts` + `src/pipeline/rollup.ts` | half a day |
 | Missionary email domain changes | Not code: Zero Trust → Access policy | minutes |
 

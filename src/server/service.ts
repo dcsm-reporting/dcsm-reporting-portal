@@ -72,7 +72,7 @@ export function periodLabel(weekStarts: string[]): string {
   return `${name} ${y}`;
 }
 
-function recentWeeks(all: string[], upTo: string, n: number): string[] {
+export function recentWeeks(all: string[], upTo: string, n: number): string[] {
   return all.filter((w) => w <= upTo).slice(-n);
 }
 
@@ -86,7 +86,7 @@ export function orderedZones(names: Iterable<string>, zoneOrder: string[]): stri
 }
 
 /** Override each fact's is_mlc from the week's missionary snapshot + config. */
-function withMlc(facts: KiFact[], mlcIds: Set<number>): KiFact[] {
+export function withMlc(facts: KiFact[], mlcIds: Set<number>): KiFact[] {
   return facts.map((f) => (f.isMlc === mlcIds.has(f.areaId) ? f : { ...f, isMlc: mlcIds.has(f.areaId) }));
 }
 

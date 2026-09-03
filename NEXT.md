@@ -13,6 +13,10 @@ keep this running; the items below are work.
   warning about error-token rows until it is pasted.
 - **Turn on the Access token check** once you have the AUD tag in hand:
   `docs/access-token-check.md`. Two lines in `wrangler.toml`, one deploy.
+- **Wire the Monday deck to the portal.** Three steps in `docs/slides-deck.md`:
+  an Access Bypass rule for the path `api/slides`, paste
+  `apps_script/slides-refresh.gs` over the Slides script, set its two Script
+  Properties. Then `dumpPortal()` and `dryRun()` before the first `refreshWeekly()`.
 
 ## Ideas worth building (Noah asked for the unconstrained list, 2026-09-03)
 
@@ -41,38 +45,20 @@ Ranked by what they add per hour of work. None are started.
 6. **Missionary view.** A missionary's numbers across areas (from the
    snapshot table). Useful for MLC and for the president; sensitive, so
    admin-only. About a day.
-7. **Monday MLC Slides repoint** (below, unchanged).
-8. **Arm the weekly backup cron** (two GitHub secrets, five minutes). Not a
+7. **Arm the weekly backup cron** (two GitHub secrets, five minutes). Not a
    feature, but the cheapest durability left on the table.
 
 Deliberately not on the list: anything that sends email or messages on its
 own, anything that logs into IMOS, and a second database. Those are the
 things that made the previous systems fragile.
 
-## 1. Monday MLC Slides — repoint the weekly KIs to the portal
+## 1. Monday MLC Slides — DONE (2026-09-03)
 
-Keep the existing Apps Script (`resources/DCSM Key Indicator Reports - Slides
-Refresh.gs`) — the drawing engine works well. Only the **weekly KI numbers**
-still come from the retired reporting sheets; the rosters already come from
-Baptisms (MLC) directly.
-
-Plan (~half a day, low risk):
-
-- Add an Access-bypassed, bearer-authed read endpoint on the Worker:
-  `GET /api/slides/weekly` and `GET /api/slides/monthly`, returning exactly the
-  shape the script's `gatherWeekly_` / `gatherMonthly_` / `readMLC_` produce:
-  `{ subtitle, zones: [{ name, kis: { BC: {goal, actual}, ... } }], mission, mlc: { thisWeek, lastWeek } }`.
-  Auth pattern = `/api/friends/sync` (bearer `SLIDES_READ_SECRET`, path excluded
-  from the Access middleware).
-- In the script, replace those three gatherers with `UrlFetchApp.fetch` to the
-  endpoints. Leave the drawing code, roster reader, and social-media pinning
-  untouched.
-- New Worker secret `SLIDES_READ_SECRET`.
-- Update the script's stale `SRC.ZONE_ORDER` to the current ten zones
-  (`orderZones_` tolerates unknowns, but it should be right).
-- Test with the script's `dryRun()` before pointing it at the live deck.
-
-Until this lands, the deck can run off a hand-updated sheet.
+The deck's numbers now come from `GET /api/slides/weekly` and `/monthly`
+(bearer `SLIDES_READ_SECRET`, Access-bypassed, numbers only). The Apps Script
+moved to `apps_script/slides-refresh.gs` with its three sheet gatherers
+replaced by one fetch; drawing code untouched. Zone order and exclusions
+follow Reporting settings. Setup and Monday steps: `docs/slides-deck.md`.
 
 ## 2. Storage retention — settled, nothing to do
 

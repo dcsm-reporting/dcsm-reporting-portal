@@ -71,6 +71,7 @@ import {
 } from "./friends.js";
 import { buildReconcile } from "./reconcile.js";
 import { buildPublish } from "./publish.js";
+import { buildSlides } from "./slides.js";
 import { getConfig, getStakeRecipients, setConsoleCheck, upsertStakeRecipient } from "./db.js";
 import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import stakeRecipientsSeed from "../../resources/stake_recipients.json";
@@ -135,8 +136,13 @@ function needsAdmin(method: string, path: string): boolean {
 
 // --- auth ---------------------------------------------------------------
 app.use("/api/*", async (c, next) => {
-  // health check and the sheet-sync webhook do their own thing
-  if (c.req.path === "/api/health" || c.req.path === "/api/friends/sync") return next();
+  // health check, the sheet-sync webhook, and the slides feed do their own thing
+  if (
+    c.req.path === "/api/health" ||
+    c.req.path === "/api/friends/sync" ||
+    c.req.path.startsWith("/api/slides/")
+  )
+    return next();
   const headerEmail =
     c.req.header("Cf-Access-Authenticated-User-Email") ||
     c.req.header("cf-access-authenticated-user-email");
@@ -523,6 +529,7 @@ app.get("/api/console", async (c) => {
     portalEnv: c.env.PORTAL_ENV ?? "unknown",
     accessTokenCheck: accessMode(c.env),
     friendsSyncSecretSet: !!c.env.FRIENDS_SYNC_SECRET,
+    slidesReadSecretSet: !!c.env.SLIDES_READ_SECRET,
     responseCache: !!c.env.CACHE,
     missionTimeZone: "America/New_York",
   };
@@ -1016,6 +1023,30 @@ app.post("/api/friends/sync", async (c) => {
   // only invalidate the friends cache when the snapshot actually changed something
   if (res.changed > 0 || res.deactivated > 0) await bumpFriends(c.env);
   return c.json({ ok: true, ...res });
+});
+
+/**
+ * Numbers for the Monday MLC Slides decks, read by apps_script/slides-refresh.gs.
+ * Auth: `Authorization: Bearer <SLIDES_READ_SECRET>` (excluded from the Access
+ * user check like the sheet webhook; needs a matching Access "Bypass" path rule).
+ * Carries no names: zone and mission indicator totals plus the MLC share.
+ */
+app.get("/api/slides/:mode", async (c) => {
+  const secret = c.env.SLIDES_READ_SECRET;
+  const given = (c.req.header("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!secret || given !== secret) throw new HTTPException(401, { message: "bad slides secret" });
+  const mode = c.req.param("mode");
+  if (mode !== "weekly" && mode !== "monthly") {
+    throw new HTTPException(404, { message: "mode must be weekly or monthly" });
+  }
+  const week = c.req.query("week") || undefined;
+  if (week && !isIsoDate(week)) throw new HTTPException(400, { message: "week must be YYYY-MM-DD" });
+  const today = todayIso();
+  return c.json(
+    await cached(c.env, `slides:v1:${mode}:${week ?? "latest"}:${today}`, "ki", () =>
+      buildSlides(c.env.DB, mode, week, today),
+    ),
+  );
 });
 
 app.all("/api/*", (c) => c.json({ error: "no such endpoint" }, 404));

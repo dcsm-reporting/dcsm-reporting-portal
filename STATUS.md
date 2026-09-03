@@ -1,6 +1,24 @@
 # Build status — DCSM KI Portal
 
-_Last updated: 2026-09-03 — hardening round: import correctness, mission-time-zone dates, sheet hygiene, gap detection, optional Access token check._
+_Last updated: 2026-09-03 — Monday MLC Slides deck now reads the portal; earlier the same day: privacy review, transfer-proofing, hardening._
+
+## 2026-09-03 Monday MLC Slides deck reads the portal
+
+`GET /api/slides/weekly|monthly` (`src/server/slides.ts`): zone and mission
+indicator totals in deck codes (BC, BD, SAC, NP, LWM, RCA), the MLC share
+block (this week and last), the 4-week window with per-week detail, and
+plain-language `notes` (latest week not the last complete week, a gap in the
+window, no earlier week). Bearer `SLIDES_READ_SECRET`, excluded from the
+Access user check like the sheet webhook, cached under `slides:v1` on the
+data version. Numbers only. The Apps Script moved from `resources/` to
+`apps_script/slides-refresh.gs`: `fetchPortal_()` replaces the three sheet
+gatherers, `ZONE_ORDER`/`ZONE_EXCLUDE`/sheet ids/column layouts removed,
+roster tabs matched to portal zones case-insensitively, orphan tabs and
+zones without a tab named in the log, `SRC.WEEK` rebuilds a past week,
+`dumpPortal()` diagnostic. Verified by loading the real `.gs` under Node with
+Google services stubbed and running its `buildSpecs_()`/`dryRun()` against
+the local API (37 checks). Secret set in production; the Access Bypass rule
+for `api/slides` and the paste are Noah's (`docs/slides-deck.md`).
 
 ## 2026-09-03 privacy review (Handbook 33.6, 33.8, 33.9)
 
