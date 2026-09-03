@@ -25,6 +25,7 @@ import type { KiFact } from "../pipeline/types.js";
 import { loadConfig, type ResolvedConfig } from "./config.js";
 import { friendsSummary } from "./friends.js";
 import { buildReconcile } from "./reconcile.js";
+import { lastCompleteWeekOf, missingMondays, todayIso } from "../shared/dates.js";
 import {
   addWard,
   attachArea,
@@ -119,6 +120,12 @@ export async function buildWeekView(db: D1Database, weekStart: string) {
   const zGrid = byZone(facts, exclude);
   const zones = orderedZones(Object.keys(zGrid), cfg.zoneOrder);
 
+  // The 4-week window is "the four most recent *stored* weeks"; if one was
+  // never imported the window quietly spans five calendar weeks. Say so.
+  const windowGaps = missingMondays(window.length ? [window[0]!, weekStart] : []).filter(
+    (w) => !window.includes(w),
+  );
+
   return {
     weekStart,
     weekLabel: weekLabel(weekStart),
@@ -137,6 +144,8 @@ export async function buildWeekView(db: D1Database, weekStart: string) {
       mlc: mlc(monthWeekFacts.flat(), exclude),
       window,
       label: periodLabel(window),
+      /** Mondays inside the window's span that were never imported. */
+      gaps: windowGaps,
     },
     resolve: {
       resolvedCount: rr.resolved.size,
@@ -361,13 +370,36 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     ? reconcile.byStake.filter((r) => r.gap > 0).length
     : 0;
 
+  // Is the latest stored week actually the most recent complete one? A week
+  // that has finished but not been imported is the single most common way
+  // the old system fell behind — flag it, don't wait to be asked.
+  const today = todayIso();
+  const expected = lastCompleteWeekOf(today).monday;
+  const behind = latest < expected;
+  const missing = missingMondays(all);
+
   const steps = [
     {
       id: "import",
-      label: `Import: ${week.weekLabel}`,
-      state: "done" as const,
-      detail: `${week.zones.length} zones, ${week.resolve.resolvedCount} areas resolved.`,
+      label: behind ? `Import the week of ${expected}` : `Import: ${week.weekLabel}`,
+      state: behind ? ("attention" as const) : ("done" as const),
+      detail: behind
+        ? `The week of ${expected} has ended but isn't imported; latest stored is ${week.weekLabel}.`
+        : `${week.zones.length} zones, ${week.resolve.resolvedCount} areas resolved.`,
     },
+    ...(missing.length > 0
+      ? [
+          {
+            id: "gaps",
+            label: "Missing weeks",
+            state: "attention" as const,
+            detail:
+              `${missing.length} week(s) between ${all[0]} and ${latest} were never imported: ` +
+              `${missing.slice(0, 6).join(", ")}${missing.length > 6 ? ", …" : ""}. ` +
+              `Trends and 4-week totals skip them.`,
+          },
+        ]
+      : []),
     {
       id: "crosswalk",
       label: "Crosswalk clean",
@@ -456,6 +488,9 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
     range: { first: all[0]!, last: latest },
     latest,
     latestLabel: week.weekLabel,
+    expectedLatest: expected,
+    behind,
+    missingWeeks: missing,
     counts: {
       zones: week.zones.length,
       areasResolved: week.resolve.resolvedCount,

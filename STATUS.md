@@ -1,6 +1,43 @@
 # Build status — DCSM KI Portal
 
-_Last updated: 2026-09-02 — deployed; Publish + backup layer + portal-native baptism records._
+_Last updated: 2026-09-03 — hardening round: import correctness, mission-time-zone dates, sheet hygiene, gap detection, optional Access token check._
+
+## 2026-09-03 hardening round (what changed and why)
+
+A top-to-bottom review for "this has to last years". Every item below is
+deployed; 103 unit tests plus a 39-check end-to-end script against a local
+Worker are green. `docs/anomalies.md` is the new one-page answer to "what
+happens when X".
+
+**Bugs fixed**
+
+| Was | Now |
+|---|---|
+| A payload with no `reportStart` was stored under an empty week key | Hard validation error; report dates must be real `YYYY-MM-DD` |
+| A month range or Sunday-start week imported as one fake "week" | Refused unless the person ticks **store anyway** after seeing the warning |
+| Re-importing a corrected week left rows for areas / wards / missionaries no longer in the report, so they kept being counted | Stale rows are removed after the upsert; the Import page reports how many |
+| Re-importing an older payload after a newer one was a silent no-op | A no-op only when every stored row already came from that exact payload |
+| A new Church indicator would block every import until code changed | Extra ids warn and are ignored; only a *missing* one of the six blocks |
+| "Today", "this week", "this month", "overdue", "last complete week" were UTC, so on Sunday evenings Eastern the week rolled over early, that day's baptisms went overdue and the month flipped at 8 pm | All computed in `America/New_York` (`src/shared/dates.ts`), server and browser |
+| `#REF!` / `#N/A` cells on the Baptisms sheet were treated as names | Skipped in the sheet script and again in the portal; counted in the sync warning |
+| Every 15-minute sync rewrote every friend row (about 10k D1 writes/day) and reset `updated_at` on untouched rows | Only rows that differ are written |
+| Removing a portal-recorded baptism failed once a weekly snapshot referenced it (foreign key) | Snapshot rows are removed with it |
+| Renaming a stake orphaned its report recipients and the stake name on friend records | One rename updates ward rows, recipients and friends |
+| The sheet's stake spelling had to match exactly ("Annandale Stake" fell off the report) | Matched ignoring case, accents and the word "Stake"; leftovers are listed on the Publish page |
+| Zone lists in Trends / Baptisms were hard-coded | From stored data, in the configured order |
+| The week picker did not offer a newly imported week until reload | Refreshed after every import |
+| Attaching an IMOS id to a canonical key that does not exist blew up with a database error | Refused with a message; back-dated mappings are closed at the next one |
+| Full backup export loaded every table into memory and skipped `console_check` | Streamed in row pages, includes every table, admin-only |
+| `weeksAvailable` scanned every fact row on every call (several per uncached request) | One seek per import row |
+| A malformed config write (bands amber above green, a string for a list) was accepted and could crash views | Validated on write; a bad stored value falls back to the default on read |
+
+**New**
+
+- **Missing-week detection**: the Console lists never-imported weeks and turns amber when the last complete week is not in yet; the Import page offers one-click buttons for each gap; "Last 4 weeks" flags a gap inside its window.
+- **Expected active-area range** is a setting (Admin → Reporting settings), not a constant.
+- **Optional Access token verification** (`docs/access-token-check.md`): closes the "spoofed identity header" hole if a second hostname is ever attached without Access.
+- Friends weekly snapshot is filed under the current week and taken at least weekly; sync log self-prunes to 120 days.
+- `docs/anomalies.md`: what the portal does, and what a person does, for every unusual situation we could think of.
 
 ## TL;DR
 

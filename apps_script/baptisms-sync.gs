@@ -75,13 +75,10 @@ function onEdit(e) {
   PropertiesService.getScriptProperties().setProperty('LAST_EDIT_AT', String(Date.now()));
 }
 
-function mostRecentMonday_() {
-  var d = new Date();
-  d.setHours(0, 0, 0, 0);
-  var dow = d.getDay();            // 0 = Sun
-  var back = dow === 0 ? 7 : dow;  // days back to the most recent past Sunday
-  d.setDate(d.getDate() - back - 6);  // that Sunday, then its Monday (−6)
-  return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd');
+
+var SHEET_ERROR_RE = /^#(REF!|N\/A|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|ERROR!)$/i;
+function isSheetError_(v) {
+  return SHEET_ERROR_RE.test(String(v == null ? '' : v).trim());
 }
 
 function isoDate_(v) {
@@ -122,11 +119,15 @@ function readTab_(ss, tabName, fallbackZone, tz, out, seen) {
 
   for (var r = hdrRow + 1; r < values.length; r++) {
     var name = String(values[r][cols.name] || '').trim();
-    if (!name) continue;
+    // A formula that lost its reference leaves "#REF!" / "#N/A" in the cell;
+    // that's never a person. Skip the row here so it never reaches the portal
+    // (the portal drops it too, belt and braces).
+    if (!name || isSheetError_(name)) continue;
     var rec = { zone: fallbackZone || '', name: name };
     for (var field in cols) {
       if (field === 'name') continue;
       var raw = values[r][cols[field]];
+      if (isSheetError_(raw)) raw = '';
       if (field === 'baptismDate') rec.baptismDate = raw ? isoDate_(raw) : '';
       else if (field === 'baptismTime') rec.baptismTime = timeStr_(raw, tz);
       else if (field === 'baptizedConfirmed') rec.baptizedConfirmed = /^(y|yes|true|1)/i.test(String(raw).trim());
@@ -171,7 +172,9 @@ function pushToPortal(force) {
     return 'skipped (recent edit)';
   }
 
-  var payload = { weekStart: mostRecentMonday_(), rows: collectRows_() };
+  // The portal files the snapshot under the current week itself (its own
+  // clock, mission time zone); weekStart is informational only.
+  var payload = { rows: collectRows_() };
   var res = UrlFetchApp.fetch(url.replace(/\/+$/, '') + '/api/friends/sync', {
     method: 'post',
     contentType: 'application/json',

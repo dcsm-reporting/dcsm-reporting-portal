@@ -9,12 +9,14 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import areaKeyCsv from "../../resources/area-to-ward-key.csv";
-import { load, normalize, ValidationError } from "../pipeline/readImos.js";
+import { isWeeklyPayload, load, normalize, ValidationError } from "../pipeline/readImos.js";
 import { loadAreaKey, seed } from "../pipeline/crosswalkSeed.js";
 import { resolveWeek } from "../pipeline/resolve.js";
 import type { Env, Vars } from "./env.js";
-import { CONFIG_DEFAULTS, CONFIG_KEYS, loadConfig } from "./config.js";
+import { CONFIG_DEFAULTS, CONFIG_KEYS, loadConfig, validateConfigValue } from "./config.js";
 import { bumpData, bumpFriends, cached } from "./cache.js";
+import { accessMode, verifyAccessJwt } from "./auth.js";
+import { lastCompleteWeekOf, missingMondays, todayIso } from "../shared/dates.js";
 import {
   addWard,
   attachArea,
@@ -23,6 +25,7 @@ import {
   closeMapping,
   closeWard,
   createCanonicalArea,
+  deletePortalFriend,
   setNotReportedAck,
   getAreaWardRows,
   getAuditLog,
@@ -81,7 +84,8 @@ async function computeIsAdmin(db: D1Database, email: string): Promise<boolean> {
 
 /** Path prefixes that change mission structure/config — admin-only. Weekly
  *  workflow (import, friends record, chase ack, publish, all GETs) stays open
- *  to any authenticated user. */
+ *  to any authenticated user. The full-database export is the one GET that is
+ *  admin-only: it is the whole system in one file. */
 const ADMIN_WRITE_PREFIXES = [
   "/api/config",
   "/api/crosswalk",
@@ -91,6 +95,7 @@ const ADMIN_WRITE_PREFIXES = [
   "/api/admins",
 ];
 function needsAdmin(method: string, path: string): boolean {
+  if (path === "/api/export") return true;
   if (method === "GET" || method === "HEAD") return false;
   if (/^\/api\/rollover\/[^/]+\/apply$/.test(path)) return true;
   return ADMIN_WRITE_PREFIXES.some((p) => path.startsWith(p));
@@ -100,10 +105,32 @@ function needsAdmin(method: string, path: string): boolean {
 app.use("/api/*", async (c, next) => {
   // health check and the sheet-sync webhook do their own thing
   if (c.req.path === "/api/health" || c.req.path === "/api/friends/sync") return next();
-  const email =
+  const headerEmail =
     c.req.header("Cf-Access-Authenticated-User-Email") ||
-    c.req.header("cf-access-authenticated-user-email") ||
-    c.env.DEV_USER;
+    c.req.header("cf-access-authenticated-user-email");
+
+  // Optional signed-token check (see auth.ts). When configured, the header
+  // alone is not enough: the token must verify and its email must match.
+  let email: string | undefined = headerEmail || c.env.DEV_USER;
+  const mode = accessMode(c.env);
+  if (mode === "misconfigured") {
+    throw new HTTPException(500, {
+      message: "ACCESS_TEAM_DOMAIN and ACCESS_AUD must be set together (or neither)",
+    });
+  }
+  if (mode === "on") {
+    const token = c.req.header("Cf-Access-Jwt-Assertion") || "";
+    if (!token) throw new HTTPException(401, { message: "not authenticated (no Access token)" });
+    try {
+      const claims = await verifyAccessJwt(token, c.env);
+      email = claims.email;
+    } catch (e) {
+      throw new HTTPException(401, { message: `not authenticated: ${(e as Error).message}` });
+    }
+    if (headerEmail && headerEmail.toLowerCase() !== email.toLowerCase()) {
+      throw new HTTPException(401, { message: "not authenticated (identity mismatch)" });
+    }
+  }
   if (!email) throw new HTTPException(401, { message: "not authenticated" });
   if (c.env.ALLOWED_EMAILS) {
     const ok = c.env.ALLOWED_EMAILS.split(",").map((s) => s.trim().toLowerCase());
@@ -154,23 +181,42 @@ app.post("/api/admins", async (c) => {
   return c.json({ ok: true, admins: list });
 });
 
-app.get("/api/weeks", async (c) =>
-  c.json(
-    await cached(c.env, "weeks", "ki", async () => {
-      const weeks = await weeksAvailable(c.env.DB);
+app.get("/api/weeks", async (c) => {
+  // the date is in the key so "expected latest week" rolls over on its own
+  const today = todayIso();
+  return c.json(
+    await cached(c.env, `weeks:v2:${today}`, "ki", async () => {
+      const [weeks, cfg] = await Promise.all([weeksAvailable(c.env.DB), loadConfig(c.env.DB)]);
+      const zoneRows = await c.env.DB.prepare(
+        "SELECT DISTINCT imos_zone_name AS z FROM ki_fact WHERE imos_zone_name <> ''",
+      ).all<{ z: string }>();
+      const seen = new Set((zoneRows.results ?? []).map((r) => r.z));
+      const zones = [
+        ...cfg.zoneOrder.filter((z) => seen.has(z)),
+        ...[...seen].filter((z) => !cfg.zoneOrder.includes(z)).sort(),
+      ].filter((z) => !cfg.zoneExclude.includes(z));
+      const latest = weeks[weeks.length - 1] ?? null;
       return {
         weeks: weeks.map((w) => ({ weekStart: w, weekLabel: weekLabel(w) })),
-        latest: weeks[weeks.length - 1] ?? null,
+        latest,
+        /** the Monday of the most recent complete Mon–Sun week, mission tz */
+        expectedLatest: lastCompleteWeekOf(today).monday,
+        missing: missingMondays(weeks),
+        /** every zone seen in stored data, in the configured order, excludes dropped */
+        zones,
       };
     }),
-  ),
-);
+  );
+});
 
 // --- import ---------------------------------------------------------
 app.post("/api/import", async (c) => {
-  const body = await c.req.json<{ rawJson?: string; dryRun?: boolean }>();
+  const body = await c.req.json<{ rawJson?: string; dryRun?: boolean; force?: boolean }>();
   const rawJson = (body.rawJson ?? "").trim();
   if (!rawJson) throw new HTTPException(400, { message: "rawJson is required" });
+  if (rawJson.length > 25_000_000) {
+    throw new HTTPException(413, { message: "payload is larger than 25 MB; that is not a KI report" });
+  }
 
   let payload;
   try {
@@ -179,7 +225,9 @@ app.post("/api/import", async (c) => {
     return c.json({ error: "not valid JSON", kind: "json" }, 422);
   }
 
-  const norm = normalize(payload, { areaBand: [80, 130] });
+  const cfg = await loadConfig(c.env.DB);
+  const norm = normalize(payload, { areaBand: [cfg.areaBand.low, cfg.areaBand.high] });
+  const weekly = isWeeklyPayload(payload);
 
   // resolve against the current crosswalk to surface unmapped areas
   const [crosswalk, canonical, areaWard] = await Promise.all([
@@ -200,16 +248,36 @@ app.post("/api/import", async (c) => {
     nMissionaries: norm.missionaries.length,
     warnings: norm.warnings,
     alreadyStored: existing.length > 0,
+    /** false when the range is not one Mon–Sun week; storing then needs force=true */
+    weekly,
     unmapped: rr.unmapped.map(([id, name]) => ({ imosAreaId: id, imosAreaName: name })),
   };
 
   if (body.dryRun) return c.json({ dryRun: true, summary });
+
+  // A non-week range (a month, a Sunday-start week) would be stored as one
+  // fake "week" and skew every trend. Refuse unless the person explicitly
+  // forced it after seeing the warning.
+  if (!weekly && !body.force) {
+    return c.json(
+      {
+        error:
+          `${norm.weekStart} → ${norm.weekEnd} is not a Monday-to-Sunday reporting week. ` +
+          `Re-pull the correct range, or tick "store anyway" if this is deliberate.`,
+        kind: "not-a-week",
+        summary,
+      },
+      422,
+    );
+  }
 
   const stored = await storeImport(c.env.DB, norm, rawJson, c.get("user"));
   await audit(c.env.DB, c.get("user"), "import", {
     weekStart: norm.weekStart,
     reused: stored.reused,
     warnings: norm.warnings.length,
+    staleRemoved: stored.staleRemoved,
+    forced: !weekly,
   });
   await bumpData(c.env);
   return c.json({ dryRun: false, summary, stored });
@@ -219,7 +287,7 @@ app.post("/api/import", async (c) => {
 app.get("/api/week/:week", async (c) => {
   const week = c.req.param("week");
   try {
-    return c.json(await cached(c.env, `week:v2:${week}`, "ki", () => buildWeekView(c.env.DB, week)));
+    return c.json(await cached(c.env, `week:v3:${week}`, "ki", () => buildWeekView(c.env.DB, week)));
   } catch (e) {
     throw new HTTPException(404, { message: String((e as Error).message) });
   }
@@ -365,7 +433,10 @@ app.post("/api/seed", async (c) => {
 
 // --- weekly console (dashboard) ------------------------------------
 app.get("/api/console", async (c) =>
-  c.json(await cached(c.env, "console", "both", () => buildConsole(c.env.DB, areaKey))),
+  // date in the key: "expected latest week" and sync-age roll over daily
+  c.json(
+    await cached(c.env, `console:v2:${todayIso()}`, "both", () => buildConsole(c.env.DB, areaKey)),
+  ),
 );
 
 /** Tick / untick a checklist step for the latest week. */
@@ -395,6 +466,8 @@ app.put("/api/config", async (c) => {
   if (!(CONFIG_KEYS as readonly string[]).includes(b.key)) {
     throw new HTTPException(400, { message: `unknown config key: ${b.key}` });
   }
+  const problem = validateConfigValue(b.key as (typeof CONFIG_KEYS)[number], b.value);
+  if (problem) throw new HTTPException(400, { message: problem });
   await setConfig(c.env.DB, b.key, b.value);
   await audit(c.env.DB, c.get("user"), "config.set", { key: b.key });
   await bumpData(c.env);
@@ -502,7 +575,7 @@ app.get("/api/friends", async (c) => {
 
 app.get("/api/friends/monthly", async (c) => {
   const n = Math.min(24, Math.max(1, parseInt(c.req.query("n") || "6", 10) || 6));
-  const keyDay = new Date().toISOString().slice(0, 10);
+  const keyDay = todayIso();
   return c.json(
     await cached(c.env, `friends-monthly:${n}:${keyDay}`, "friends", async () => ({
       months: await monthlyBaptisms(c.env.DB, n),
@@ -515,7 +588,7 @@ app.get("/api/friends/summary", async (c) => {
   // week and month (the STL sheet works in real time, not IMOS weeks). The
   // date is in the cache key so "overdue" and the week window roll over daily.
   const week = c.req.query("week") || null;
-  const keyDay = week ?? new Date().toISOString().slice(0, 10);
+  const keyDay = week ?? todayIso();
   return c.json(
     await cached(c.env, `friends-summary:${keyDay}`, "friends", () =>
       friendsSummary(c.env.DB, week),
@@ -566,7 +639,8 @@ app.delete("/api/friends/record/:id", async (c) => {
   if (row.source !== "portal") {
     throw new HTTPException(409, { message: "only portal-recorded baptisms can be removed here" });
   }
-  await c.env.DB.prepare("DELETE FROM friend WHERE id = ? AND source = 'portal'").bind(id).run();
+  // friend_week rows reference the friend (FK) — the helper removes both
+  await deletePortalFriend(c.env.DB, id);
   await audit(c.env.DB, c.get("user"), "friends.record.delete", { id, name: row.name });
   await bumpFriends(c.env);
   return c.json({ ok: true });
@@ -614,29 +688,58 @@ app.get("/api/data/raw/:week", async (c) => {
   });
 });
 
-/** Full database dump as JSON — a portable, self-serve backup. */
+/**
+ * Full database dump as JSON — a portable, self-serve backup (admin only).
+ * Streamed table by table, and the big tables page through in row chunks, so
+ * the Worker never holds the whole database in memory: import_run.raw_json
+ * alone grows ~15–20 MB a year.
+ */
+const EXPORT_TABLES = [
+  "import_run", "ki_fact", "ward_fact", "missionary_snapshot", "area_history",
+  "canonical_area", "area_crosswalk", "area_ward", "friend", "friend_week",
+  "friend_sync", "not_reported_ack", "console_check", "stake_recipients", "config", "audit_log",
+] as const;
 app.get("/api/export", async (c) => {
-  const tables = [
-    "import_run", "ki_fact", "ward_fact", "missionary_snapshot", "area_history",
-    "canonical_area", "area_crosswalk", "area_ward", "friend", "friend_week",
-    "friend_sync", "not_reported_ack", "stake_recipients", "config", "audit_log",
-  ];
-  const dump: Record<string, unknown[]> = {};
-  for (const t of tables) {
-    const { results } = await c.env.DB.prepare(`SELECT * FROM ${t}`).all();
-    dump[t] = results ?? [];
-  }
-  const body = JSON.stringify(
-    { exportedAt: new Date().toISOString(), tables: dump },
-    null,
-    0,
-  );
-  return new Response(body, {
+  const db = c.env.DB;
+  const enc = new TextEncoder();
+  const PAGE = 500;
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const w = (s: string) => controller.enqueue(enc.encode(s));
+      try {
+        w(`{"exportedAt":${JSON.stringify(new Date().toISOString())},"tables":{`);
+        let firstTable = true;
+        for (const t of EXPORT_TABLES) {
+          w(`${firstTable ? "" : ","}${JSON.stringify(t)}:[`);
+          firstTable = false;
+          let offset = 0;
+          let firstRow = true;
+          for (;;) {
+            const { results } = await db
+              .prepare(`SELECT * FROM ${t} LIMIT ? OFFSET ?`)
+              .bind(PAGE, offset)
+              .all();
+            const rows = results ?? [];
+            for (const r of rows) {
+              w(`${firstRow ? "" : ","}${JSON.stringify(r)}`);
+              firstRow = false;
+            }
+            if (rows.length < PAGE) break;
+            offset += PAGE;
+          }
+          w("]");
+        }
+        w("}}");
+        controller.close();
+      } catch (e) {
+        controller.error(e);
+      }
+    },
+  });
+  return new Response(stream, {
     headers: {
       "content-type": "application/json",
-      "content-disposition": `attachment; filename="dcsm-ki-portal-${new Date()
-        .toISOString()
-        .slice(0, 10)}.json"`,
+      "content-disposition": `attachment; filename="dcsm-reporting-${todayIso()}.json"`,
     },
   });
 });
@@ -644,7 +747,7 @@ app.get("/api/export", async (c) => {
 // --- publish (boards + stake reports) ---------------------------
 app.get("/api/publish/:week", async (c) => {
   const week = c.req.param("week");
-  return c.json(await cached(c.env, `publish:${week}`, "both", () => buildPublish(c.env.DB, week)));
+  return c.json(await cached(c.env, `publish:v2:${week}`, "both", () => buildPublish(c.env.DB, week)));
 });
 
 app.get("/api/recipients", async (c) =>
@@ -741,7 +844,8 @@ app.get("/api/reconcile", async (c) => {
   const month =
     c.req.query("month") ||
     (await weeksAvailable(c.env.DB)).at(-1)?.slice(0, 7) ||
-    new Date().toISOString().slice(0, 7);
+    todayIso().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(month)) throw new HTTPException(400, { message: "month must be YYYY-MM" });
   return c.json(
     await cached(c.env, `reconcile:${month}`, "both", () => buildReconcile(c.env.DB, month)),
   );
@@ -760,8 +864,9 @@ app.post("/api/friends/sync", async (c) => {
   const body = await c.req.json<{ weekStart?: string; rows?: SheetRow[] }>();
   if (!Array.isArray(body.rows)) throw new HTTPException(400, { message: "rows[] required" });
 
-  const week = body.weekStart || (await weeksAvailable(c.env.DB)).at(-1) || null;
-  const res = await syncFriends(c.env.DB, body.rows, week);
+  // The snapshot is the sheet *now*, so it is filed under the current week
+  // (the server's own clock, mission tz) — not whatever week the caller says.
+  const res = await syncFriends(c.env.DB, body.rows, null);
   await audit(c.env.DB, "sheet-sync", "friends.sync", res);
   // only invalidate the friends cache when the snapshot actually changed something
   if (res.changed > 0 || res.deactivated > 0) await bumpFriends(c.env);

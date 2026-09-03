@@ -78,6 +78,8 @@ export interface ImportSummary {
   nWardFacts: number;
   nMissionaries: number;
   activeAreas: number;
+  /** Rows from an earlier import of this week that the new payload no longer carries. */
+  staleRemoved: number;
 }
 
 export async function storeImport(
@@ -96,13 +98,20 @@ export async function storeImport(
   let reused = false;
   if (existing) {
     runId = existing.id;
-    // Only a no-op if the facts actually landed — a prior partial failure
-    // leaves the import_run row without its ki_fact rows; fall through then.
-    const haveFacts = await db
-      .prepare("SELECT 1 FROM ki_fact WHERE week_start = ? LIMIT 1")
-      .bind(norm.weekStart)
-      .first();
-    if (haveFacts) {
+    // A true no-op only when every fact row stored for the week came from
+    // this exact payload and all of them landed. A different pull imported
+    // since would have re-stamped rows with its own run id (so re-importing
+    // this one must put things back); a prior partial failure leaves fewer
+    // rows than the payload carries.
+    const state = await db
+      .prepare(
+        "SELECT COUNT(*) AS total, SUM(import_run_id = ?) AS mine FROM ki_fact WHERE week_start = ?",
+      )
+      .bind(runId, norm.weekStart)
+      .first<{ total: number; mine: number | null }>();
+    const complete =
+      !!state && state.total === norm.facts.length && (state.mine ?? 0) === norm.facts.length;
+    if (complete) {
       return {
         runId,
         weekStart: norm.weekStart,
@@ -112,6 +121,7 @@ export async function storeImport(
         nWardFacts: norm.wardFacts.length,
         nMissionaries: norm.missionaries.length,
         activeAreas: norm.activeAreaIds.size,
+        staleRemoved: 0,
       };
     }
   } else {
@@ -132,6 +142,7 @@ export async function storeImport(
     runId = Number(res.meta.last_row_id);
   }
 
+  // Upsert every row the new payload carries …
   await runBatch(db, [
     ...bulkInsert(
       "ki_fact",
@@ -207,6 +218,42 @@ export async function storeImport(
     ),
   ]);
 
+  // … then drop anything left over from an earlier import of the same week.
+  // A week re-pulled after corrections can lose an area (closed, deactivated)
+  // or an org; without this the stale rows would keep being counted. Keyed
+  // deletes via json_each keep each statement at two parameters regardless of
+  // how many areas the mission has. Runs last so a failure mid-import leaves
+  // extra rows (caught on the next run), never missing ones.
+  const areaIds = JSON.stringify([...norm.activeAreaIds]);
+  const orgKeys = JSON.stringify(
+    [...new Set(norm.wardFacts.map((w) => `${w.imosAreaId}:${w.orgId}`))],
+  );
+  const missionaryIds = JSON.stringify([...new Set(norm.missionaries.map((m) => m.missionaryId))]);
+  const pruned = await db.batch([
+    db
+      .prepare("DELETE FROM ki_fact WHERE week_start = ? AND import_run_id <> ?")
+      .bind(norm.weekStart, runId),
+    db
+      .prepare(
+        `DELETE FROM ward_fact WHERE week_start = ?
+           AND (imos_area_id || ':' || org_id) NOT IN (SELECT value FROM json_each(?))`,
+      )
+      .bind(norm.weekStart, orgKeys),
+    db
+      .prepare(
+        `DELETE FROM missionary_snapshot WHERE week_start = ?
+           AND missionary_id NOT IN (SELECT value FROM json_each(?))`,
+      )
+      .bind(norm.weekStart, missionaryIds),
+    db
+      .prepare(
+        `DELETE FROM area_history WHERE week_start = ?
+           AND imos_area_id NOT IN (SELECT value FROM json_each(?))`,
+      )
+      .bind(norm.weekStart, areaIds),
+  ]);
+  const staleRemoved = pruned.reduce((n, r) => n + (r.meta?.changes ?? 0), 0);
+
   return {
     runId,
     weekStart: norm.weekStart,
@@ -216,6 +263,7 @@ export async function storeImport(
     nWardFacts: norm.wardFacts.length,
     nMissionaries: norm.missionaries.length,
     activeAreas: norm.activeAreaIds.size,
+    staleRemoved,
   };
 }
 
@@ -264,8 +312,16 @@ export async function loadWardFacts(db: D1Database, weekStart: string): Promise<
 }
 
 export async function weeksAvailable(db: D1Database): Promise<string[]> {
+  // import_run is one row per import; the EXISTS seeks ix_ki_fact_week once
+  // per week. The old DISTINCT over ki_fact scanned every fact row on every
+  // call, and this runs several times per uncached request — over years that
+  // is the difference between hundreds and hundreds of thousands of row reads.
   const { results } = await db
-    .prepare("SELECT DISTINCT week_start FROM ki_fact ORDER BY week_start")
+    .prepare(
+      `SELECT DISTINCT ir.week_start FROM import_run ir
+       WHERE EXISTS (SELECT 1 FROM ki_fact k WHERE k.week_start = ir.week_start)
+       ORDER BY ir.week_start`,
+    )
     .all<{ week_start: string }>();
   return (results ?? []).map((r) => r.week_start);
 }
@@ -457,22 +513,43 @@ export async function attachArea(
   validFrom: string,
   note: string | null,
 ): Promise<void> {
-  await db
-    .prepare(
-      `UPDATE area_crosswalk SET valid_to = ?
-       WHERE imos_area_id = ? AND valid_to IS NULL AND valid_from < ?`,
-    )
-    .bind(validFrom, imosAreaId, validFrom)
-    .run();
-  await db
-    .prepare(
-      `INSERT INTO area_crosswalk (imos_area_id, canonical_area_key, valid_from, valid_to, note)
-       VALUES (?, ?, ?, NULL, ?)
-       ON CONFLICT (imos_area_id, valid_from) DO UPDATE SET
-         canonical_area_key = excluded.canonical_area_key, note = excluded.note`,
-    )
-    .bind(imosAreaId, canonicalAreaKey, validFrom, note)
-    .run();
+  const exists = await db
+    .prepare("SELECT 1 FROM canonical_area WHERE canonical_area_key = ?")
+    .bind(canonicalAreaKey)
+    .first();
+  if (!exists) {
+    throw new Error(
+      `canonical area "${canonicalAreaKey}" does not exist — create it first (or tick "New?" in Rollover)`,
+    );
+  }
+  await db.batch([
+    // close whatever was open before this date
+    db
+      .prepare(
+        `UPDATE area_crosswalk SET valid_to = ?
+         WHERE imos_area_id = ? AND valid_to IS NULL AND valid_from < ?`,
+      )
+      .bind(validFrom, imosAreaId, validFrom),
+    db
+      .prepare(
+        `INSERT INTO area_crosswalk (imos_area_id, canonical_area_key, valid_from, valid_to, note)
+         VALUES (?, ?, ?, NULL, ?)
+         ON CONFLICT (imos_area_id, valid_from) DO UPDATE SET
+           canonical_area_key = excluded.canonical_area_key, note = excluded.note`,
+      )
+      .bind(imosAreaId, canonicalAreaKey, validFrom, note),
+    // back-dating under a mapping that starts later: end the new row where
+    // that later one begins, so no two rows are ever effective on one week
+    db
+      .prepare(
+        `UPDATE area_crosswalk SET valid_to = (
+           SELECT MIN(valid_from) FROM area_crosswalk x
+           WHERE x.imos_area_id = ? AND x.valid_from > ?)
+         WHERE imos_area_id = ? AND valid_from = ? AND valid_to IS NULL
+           AND EXISTS (SELECT 1 FROM area_crosswalk y WHERE y.imos_area_id = ? AND y.valid_from > ?)`,
+      )
+      .bind(imosAreaId, validFrom, imosAreaId, validFrom, imosAreaId, validFrom),
+  ]);
 }
 
 export async function createCanonicalArea(
@@ -860,10 +937,35 @@ export async function closeWard(
     .run();
 }
 
+/**
+ * Rename a stake everywhere it is stored by name: the ward→stake rows, the
+ * report recipients row (merged into an existing row for the new name if one
+ * exists), and the friend records that carry the old name. Returns the number
+ * of ward rows changed.
+ */
 export async function renameStake(db: D1Database, from: string, to: string): Promise<number> {
-  const res = await db
-    .prepare("UPDATE area_ward SET stake = ? WHERE stake = ?")
-    .bind(to, from)
-    .run();
-  return res.meta.changes ?? 0;
+  const [wards] = await db.batch([
+    db.prepare("UPDATE area_ward SET stake = ? WHERE stake = ?").bind(to, from),
+    // recipients: keep the target row if it already exists, else rename
+    db
+      .prepare(
+        `UPDATE stake_recipients SET stake = ? WHERE stake = ?
+           AND NOT EXISTS (SELECT 1 FROM stake_recipients r WHERE r.stake = ?)`,
+      )
+      .bind(to, from, to),
+    db
+      .prepare("DELETE FROM stake_recipients WHERE stake = ? AND EXISTS (SELECT 1 FROM stake_recipients r WHERE r.stake = ?)")
+      .bind(from, to),
+    db.prepare("UPDATE friend SET stake = ? WHERE stake = ?").bind(to, from),
+  ]);
+  return wards?.meta.changes ?? 0;
+}
+
+/** Remove a portal-recorded baptism, including its weekly snapshot rows (FK). */
+export async function deletePortalFriend(db: D1Database, id: string): Promise<boolean> {
+  const [, del] = await db.batch([
+    db.prepare("DELETE FROM friend_week WHERE friend_id = ? AND EXISTS (SELECT 1 FROM friend f WHERE f.id = ? AND f.source = 'portal')").bind(id, id),
+    db.prepare("DELETE FROM friend WHERE id = ? AND source = 'portal'").bind(id),
+  ]);
+  return (del?.meta.changes ?? 0) > 0;
 }

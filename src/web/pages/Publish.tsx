@@ -182,6 +182,8 @@ function Reports({ data }: { data: PublishView }) {
 
   if (!r) return <p className="muted">No stakes yet. Seed the crosswalk.</p>;
 
+  const unassigned = data.unassigned ?? [];
+
   const email = buildEmail({
     stake: r.stake,
     presidentName: r.presidentName,
@@ -252,6 +254,30 @@ function Reports({ data }: { data: PublishView }) {
         report lands inline) — or <strong>Download PDF</strong>, Open in Gmail, and attach the file
         (Gmail can't attach it automatically from a link).
       </div>
+
+      {unassigned.length > 0 && (
+        <div className="note warn no-print" style={{ marginTop: ".8rem" }}>
+          <strong>
+            {unassigned.length} friend{unassigned.length === 1 ? "" : "s"} on the Baptisms (MLC) sheet{" "}
+            {unassigned.length === 1 ? "is" : "are"} on no stake report
+          </strong>{" "}
+          because the sheet’s stake column is blank or doesn’t match a known stake. Fix the stake on
+          the sheet and the next sync picks it up.
+          <ul style={{ margin: ".4rem 0 0", fontSize: ".85rem" }}>
+            {unassigned.slice(0, 12).map((u, i) => (
+              <li key={i}>
+                {u.name}
+                {u.baptismDate ? `, ${u.baptismDate}` : ""}
+                {u.ward ? ` · ${u.ward}` : ""}
+                {u.stake ? ` · stake “${u.stake}”` : " · no stake"}
+                {u.zone ? ` · ${u.zone}` : ""}
+                {u.baptizedConfirmed ? " · baptized" : " · on date"}
+              </li>
+            ))}
+            {unassigned.length > 12 && <li className="muted">and {unassigned.length - 12} more</li>}
+          </ul>
+        </div>
+      )}
 
       <div className="publish-preview print-target" ref={(el) => scaleToFit(el)} style={{ marginTop: ".8rem" }}>
         <StakeReportDoc ref={ref} r={r} weekLabel={data.weekLabel} generatedAt={data.generatedAt} />

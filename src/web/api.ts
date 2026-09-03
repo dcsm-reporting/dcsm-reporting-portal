@@ -36,6 +36,12 @@ export interface WeekMeta {
 export interface WeeksResponse {
   weeks: WeekMeta[];
   latest: string | null;
+  /** Monday of the most recent complete Mon–Sun week (mission time zone). */
+  expectedLatest?: string;
+  /** Mondays between the first and last stored week with no import. */
+  missing?: string[];
+  /** Every zone present in stored data, in configured order, minus excluded ones. */
+  zones?: string[];
 }
 
 export interface WeekView {
@@ -47,7 +53,7 @@ export interface WeekView {
   byZone: ZoneGrid;
   byArea: Record<string, ZoneGrid>;
   mlc: { this: MlcGrid; last: MlcGrid | null; lastWeekStart: string | null };
-  month: { byZone: ZoneGrid; mlc: MlcGrid; window: string[]; label: string };
+  month: { byZone: ZoneGrid; mlc: MlcGrid; window: string[]; label: string; gaps?: string[] };
   resolve: { resolvedCount: number; unmapped: { imosAreaId: number; imosAreaName: string }[] };
 }
 
@@ -61,6 +67,8 @@ export interface ImportSummary {
   nMissionaries: number;
   warnings: string[];
   alreadyStored: boolean;
+  /** false when the payload range is not one Mon–Sun week */
+  weekly?: boolean;
   unmapped: { imosAreaId: number; imosAreaName: string }[];
 }
 
@@ -121,11 +129,11 @@ export const api = {
     jsend<{ ok: true }>("DELETE", `/api/chase/${w}/ack/${imosAreaId}`, undefined),
   importPreview: (rawJson: string) =>
     jpost<{ dryRun: true; summary: ImportSummary }>("/api/import", { rawJson, dryRun: true }),
-  importCommit: (rawJson: string) =>
-    jpost<{ dryRun: false; summary: ImportSummary; stored: unknown }>("/api/import", {
-      rawJson,
-      dryRun: false,
-    }),
+  importCommit: (rawJson: string, force = false) =>
+    jpost<{ dryRun: false; summary: ImportSummary; stored: { staleRemoved?: number; reused?: boolean } }>(
+      "/api/import",
+      { rawJson, dryRun: false, force },
+    ),
   crosswalk: () =>
     jget<{ canonical: unknown[]; crosswalk: unknown[]; areaWard: unknown[] }>("/api/crosswalk"),
 
@@ -284,6 +292,16 @@ export interface PublishView {
   };
   reports: StakeReport[];
   emailTemplate: EmailTemplate;
+  /** active on-date / recently baptized friends whose stake matches no report */
+  unassigned?: {
+    name: string;
+    ward: string | null;
+    stake: string | null;
+    zone: string | null;
+    baptismDate: string | null;
+    baptizedConfirmed: boolean;
+    source: string;
+  }[];
 }
 
 export interface DataView {
@@ -370,6 +388,10 @@ export interface ConsoleView {
   range: { first: string; last: string } | null;
   latest: string | null;
   latestLabel?: string;
+  /** Monday of the most recent complete week; `behind` when latest < this */
+  expectedLatest?: string;
+  behind?: boolean;
+  missingWeeks?: string[];
   counts?: {
     zones: number;
     areasResolved: number;
@@ -395,6 +417,7 @@ export interface PortalConfig {
   zoneOrder: string[];
   zoneExclude: string[];
   bands: { goalPct: { low: number; mid: number }; mlcShare: { low: number; mid: number } };
+  areaBand: { low: number; high: number };
 }
 export interface ConfigResponse {
   config: PortalConfig;

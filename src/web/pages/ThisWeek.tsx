@@ -60,6 +60,14 @@ export function ThisWeekPage() {
           <p className="muted mono" style={{ fontSize: ".78rem" }}>
             Sum of {data.month.window.length} weeks: {data.month.window.join(", ")}
           </p>
+          {(data.month.gaps?.length ?? 0) > 0 && (
+            <div className="note warn">
+              <strong>Gap inside this window.</strong> The week{data.month.gaps!.length === 1 ? "" : "s"} of{" "}
+              {data.month.gaps!.join(", ")} {data.month.gaps!.length === 1 ? "was" : "were"} never
+              imported, so these totals span more than four calendar weeks. Import {data.month.gaps!.length === 1 ? "it" : "them"} from
+              the Import page.
+            </div>
+          )}
           <div className="board-wrap">
             <table className="board">
               <thead>

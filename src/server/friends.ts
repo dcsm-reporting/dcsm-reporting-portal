@@ -11,6 +11,8 @@ import {
   cleanTime,
   dedupeBaptized,
   isOnDate,
+  isSheetError,
+  stakeForFriend,
   summarise,
   toIsoDate,
   yn,
@@ -19,6 +21,27 @@ import {
 } from "../pipeline/friends.js";
 import { getAreaWardRows } from "./db.js";
 import { wardMapForWeek } from "../pipeline/resolve.js";
+import { addMonthsClamped, mondayOf, recentMonthKeys, todayIso } from "../shared/dates.js";
+
+/**
+ * ward(lower) → stake and the set of known stakes, from the ward→stake rows
+ * effective on `week`. Shared by every "which stake does this friend belong
+ * to" caller so they all agree.
+ */
+export function stakeLookup(
+  areaWard: Awaited<ReturnType<typeof getAreaWardRows>>,
+  week: string,
+): { stakeOfWard: Map<string, string>; knownStakes: string[] } {
+  const stakeOfWard = new Map<string, string>();
+  const known = new Set<string>();
+  for (const [, [wardName, stake]] of wardMapForWeek(areaWard, week)) {
+    stakeOfWard.set(wardName.toLowerCase(), stake);
+    known.add(stake);
+  }
+  // stakes that only appear in older rows still count as known spellings
+  for (const r of areaWard) known.add(r.stake);
+  return { stakeOfWard, knownStakes: [...known] };
+}
 
 type Row = Record<string, string | number | null>;
 export type StoredFriend = Friend & {
@@ -118,19 +141,14 @@ export async function friendsSummary(
  */
 export async function friendsByStake(db: D1Database, weekStart: string) {
   const friends = await listFriends(db);
-  const wardMap = wardMapForWeek(await getAreaWardRows(db), weekStart);
-  const stakeOfWard = new Map<string, string>();
-  for (const [, [wardName, stake]] of wardMap) stakeOfWard.set(wardName.toLowerCase(), stake);
-
-  const cutoff = new Date(Date.parse(`${weekStart}T00:00:00Z`));
-  cutoff.setUTCMonth(cutoff.getUTCMonth() - 6);
-  const sixMonthsAgo = cutoff.toISOString().slice(0, 10);
+  const { stakeOfWard, knownStakes } = stakeLookup(await getAreaWardRows(db), weekStart);
+  const sixMonthsAgo = addMonthsClamped(weekStart, -6);
 
   const byStake: Record<string, { onDate: Friend[]; baptized: Friend[] }> = {};
   const bucket = (s: string) => (byStake[s] ??= { onDate: [], baptized: [] });
 
   for (const f of friends) {
-    const stake = f.stake || stakeOfWard.get((f.ward ?? "").toLowerCase()) || "(unassigned)";
+    const stake = stakeForFriend(f, knownStakes, stakeOfWard);
     if (isOnDate(f)) bucket(stake).onDate.push(f);
     if (f.baptizedConfirmed && (f.baptismDate ?? "") >= sixMonthsAgo) {
       bucket(stake).baptized.push(f);
@@ -153,12 +171,7 @@ export async function monthlyBaptisms(
   db: D1Database,
   months = 6,
 ): Promise<{ month: string; confirmed: number; unverified: number }[]> {
-  const now = new Date();
-  const keys: string[] = [];
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-    keys.push(d.toISOString().slice(0, 7));
-  }
+  const keys = recentMonthKeys(months, todayIso());
   const earliest = keys[0]!;
   const { results } = await db
     .prepare(
@@ -327,6 +340,11 @@ export function fullKeyOf(ward: string | null, name: string, date: string | null
   return `${wnKeyOf(ward, name)}|${date ?? ""}`;
 }
 
+/**
+ * Apply a full snapshot of the sheet. `weekStart` overrides the week the
+ * snapshot is filed under (tests / backfills); normally leave it null and the
+ * current week (mission tz) is used.
+ */
 export async function syncFriends(
   db: D1Database,
   rows: SheetRow[],
@@ -342,14 +360,25 @@ export async function syncFriends(
 }> {
   const warnings: string[] = [];
   const now = new Date().toISOString();
+  let skippedJunk = 0;
 
-  // normalise + key, drop nameless rows
+  // normalise + key, drop nameless rows. A formula-driven cell can push a
+  // spreadsheet error token (#REF!, #N/A …) through as if it were text; those
+  // are blanked field-by-field and a row whose *name* is one is dropped.
   const clean = rows
     .map((r) => {
-      const name = norm(r.name);
-      const zone = norm(r.zone);
-      const ward = norm(r.ward);
-      const baptismDate = toIsoDate(r.baptismDate);
+      const scrub = (v: unknown) => (isSheetError(v) ? "" : v);
+      const name = isSheetError(r.name) ? "" : norm(r.name);
+      const zone = norm(scrub(r.zone));
+      const ward = norm(scrub(r.ward));
+      const baptismDate = isSheetError(r.baptismDate) ? null : toIsoDate(r.baptismDate);
+      r = {
+        ...r,
+        stake: norm(scrub(r.stake)),
+        missionaries: norm(scrub(r.missionaries)),
+        baptismTime: norm(scrub(r.baptismTime)),
+        baptismAddress: norm(scrub(r.baptismAddress)),
+      };
       return {
         wn: wnKeyOf(ward, name),
         full: fullKeyOf(ward, name, baptismDate),
@@ -367,13 +396,22 @@ export async function syncFriends(
       };
     })
     .filter((r) => {
-      if (!r.name) return false;
+      if (!r.name) {
+        skippedJunk++;
+        return false;
+      }
       if (!r.baptismDate && !r.baptizedConfirmed) {
         warnings.push(`"${r.name}" has no baptism date and isn't marked baptized; skipped`);
         return false;
       }
       return true;
     });
+
+  if (skippedJunk > 0) {
+    warnings.push(
+      `${skippedJunk} row(s) had a blank name or a spreadsheet error (#REF!, #N/A) in the name column; skipped`,
+    );
+  }
 
   // dedupe the snapshot on the exact key (a true duplicate entry collapses)
   const snap = new Map<string, (typeof clean)[number]>();
@@ -411,6 +449,8 @@ export async function syncFriends(
     a.attendedChurch2x !== b.attendedChurch2x ||
     a.onBaptismCalendar !== b.onBaptismCalendar ||
     a.baptizedConfirmed !== b.baptizedConfirmed ||
+    a.full !== (b.syncKey ?? null) ||
+    b.leftSheetAt != null ||
     !b.active ||
     b.dropped;
 
@@ -425,7 +465,13 @@ export async function syncFriends(
 
     if (prev) {
       claimed.add(prev.id);
-      if (differs(r, prev)) changed++;
+      upserted++;
+      // Only write when something actually differs. Rewriting every row on
+      // every 15-minute tick burned ~10k D1 writes a day and stamped
+      // updated_at on rows nothing had touched, which made "when did this
+      // record last change" meaningless.
+      if (!differs(r, prev)) continue;
+      changed++;
       stmts.push(
         db
           .prepare(
@@ -461,8 +507,8 @@ export async function syncFriends(
       );
       changed++;
       inserted++;
+      upserted++;
     }
-    upserted++;
   }
 
   // sheet rows nobody claimed: STLs cycle completed baptisms out each month, so
@@ -525,8 +571,17 @@ export async function syncFriends(
   // run in chunks
   for (let i = 0; i < stmts.length; i += 20) await db.batch(stmts.slice(i, i + 20));
 
-  // weekly snapshot — only when something moved (idempotent UPSERT keyed by week)
-  if (weekStart && (changed > 0 || deactivated > 0)) {
+  // Weekly snapshot of the sheet's state, keyed by the Monday of the week the
+  // sync lands in (mission tz) — "as of week X". Written when something moved,
+  // and at least once per week even when nothing did, so a quiet week is not
+  // a missing week in the history. Idempotent UPSERT keyed by (friend, week).
+  const snapWeek = weekStart ?? mondayOf(todayIso());
+  const haveSnapshot = await db
+    .prepare("SELECT 1 FROM friend_week WHERE week_start = ? LIMIT 1")
+    .bind(snapWeek)
+    .first();
+  if (changed > 0 || deactivated > 0 || !haveSnapshot) {
+    const weekStart = snapWeek;
     const activeNow = await listFriends(db);
     const weekStmts = activeNow.map((f) =>
       db
@@ -548,12 +603,18 @@ export async function syncFriends(
     for (let i = 0; i < weekStmts.length; i += 20) await db.batch(weekStmts.slice(i, i + 20));
   }
 
-  await db
-    .prepare(
-      "INSERT INTO friend_sync (at, rows_in, upserted, deactivated, warnings) VALUES (?, ?, ?, ?, ?)",
-    )
-    .bind(now, rows.length, upserted, deactivated, warnings.length ? JSON.stringify(warnings) : null)
-    .run();
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO friend_sync (at, rows_in, upserted, deactivated, warnings) VALUES (?, ?, ?, ?, ?)",
+      )
+      .bind(now, rows.length, upserted, deactivated, warnings.length ? JSON.stringify(warnings) : null),
+    // The 15-minute timer writes ~35k log rows a year. Only the recent ones
+    // matter (freshness + a few weeks of "what happened"); keep 120 days.
+    db
+      .prepare("DELETE FROM friend_sync WHERE at < ?")
+      .bind(new Date(Date.now() - 120 * 86_400_000).toISOString()),
+  ]);
 
   return { rowsIn: rows.length, upserted, changed, retained, deactivated, warnings };
 }

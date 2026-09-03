@@ -2,6 +2,61 @@
  * Friends / on-date helpers — pure. Shared by the server and the legacy import.
  */
 
+import { addDays, calendarWeekOf, monthOf, todayIso } from "../shared/dates.js";
+
+/**
+ * Spreadsheet error tokens (#REF!, #N/A, …) that a formula-driven Baptisms
+ * (MLC) sheet can leave in a name or date cell. They are never data.
+ */
+const SHEET_ERROR = /^#(REF!|N\/A|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|ERROR!)$/i;
+export function isSheetError(v: unknown): boolean {
+  return SHEET_ERROR.test(String(v ?? "").trim());
+}
+
+/**
+ * Match a free-text stake name (as typed on the sheet) to one of the stakes
+ * the crosswalk knows. Case-insensitive, ignores a trailing "Stake", accents
+ * and extra whitespace. Returns the canonical spelling, or null.
+ */
+export function matchStake(text: string | null | undefined, known: Iterable<string>): string | null {
+  const key = stakeKey(text);
+  if (!key) return null;
+  for (const k of known) if (stakeKey(k) === key) return k;
+  return null;
+}
+function stakeKey(s: string | null | undefined): string {
+  return String(s ?? "")
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\bstake\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export const UNASSIGNED_STAKE = "(unassigned)";
+
+/**
+ * Which stake a friend belongs to for reporting: the sheet's stake column
+ * (matched tolerantly against the known stakes), else the stake of the ward
+ * named on the sheet, else "(unassigned)" so the caller can surface it.
+ */
+export function stakeForFriend(
+  f: { stake: string | null; ward: string | null },
+  knownStakes: Iterable<string>,
+  stakeOfWard: Map<string, string>,
+): string {
+  const known = [...knownStakes];
+  const byText = matchStake(f.stake, known);
+  if (byText) return byText;
+  const byWard = stakeOfWard.get((f.ward ?? "").trim().toLowerCase());
+  if (byWard) return byWard;
+  // an unknown spelling is still a stake name the STL wrote; keep it visible
+  // rather than folding it into "(unassigned)" and losing the information
+  const raw = String(f.stake ?? "").trim();
+  return raw || UNASSIGNED_STAKE;
+}
+
 export interface Friend {
   id: string;
   name: string;
@@ -216,12 +271,9 @@ export function dedupeBaptized<T extends { name: string; baptismDate: string | n
   return rows.filter((r) => kept.has(r));
 }
 
-/** Monday..Sunday (inclusive, so the weekend counts) of the week containing `d`. */
-export function calendarWeek(d = new Date()): { start: string; end: string } {
-  const dow = (d.getUTCDay() + 6) % 7; // 0 = Monday
-  const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow));
-  const sun = new Date(mon.getTime() + 6 * 86_400_000);
-  return { start: mon.toISOString().slice(0, 10), end: sun.toISOString().slice(0, 10) };
+/** Monday..Sunday (inclusive, so the weekend counts) of the week containing today (mission tz). */
+export function calendarWeek(today: string = todayIso()): { start: string; end: string } {
+  return calendarWeekOf(today);
 }
 
 /**
@@ -231,19 +283,23 @@ export function calendarWeek(d = new Date()): { start: string; end: string } {
  * month" against **today's** calendar week (Mon through Sun, weekend included)
  * and today's calendar month — the STL sheet works in real time, not in IMOS
  * reporting weeks. Pass an explicit `weekStart` only for a historical view.
+ * "Today" is the mission's local date, never UTC.
  */
-export function summarise(friends: Friend[], weekStart: string | null): FriendsSummary {
-  const today = new Date().toISOString().slice(0, 10);
+export function summarise(
+  friends: Friend[],
+  weekStart: string | null,
+  today: string = todayIso(),
+): FriendsSummary {
   let wkStart: string, wkEnd: string, month: string;
   if (weekStart) {
     wkStart = weekStart;
-    wkEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
-    month = weekStart.slice(0, 7);
+    wkEnd = addDays(weekStart, 6);
+    month = monthOf(weekStart);
   } else {
-    const w = calendarWeek();
+    const w = calendarWeek(today);
     wkStart = w.start;
     wkEnd = w.end;
-    month = today.slice(0, 7);
+    month = monthOf(today);
   }
   const horizon = weekStart ? wkStart : today;
 

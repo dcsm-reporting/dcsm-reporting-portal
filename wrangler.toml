@@ -34,3 +34,7 @@ fallthrough = true
 # (gitignored) so the local server lets you in.
 [vars]
 PORTAL_ENV = "production"
+# Optional hardening — verify the signed Access token instead of trusting the
+# email header alone. Set BOTH or neither; see docs/access-token-check.md.
+# ACCESS_TEAM_DOMAIN = "late-fire-fa86.cloudflareaccess.com"
+# ACCESS_AUD = "<Application Audience (AUD) tag from the Access app>"

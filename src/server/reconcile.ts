@@ -16,8 +16,9 @@
 import { byStake } from "../pipeline/rollup.js";
 import { wardMapForWeek } from "../pipeline/resolve.js";
 import { getAreaWardRows, loadWardFacts, weeksAvailable } from "./db.js";
-import { listFriends } from "./friends.js";
-import { dedupeBaptized } from "../pipeline/friends.js";
+import { listFriends, stakeLookup } from "./friends.js";
+import { dedupeBaptized, stakeForFriend } from "../pipeline/friends.js";
+import { addDays, todayIso } from "../shared/dates.js";
 
 const BC = 20; // "People Who Are Baptized and Confirmed"
 
@@ -68,8 +69,7 @@ export async function buildReconcile(db: D1Database, month: string): Promise<Rec
   // named completed baptisms with baptism_date in the month
   const friends = await listFriends(db, { includeInactive: true });
   const refWeek = weeks[weeks.length - 1] ?? `${month}-15`;
-  const stakeOfWard = new Map<string, string>();
-  for (const [, [wn, s]] of wardMapForWeek(areaWard, refWeek)) stakeOfWard.set(wn.toLowerCase(), s);
+  const { stakeOfWard, knownStakes } = stakeLookup(areaWard, refWeek);
 
   const namedByStake = new Map<string, number>();
   const unverifiedByStake = new Map<string, number>();
@@ -79,7 +79,7 @@ export async function buildReconcile(db: D1Database, month: string): Promise<Rec
     friends.filter((f) => f.baptizedConfirmed && (f.baptismDate ?? "").startsWith(month)),
   );
   for (const f of monthBaptized) {
-    const stake = f.stake || stakeOfWard.get((f.ward ?? "").toLowerCase()) || "(unassigned)";
+    const stake = stakeForFriend(f, knownStakes, stakeOfWard);
     if (isConfirmedTier(f.confidence)) {
       namedByStake.set(stake, (namedByStake.get(stake) ?? 0) + 1);
       namedMission++;
@@ -99,8 +99,8 @@ export async function buildReconcile(db: D1Database, month: string): Promise<Rec
     return { stake, kiFeedBC, namedCount, unverifiedCount, gap: kiFeedBC - namedCount };
   });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const horizon = new Date(Date.now() - 75 * 86_400_000).toISOString().slice(0, 10);
+  const today = todayIso();
+  const horizon = addDays(today, -75);
   const disappeared: DisappearedRow[] = friends
     .filter(
       (f) =>

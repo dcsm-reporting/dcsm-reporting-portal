@@ -14,10 +14,22 @@ reads `Name / Baptism Date / Address / Time / Attended Church (Y/N) / Baptism
 Calendar (Y/N) / Ward / Stake / Missionaries / Completed Baptism`, and posts them
 to `POST /api/friends/sync`. `syncFriends()` then:
 
-- upserts by a natural key `zone|ward|name` (so a rescheduled date just updates),
-- **deactivates** anyone who dropped out of the sheet,
-- takes a weekly snapshot into `friend_week` for the stake-report trends,
-- logs the run to `friend_sync` (drives the "last synced" line on the page).
+- matches rows two ways: exact `ward|name|date`, then a single unclaimed
+  `ward|name` (so a rescheduled date just updates),
+- writes only the rows that actually changed (an unchanged sheet costs no D1
+  writes and leaves `updated_at` meaningful),
+- **keeps** a confirmed baptism that leaves the sheet (the monthly STL
+  clear-out) and marks an on-date friend who leaves as dropped,
+- skips any row whose name cell is a spreadsheet error (`#REF!`, `#N/A`, …)
+  and blanks such errors in every other cell (the script does the same before
+  sending),
+- refuses a whole pass that looks like a mid-edit or a sort (many inserts and
+  drops at once) rather than guessing,
+- files a snapshot into `friend_week` under the Monday of the current week
+  (mission time zone) whenever something changed, and at least once per week
+  regardless,
+- logs the run to `friend_sync` (drives the "last synced" line on the page);
+  log rows older than 120 days are pruned automatically.
 
 ## One-time setup
 

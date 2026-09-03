@@ -52,9 +52,12 @@ Dormant until this repo has a GitHub remote. To turn it on:
 
 ## 4. Self-serve JSON export (in the app)
 
-**Data → Download full backup (JSON)** hits `/api/export`, which dumps all 14
-tables as one JSON file. It's the "email myself a copy" option — handy, human
--readable, and Access-gated, but not a schema backup: prefer #2/#3 for real
+**Admin → Data → Download full backup (JSON)** hits `/api/export`, which
+streams every table (16 as of migration 0011, including `console_check`) as
+one JSON file. It is admin-only (it is the whole system in one file) and is
+streamed table by table in row pages, so it stays within Worker memory however
+large the raw-payload history grows. It's the "email myself a copy" option —
+handy, human-readable — but not a schema backup: prefer #2/#3 for real
 recovery.
 
 ## What to do before a migration or bulk load

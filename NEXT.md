@@ -2,6 +2,15 @@
 
 Deferred work, roughly in priority order. Nothing here is urgent.
 
+## 0. Two five-minute hand-offs from the 2026-09-03 hardening round
+
+- **Paste the updated sheet script.** `apps_script/baptisms-sync.gs` now skips
+  `#REF!` / `#N/A` rows and no longer sends a week key. The portal already
+  copes with the old script, so this is not urgent, but the sync log will keep
+  warning about error-token rows until it is pasted.
+- **Turn on the Access token check** once you have the AUD tag in hand:
+  `docs/access-token-check.md`. Two lines in `wrangler.toml`, one deploy.
+
 ## 1. Monday MLC Slides — repoint the weekly KIs to the portal
 
 Keep the existing Apps Script (`resources/DCSM Key Indicator Reports - Slides
@@ -27,19 +36,12 @@ Plan (~half a day, low risk):
 
 Until this lands, the deck can run off a hand-updated sheet.
 
-## 2. Storage retention pass — low value, do once a year
+## 2. Storage retention — settled, nothing to do
 
-Real growth is small: `ki_fact` / `ward_fact` / `missionary_snapshot` /
-`area_history` are all trivial (<250k rows in five years) on a 5 GB free tier.
-The only real grower is **`import_run.raw_json`** (~15-20 MB/year). `audit_log`
-grows forever but slowly (~1k rows/year).
-
-When it's worth an hour:
-
-- A script that nulls `raw_json` on `import_run` rows older than ~18 months
-  (keep the row; the blob is only needed to re-seed the crosswalk at transfers).
-- Cap `audit_log` to the last ~2,000 rows.
-- A `docs/retention.md` describing what grows and the yearly prune.
+Numbers and reasoning are in `docs/anomalies.md` ("Data growth over years").
+`friend_sync` now prunes itself to 120 days; everything else is small enough
+for a decade on the free tier, and `import_run.raw_json` is the audit trail
+and should stay. Revisit only if D1's free storage tier shrinks.
 
 ## 3. Roles — DONE (2026-09-02)
 

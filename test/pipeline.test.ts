@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { normalize, validate, ValidationError } from "../src/pipeline/readImos.js";
+import { isWeeklyPayload, normalize, validate, ValidationError } from "../src/pipeline/readImos.js";
 import { byArea, byZone, goalSeries, mlc, series } from "../src/pipeline/rollup.js";
 import type { ImosPayload } from "../src/pipeline/types.js";
 
@@ -22,10 +22,44 @@ describe("validate", () => {
     expect(validate(loadFixture(), { areaBand: WIDE })).toEqual([]);
   });
 
-  it("wrong KI id set raises", () => {
+  it("an extra KI id the Church adds later warns but does not block", () => {
     const p = loadFixture();
     p.keyIndicators!.push({ id: 999, name: "Bogus" });
+    const w = validate(p, { areaBand: WIDE });
+    expect(w.some((x) => x.includes("999") && x.includes("ignore"))).toBe(true);
+  });
+
+  it("a missing required KI id raises", () => {
+    const p = loadFixture();
+    p.keyIndicators = p.keyIndicators!.filter((k) => k.id !== 100);
     expect(() => validate(p, { areaBand: WIDE })).toThrow(ValidationError);
+  });
+
+  it("missing or malformed report dates raise (they are the storage key)", () => {
+    const p = loadFixture();
+    delete p.reportStart;
+    expect(() => validate(p, { areaBand: WIDE })).toThrow(ValidationError);
+    const q = loadFixture();
+    q.reportStart = "08/17/2026";
+    expect(() => validate(q, { areaBand: WIDE })).toThrow(ValidationError);
+    const r = loadFixture();
+    r.reportEnd = "2026-08-10"; // before start
+    expect(() => validate(r, { areaBand: WIDE })).toThrow(ValidationError);
+  });
+
+  it("a month range or a non-Monday start warns and is not 'weekly'", () => {
+    const p = loadFixture();
+    p.reportStart = "2026-08-01";
+    p.reportEnd = "2026-08-31";
+    const w = validate(p, { areaBand: WIDE });
+    expect(w.some((x) => x.includes("not a Mon–Sun week"))).toBe(true);
+    expect(isWeeklyPayload(p)).toBe(false);
+    const q = loadFixture();
+    q.reportStart = "2026-08-16"; // a Sunday
+    q.reportEnd = "2026-08-22";
+    expect(validate(q, { areaBand: WIDE }).some((x) => x.includes("not a Monday"))).toBe(true);
+    expect(isWeeklyPayload(q)).toBe(false);
+    expect(isWeeklyPayload(loadFixture())).toBe(true);
   });
 
   it("not a mission payload raises", () => {

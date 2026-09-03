@@ -1,11 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api, type FriendRow } from "../api.js";
 import { ErrorNote, Loading, PageHead, useAsync, useWeek } from "../lib.js";
-
-const ZONES = [
-  "Alexandria", "Annandale", "Bull Run", "McLean", "Oakton",
-  "Langley", "Loudoun", "Woodbridge", "Manassas", "Potomac",
-];
+import { todayIso } from "@shared/dates";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -17,6 +13,7 @@ const fmtShort = (iso: string) => {
 };
 
 export function FriendsPage() {
+  const { zones: dataZones } = useWeek();
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState<"on-date" | "baptized" | "all">("on-date");
 
@@ -30,7 +27,17 @@ export function FriendsPage() {
     summary.reload();
   };
 
-  const today = new Date().toISOString().slice(0, 10);
+  // The zone filter offers the zones in stored KI data plus any zone name the
+  // sheet uses that the data doesn't (a tab named for a zone that has since
+  // been renamed still needs to be selectable).
+  const ZONES = useMemo(() => {
+    const fromSheet = (list.data?.friends ?? []).map((f) => f.zone).filter((z): z is string => !!z);
+    return [...dataZones, ...fromSheet.filter((z) => !dataZones.includes(z)).sort()].filter(
+      (z, i, a) => a.indexOf(z) === i,
+    );
+  }, [dataZones, list.data]);
+
+  const today = todayIso();
   const overdue =
     status === "on-date" && list.data
       ? list.data.friends.filter((f) => f.baptismDate && f.baptismDate < today)
@@ -214,7 +221,7 @@ function BaptizedSections({ rows, onChange }: { rows: FriendRow[]; onChange: () 
 
 function Reconciliation({ onChange }: { onChange: () => void }) {
   const { week } = useWeek();
-  const defaultMonth = (week ?? new Date().toISOString().slice(0, 10)).slice(0, 7);
+  const defaultMonth = (week ?? todayIso()).slice(0, 7);
   const [month, setMonth] = useState(defaultMonth);
   const [nonce, setNonce] = useState(0);
   const { data, err, loading } = useAsync(() => api.reconcile(month), [month, nonce]);

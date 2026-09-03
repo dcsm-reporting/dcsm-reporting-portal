@@ -7,14 +7,14 @@
  * (stake reports) client-side.
  */
 
-import { dedupeBaptized, isOnDate } from "../pipeline/friends.js";
+import { dedupeBaptized, isOnDate, stakeForFriend } from "../pipeline/friends.js";
 import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import { getAreaWardRows, weeksAvailable } from "./db.js";
-import { wardMapForWeek } from "../pipeline/resolve.js";
-import { listFriends } from "./friends.js";
+import { listFriends, stakeLookup } from "./friends.js";
 import { buildStakeView, buildWeekView, weekLabel } from "./service.js";
 import { getStakeRecipients } from "./db.js";
 import { getConfig } from "./db.js";
+import { addMonthsClamped } from "../shared/dates.js";
 
 const confirmedTier = (c: string | null) => c === null || c === "confirmed";
 
@@ -51,17 +51,31 @@ export async function buildPublish(db: D1Database, week: string) {
   const recByStake = new Map(recipients.map((r) => [r.stake, r]));
 
   const all = await weeksAvailable(db);
-  const wardMap = wardMapForWeek(areaWard, week);
-  const stakeOfWard = new Map<string, string>();
-  for (const [, [wn, s]] of wardMap) stakeOfWard.set(wn.toLowerCase(), s);
+  const { stakeOfWard, knownStakes } = stakeLookup(areaWard, week);
   const stakeFor = (f: { stake: string | null; ward: string | null }) =>
-    f.stake || stakeOfWard.get((f.ward ?? "").toLowerCase()) || "(unassigned)";
+    stakeForFriend(f, knownStakes, stakeOfWard);
 
   const month = week.slice(0, 7);
   const year = week.slice(0, 4);
-  const sixMonthsAgo = new Date(Date.parse(`${week}T00:00:00Z`));
-  sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 6);
-  const cutoff = sixMonthsAgo.toISOString().slice(0, 10);
+  const cutoff = addMonthsClamped(week, -6);
+
+  // Active friends whose stake does not match any stake with a report — they
+  // would otherwise silently appear on no report at all. Surfaced on the
+  // Publish page so someone fixes the sheet's stake column.
+  const reportStakes = new Set(stakeView.stakes);
+  const unassigned = friends
+    .filter((f) => f.active && (isOnDate(f) || (f.baptizedConfirmed && (f.baptismDate ?? "") >= cutoff)))
+    .filter((f) => !reportStakes.has(stakeFor(f)))
+    .map((f) => ({
+      name: f.name,
+      ward: f.ward,
+      stake: f.stake,
+      zone: f.zone,
+      baptismDate: f.baptismDate,
+      baptizedConfirmed: f.baptizedConfirmed,
+      source: f.source,
+    }))
+    .sort((a, b) => (b.baptismDate ?? "").localeCompare(a.baptismDate ?? ""));
 
   const reports: StakeReport[] = stakeView.stakes.map((stake) => {
     const g = stakeView.byStake[stake] ?? { wards: {}, total: {} };
@@ -119,6 +133,7 @@ export async function buildPublish(db: D1Database, week: string) {
       monthByZone: weekView.month.byZone,
     },
     reports,
+    unassigned,
   };
 }
 

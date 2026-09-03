@@ -41,6 +41,13 @@ import type {
   NormalizeResult,
   WardFact,
 } from "./types.js";
+import { dayOfWeekMonday0, isIsoDate } from "../shared/dates.js";
+
+/** True when the payload describes exactly one Mon–Sun reporting week. */
+export function isWeeklyPayload(payload: Pick<ImosPayload, "reportStart" | "reportEnd">): boolean {
+  if (!isIsoDate(payload.reportStart) || !isIsoDate(payload.reportEnd)) return false;
+  return daySpan(payload.reportStart, payload.reportEnd) === 6 && dayOfWeekMonday0(payload.reportStart) === 0;
+}
 
 export class ValidationError extends Error {
   override name = "ValidationError";
@@ -167,13 +174,31 @@ export function validate(
     );
   }
 
+  // The report dates are the storage key for everything downstream. A payload
+  // without them (or with them in some other format) must never be stored —
+  // it would land under an empty or garbage week key.
+  if (!isIsoDate(payload.reportStart) || !isIsoDate(payload.reportEnd)) {
+    throw new ValidationError(
+      `payload reportStart/reportEnd are missing or not YYYY-MM-DD (got ` +
+        `${JSON.stringify(payload.reportStart)} … ${JSON.stringify(payload.reportEnd)})`,
+    );
+  }
+  if (payload.reportEnd < payload.reportStart) {
+    throw new ValidationError(
+      `payload reportEnd ${payload.reportEnd} is before reportStart ${payload.reportStart}`,
+    );
+  }
+
+  // Indicators are referenced by id, never by position. Every one of the six
+  // the mission reports on must be present; an *extra* indicator the Church
+  // adds later is ignored with a warning rather than blocking every import
+  // until the code catches up.
   const kiDefs = payload.keyIndicators ?? [];
   const gotIds = new Set(kiDefs.map((k) => k.id));
-  const sameIds =
-    gotIds.size === KI_ID_SET.size && [...KI_ID_SET].every((id) => gotIds.has(id));
-  if (!sameIds) {
+  const missing = [...KI_ID_SET].filter((id) => !gotIds.has(id)).sort((a, b) => a - b);
+  if (missing.length > 0) {
     throw new ValidationError(
-      `keyIndicators id set changed: expected ${[...KI_ID_SET]
+      `keyIndicators is missing required id(s) ${missing.join(",")}: expected ${[...KI_ID_SET]
         .slice()
         .sort((a, b) => a - b)
         .join(",")}, got ${[...gotIds]
@@ -182,18 +207,31 @@ export function validate(
         .join(",")}`,
     );
   }
+  const extra = kiDefs.filter((k) => k.id != null && !KI_ID_SET.has(k.id));
+  if (extra.length > 0) {
+    warnings.push(
+      `payload carries ${extra.length} indicator(s) this portal does not report on and will ignore: ` +
+        extra.map((k) => `${k.id}${k.name ? ` (${k.name})` : ""}`).join(", "),
+    );
+  }
 
   const areas = [...iterAreas(payload)];
   if (areas.length === 0) throw new ValidationError("payload contains no areas");
 
-  // A Mon–Sun reporting week spans 6 days start→end. Anything else (a month
-  // range, a single day) still imports, but it would land as one row in the
-  // weekly series — flag it loudly.
+  // A Mon–Sun reporting week spans 6 days start→end and starts on a Monday.
+  // Anything else (a month range, a single day, a Sunday-start week) would
+  // land as one row in the weekly series — flag it loudly; the import route
+  // refuses to store it unless the person explicitly forces it.
   const span = daySpan(payload.reportStart, payload.reportEnd);
   if (span !== null && span !== 6) {
     warnings.push(
       `reporting range ${payload.reportStart}…${payload.reportEnd} is ${span + 1} days, ` +
         `not a Mon–Sun week — importing stores it as a single period under ${payload.reportStart}`,
+    );
+  }
+  if (dayOfWeekMonday0(payload.reportStart) !== 0) {
+    warnings.push(
+      `reportStart ${payload.reportStart} is not a Monday — reporting weeks run Monday to Sunday`,
     );
   }
 

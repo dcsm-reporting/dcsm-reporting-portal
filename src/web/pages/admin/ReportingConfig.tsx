@@ -17,12 +17,18 @@ export function ReportingConfigPage() {
     if (cfgReq.data) setCfg(cfgReq.data.config);
   }, [cfgReq.data]);
 
+  const [saveErr, setSaveErr] = useState<string | null>(null);
   const save = async (key: string, value: unknown) => {
     setSaved(null);
-    const r = await api.setConfig(key, value);
-    setCfg(r.config);
-    setSaved(key);
-    setTimeout(() => setSaved(null), 2500);
+    setSaveErr(null);
+    try {
+      const r = await api.setConfig(key, value);
+      setCfg(r.config);
+      setSaved(key);
+      setTimeout(() => setSaved(null), 2500);
+    } catch (e) {
+      setSaveErr((e as Error).message);
+    }
   };
   const move = (i: number, d: -1 | 1) => {
     if (!cfg) return;
@@ -45,6 +51,11 @@ export function ReportingConfigPage() {
         Read on every request, so a change takes effect on the next page load, no deploy. Defaults
         come from the code; edits are stored in the database and apply for everyone.
       </p>
+      {saveErr && (
+        <div className="note stop">
+          <strong>Not saved.</strong> {saveErr}
+        </div>
+      )}
 
       <h4 style={{ marginTop: "1.4rem", fontWeight: 600 }}>
         MLC positions {saved === "mlc_positions" && <span className="chip high">saved</span>}
@@ -169,6 +180,34 @@ export function ReportingConfigPage() {
       <div className="row" style={{ marginTop: ".6rem" }}>
         <button className="btn primary" onClick={() => save("bands", cfg.bands)}>Save bands</button>
         <button className="btn" onClick={() => setCfg({ ...cfg, bands: defaults.bands })}>Reset</button>
+      </div>
+
+      <h4 style={{ marginTop: "1.4rem", fontWeight: 600 }}>
+        Expected active areas {saved === "area_band" && <span className="chip high">saved</span>}
+      </h4>
+      <p className="muted" style={{ fontSize: ".85rem", maxWidth: "68ch" }}>
+        An import warns when the number of active proselyting areas in the payload falls outside
+        this range. Widen it if the mission grows or shrinks; it is a sanity check, not a limit.
+      </p>
+      <table className="grid" style={{ maxWidth: 420 }}>
+        <tbody>
+          <BandRow
+            label="Fewest expected"
+            value={cfg.areaBand?.low ?? defaults.areaBand.low}
+            set={(v) => setCfg({ ...cfg, areaBand: { ...(cfg.areaBand ?? defaults.areaBand), low: v } })}
+          />
+          <BandRow
+            label="Most expected"
+            value={cfg.areaBand?.high ?? defaults.areaBand.high}
+            set={(v) => setCfg({ ...cfg, areaBand: { ...(cfg.areaBand ?? defaults.areaBand), high: v } })}
+          />
+        </tbody>
+      </table>
+      <div className="row" style={{ marginTop: ".6rem" }}>
+        <button className="btn primary" onClick={() => save("area_band", cfg.areaBand ?? defaults.areaBand)}>
+          Save expected range
+        </button>
+        <button className="btn" onClick={() => setCfg({ ...cfg, areaBand: defaults.areaBand })}>Reset</button>
       </div>
     </>
   );

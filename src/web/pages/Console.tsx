@@ -11,6 +11,7 @@ const MARK: Record<string, { sym: string; cls: string }> = {
 
 const LINK_FOR: Record<string, string> = {
   import: "/import",
+  gaps: "/import",
   crosswalk: "/admin/rollover",
   rollover: "/admin/rollover",
   chase: "/not-reported",

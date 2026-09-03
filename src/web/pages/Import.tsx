@@ -1,36 +1,26 @@
 import { useMemo, useState } from "react";
 import { api, type ImportSummary } from "../api.js";
 import { PageHead, useWeek } from "../lib.js";
+import { addDays, dayOfWeekMonday0, lastCompleteWeekOf, todayIso } from "@shared/dates";
 
 const IMOS_BASE = "https://imos.churchofjesuschrist.org/ws/auth-controller/api-v1/ki/report";
 
-function iso(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-/** Monday–Sunday of the most recent reporting week that has fully passed. */
-function lastCompleteWeek(today = new Date()): { monday: string; sunday: string } {
-  const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  const dow = d.getUTCDay(); // 0=Sun … 6=Sat
-  const backToSunday = dow === 0 ? 7 : dow; // if today is Sunday, use the previous Sunday
-  const sunday = new Date(d);
-  sunday.setUTCDate(d.getUTCDate() - backToSunday);
-  const monday = new Date(sunday);
-  monday.setUTCDate(sunday.getUTCDate() - 6);
-  return { monday: iso(monday), sunday: iso(sunday) };
+/** Monday–Sunday of the most recent reporting week that has fully passed (mission tz). */
+function lastCompleteWeek(): { monday: string; sunday: string } {
+  return lastCompleteWeekOf(todayIso());
 }
 function shift(mondayIso: string, weeks: number): { monday: string; sunday: string } {
-  const m = new Date(`${mondayIso}T00:00:00Z`);
-  m.setUTCDate(m.getUTCDate() + weeks * 7);
-  const s = new Date(m);
-  s.setUTCDate(m.getUTCDate() + 6);
-  return { monday: iso(m), sunday: iso(s) };
+  const monday = addDays(mondayIso, weeks * 7);
+  return { monday, sunday: addDays(monday, 6) };
 }
 
 export function ImportPage() {
-  const { setWeek } = useWeek();
+  const { setWeek, refreshWeeks, weeks, missing } = useWeek();
   const [range, setRange] = useState(() => lastCompleteWeek());
   const [custom, setCustom] = useState(false);
   const [customRange, setCustomRange] = useState(() => lastCompleteWeek());
+  const [force, setForce] = useState(false);
+  const stored = useMemo(() => new Set(weeks.map((w) => w.weekStart)), [weeks]);
 
   const active = custom ? customRange : range;
   const url = `${IMOS_BASE}/${active.monday}/${active.sunday}`;
@@ -39,6 +29,8 @@ export function ImportPage() {
     const b = Date.parse(`${active.sunday}T00:00:00Z`);
     return Math.round((b - a) / 86_400_000) + 1;
   }, [active]);
+  const startsMonday = /^\d{4}-\d{2}-\d{2}$/.test(active.monday) && dayOfWeekMonday0(active.monday) === 0;
+  const alreadyStored = stored.has(active.monday);
 
   const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,13 +52,18 @@ export function ImportPage() {
       setBusy(false);
     }
   }
+  const [staleRemoved, setStaleRemoved] = useState(0);
   async function doCommit() {
     setBusy(true);
     setErr(null);
     try {
-      const r = await api.importCommit(raw);
+      const r = await api.importCommit(raw, force);
       setCommitted(r.summary);
+      setStaleRemoved(r.stored?.staleRemoved ?? 0);
       setPreview(null);
+      // the week list is what the picker offers; refresh it so the new week
+      // is selectable everywhere, then select it
+      await refreshWeeks().catch(() => {});
       setWeek(r.summary.weekStart);
     } catch (e) {
       setErr(errText(e));
@@ -131,11 +128,44 @@ export function ImportPage() {
           <code style={{ fontSize: ".72rem", wordBreak: "break-all" }}>{url}</code>
         </div>
 
-        {spanDays !== 7 && (
+        {(spanDays !== 7 || !startsMonday) && (
           <div className="note warn" style={{ marginTop: ".8rem" }}>
-            This range is {spanDays} days. IMOS will happily return it, but it isn’t a Mon to Sun
-            week: importing it stores one aggregated row under {active.monday}, which will skew the
-            weekly series. Use it only for a deliberate one-off.
+            {spanDays !== 7
+              ? `This range is ${spanDays} days, not a Monday to Sunday week.`
+              : `${active.monday} is not a Monday; reporting weeks run Monday to Sunday.`}{" "}
+            IMOS will happily return it, but importing it would store one aggregated row under{" "}
+            {active.monday} and skew the weekly series. The portal refuses it unless you tick
+            “store anyway” below.
+          </div>
+        )}
+        {alreadyStored && spanDays === 7 && startsMonday && (
+          <div className="note" style={{ marginTop: ".8rem" }}>
+            This week is already stored. Re-importing replaces its numbers with the new pull and
+            removes any area that is no longer in the report.
+          </div>
+        )}
+        {missing.length > 0 && (
+          <div className="note warn" style={{ marginTop: ".8rem" }}>
+            <strong>
+              {missing.length} week{missing.length === 1 ? "" : "s"} never imported:
+            </strong>{" "}
+            {missing.map((m) => (
+              <button
+                key={m}
+                className="btn"
+                style={{ marginRight: ".3rem", fontSize: ".78rem", padding: "2px 8px" }}
+                onClick={() => {
+                  setCustom(false);
+                  setRange({ monday: m, sunday: addDays(m, 6) });
+                }}
+              >
+                {m}
+              </button>
+            ))}
+            <span className="muted" style={{ fontSize: ".8rem" }}>
+              {" "}
+              Trends and 4-week totals skip them; click one to load its range.
+            </span>
           </div>
         )}
       </div>
@@ -155,9 +185,19 @@ export function ImportPage() {
           {busy ? "Checking…" : "Validate"}
         </button>
         {preview && (
-          <button className="btn primary" onClick={doCommit} disabled={busy}>
+          <button
+            className="btn primary"
+            onClick={doCommit}
+            disabled={busy || (preview.weekly === false && !force)}
+          >
             Commit week {preview.weekStart}
           </button>
+        )}
+        {preview && preview.weekly === false && (
+          <label className="row" style={{ gap: ".3rem" }}>
+            <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
+            <span style={{ fontSize: ".85rem" }}>store anyway (not a Mon to Sun week)</span>
+          </label>
         )}
       </div>
 
@@ -172,6 +212,8 @@ export function ImportPage() {
         <>
           <div className="note ok">
             <strong>Stored.</strong> Week {committed.weekStart} is now the selected week.
+            {staleRemoved > 0 &&
+              ` ${staleRemoved} row(s) from the earlier import of this week were no longer in the report and were removed.`}
           </div>
           <SummaryBlock s={committed} heading="Imported" />
         </>
@@ -195,8 +237,11 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
         <Stat k="Ward rows" v={s.nWardFacts} />
         <Stat k="Missionaries" v={s.nMissionaries} />
       </div>
-      {span !== 7 && (
-        <div className="note warn">This payload covers {span} days, not a normal week.</div>
+      {s.weekly === false && (
+        <div className="note warn">
+          This payload ({s.weekStart} to {s.weekEnd}, {span} days) is not a Monday to Sunday
+          reporting week. It will not be stored unless you tick “store anyway”.
+        </div>
       )}
       {s.alreadyStored && (
         <div className="note warn">A week with this start date is already stored; committing overwrites its rows.</div>
@@ -215,7 +260,7 @@ function SummaryBlock({ s, heading }: { s: ImportSummary; heading: string }) {
           They import fine; resolve them in <strong>Structure → Rollover</strong> so stake rollups pick them up.
         </div>
       )}
-      {s.warnings.length === 0 && s.unmapped.length === 0 && span === 7 && (
+      {s.warnings.length === 0 && s.unmapped.length === 0 && s.weekly !== false && (
         <div className="note ok">All checks clean.</div>
       )}
     </>

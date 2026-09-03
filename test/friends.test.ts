@@ -3,12 +3,46 @@ import {
   cleanTime,
   dedupeBaptized,
   isOnDate,
+  isSheetError,
+  matchStake,
   missionaryLastNames,
+  stakeForFriend,
   summarise,
   toIsoDate,
   yn,
   type Friend,
 } from "../src/pipeline/friends.js";
+
+describe("sheet hygiene", () => {
+  it("recognises spreadsheet error tokens", () => {
+    for (const t of ["#REF!", "#N/A", "#VALUE!", "#DIV/0!", "#NAME?", "#NUM!", "#NULL!", " #ref! "])
+      expect(isSheetError(t)).toBe(true);
+    expect(isSheetError("Maria Lopez")).toBe(false);
+    expect(isSheetError("#hashtag")).toBe(false);
+    expect(isSheetError("")).toBe(false);
+    expect(isSheetError(null)).toBe(false);
+  });
+
+  it("matches a sheet's stake spelling to the known stakes tolerantly", () => {
+    const known = ["Annandale", "Mount Vernon", "WDCS YSA", "Bella Vista"];
+    expect(matchStake("annandale", known)).toBe("Annandale");
+    expect(matchStake("Mount Vernon Stake", known)).toBe("Mount Vernon");
+    expect(matchStake("  wdcs  ysa ", known)).toBe("WDCS YSA");
+    expect(matchStake("Bella-Vista", known)).toBe("Bella Vista");
+    expect(matchStake("Oakton", known)).toBeNull();
+    expect(matchStake("", known)).toBeNull();
+    expect(matchStake(null, known)).toBeNull();
+  });
+
+  it("stakeForFriend: sheet stake, then ward lookup, then keeps the raw text, then unassigned", () => {
+    const known = ["Annandale", "Oakton"];
+    const byWard = new Map([["fairfax", "Annandale"]]);
+    expect(stakeForFriend({ stake: "oakton stake", ward: null }, known, byWard)).toBe("Oakton");
+    expect(stakeForFriend({ stake: null, ward: "Fairfax" }, known, byWard)).toBe("Annandale");
+    expect(stakeForFriend({ stake: "Some New Stake", ward: null }, known, byWard)).toBe("Some New Stake");
+    expect(stakeForFriend({ stake: null, ward: "Nowhere" }, known, byWard)).toBe("(unassigned)");
+  });
+});
 
 describe("cleanTime", () => {
   it("pulls the clock time out of a Sheets datetime string", () => {
@@ -133,17 +167,21 @@ describe("isOnDate / summarise", () => {
   });
 
   it("null weekStart measures against the current calendar week + month", () => {
-    const today = new Date();
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const today = "2026-09-06"; // a Sunday
     const friends = [
-      F({ baptismDate: iso(today) }), // on date, today, not overdue
+      F({ baptismDate: today }), // on date, today, not overdue (Sunday still counts as this week)
+      F({ baptismDate: "2026-09-05" }), // yesterday — overdue
+      F({ baptismDate: "2026-09-07" }), // next Monday — next week
       F({ baptismDate: "2020-01-15" }), // on date, long overdue
-      F({ baptismDate: iso(today), baptizedConfirmed: true }), // baptised this month
+      F({ baptismDate: today, baptizedConfirmed: true }), // baptised this month
     ];
-    const s = summarise(friends, null);
-    expect(s.onDateTotal).toBe(2);
-    expect(s.overdueCount).toBe(1);
+    const s = summarise(friends, null, today);
+    expect(s.weekStart).toBe("2026-08-31");
+    expect(s.weekEnd).toBe("2026-09-06");
+    expect(s.onDateTotal).toBe(4);
+    expect(s.onDateThisWeek).toBe(2);
+    expect(s.overdueCount).toBe(2);
     expect(s.baptizedThisMonth).toBe(1);
-    expect(s.month).toBe(iso(today).slice(0, 7));
+    expect(s.month).toBe("2026-09");
   });
 });

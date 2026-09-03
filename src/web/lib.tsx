@@ -64,21 +64,45 @@ interface WeekCtx {
   weeks: WeekMeta[];
   week: string | null;
   setWeek: (w: string) => void;
+  /** re-fetch the week list (after an import) */
+  refreshWeeks: () => Promise<void>;
+  /** zones present in stored data, in the configured order */
+  zones: string[];
+  /** Monday of the most recent complete week; null until loaded */
+  expectedLatest: string | null;
+  missing: string[];
 }
-const Ctx = createContext<WeekCtx>({ weeks: [], week: null, setWeek: () => {} });
+const Ctx = createContext<WeekCtx>({
+  weeks: [],
+  week: null,
+  setWeek: () => {},
+  refreshWeeks: async () => {},
+  zones: [],
+  expectedLatest: null,
+  missing: [],
+});
 export const useWeek = () => useContext(Ctx);
 
 export function WeekProvider({ children }: { children: React.ReactNode }) {
   const [params, setParams] = useSearchParams();
   const [weeks, setWeeks] = useState<WeekMeta[]>([]);
   const [latest, setLatest] = useState<string | null>(null);
+  const [zones, setZones] = useState<string[]>([]);
+  const [expectedLatest, setExpectedLatest] = useState<string | null>(null);
+  const [missing, setMissing] = useState<string[]>([]);
+
+  const refreshWeeks = useCallback(async () => {
+    const r = await api.weeks();
+    setWeeks(r.weeks);
+    setLatest(r.latest);
+    setZones(r.zones ?? []);
+    setExpectedLatest(r.expectedLatest ?? null);
+    setMissing(r.missing ?? []);
+  }, []);
 
   useEffect(() => {
-    api.weeks().then((r) => {
-      setWeeks(r.weeks);
-      setLatest(r.latest);
-    });
-  }, []);
+    refreshWeeks().catch(() => {});
+  }, [refreshWeeks]);
 
   const week = params.get("w") ?? latest;
   const setWeek = (w: string) => {
@@ -87,7 +111,11 @@ export function WeekProvider({ children }: { children: React.ReactNode }) {
     setParams(next, { replace: true });
   };
 
-  return <Ctx.Provider value={{ weeks, week, setWeek }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ weeks, week, setWeek, refreshWeeks, zones, expectedLatest, missing }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function WeekPicker() {

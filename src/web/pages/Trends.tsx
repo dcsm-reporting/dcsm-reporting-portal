@@ -17,10 +17,6 @@ import { api } from "../api.js";
 import { ErrorNote, KI_CODE, KI_IDS, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 
 const COLORS = ["#24406b", "#2f6b46", "#97620f", "#9a3b34", "#5b4b8a", "#0f6b78"];
-const ZONES = [
-  "Alexandria", "Annandale", "Bull Run", "McLean", "Oakton",
-  "Langley", "Loudoun", "Woodbridge", "Manassas", "Potomac",
-];
 const KI_CODES = KI_IDS.map((ki) => KI_CODE[ki]);
 const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -31,7 +27,9 @@ const fmtMonth = (m: string) => {
 };
 
 export function TrendsPage() {
-  const { week } = useWeek();
+  // zones come from stored data (configured order), so a transfer that adds
+  // or renames a zone shows up here without a code change
+  const { week, zones: ZONES } = useWeek();
   const [scope, setScope] = useState<string>("mission");
   const [nWeeks, setNWeeks] = useState(12);
   const [measure, setMeasure] = useState<"actual" | "pct">("actual");
