@@ -17,7 +17,8 @@ import {
 import { api } from "../api.js";
 import { ErrorNote, KI_CODE, KI_IDS, Loading, PageHead, useAsync, useWeek } from "../lib.js";
 
-const COLORS = ["#24406b", "#2f6b46", "#97620f", "#9a3b34", "#5b4b8a", "#0f6b78"];
+// Tableau's Key Indicator colours, in KI_IDS order: BC cyan, BD crimson, SA orange, NP green, LMP yellow, NMS navy
+const COLORS = ["#35b7d5", "#a4145a", "#f28c1a", "#2e9e4f", "#e6b422", "#1f3d5c"];
 const KI_CODES = KI_IDS.map((ki) => KI_CODE[ki]);
 const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

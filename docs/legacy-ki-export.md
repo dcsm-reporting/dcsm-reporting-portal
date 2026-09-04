@@ -6,7 +6,17 @@ back, one row per teaching area per week. Loading that history would extend
 Trends and make a year-in-review possible. This page says what file the
 portal needs and gives a prompt for preparing it in a separate AI session.
 
-## What the file must look like
+## The short way
+
+The loader at Admin → Data → **Load history from Tableau** reads Tableau's own
+downloads as they come: in Tableau choose **Download → Crosstab → CSV** (not
+Excel) on the *Missionaries Key Indicators* table and on the *People Baptized
+and Confirmed* list, then pick each file on the page. Dates are read day-first
+as Tableau shows them, checked against "must be a Sunday" for the weekly
+file; icons Tableau appends to names are stripped. Nothing below is needed
+unless a download comes in some other shape.
+
+## The prepared file (optional)
 
 One CSV, UTF-8, one row per teaching area per week, these exact headers:
 

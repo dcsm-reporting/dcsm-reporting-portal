@@ -17,6 +17,10 @@ people able to run it. Written 2026-09-03. Add to it.
    itself, not just Cloudflare or GitHub with it. Google may delete an
    account that has not been signed into for two years, and that address is
    the recovery path for both the Cloudflare and GitHub accounts.
+4. **Once a quarter, refresh the baptism list from Tableau** (Key Indicator
+   Performance by Person → People Baptized and Confirmed → Download →
+   Crosstab → CSV, then Admin → Data → Load history). Five minutes; it keeps
+   the named record in step with Church records. `docs/legacy-ki-export.md`.
 
 ## 2. Credentials and accounts (the mission vault)
 

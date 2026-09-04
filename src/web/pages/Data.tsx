@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api.js";
 import { ErrorNote, Loading, useAsync } from "../lib.js";
+import { normalizeAreaRows, normalizeBaptismRows, parseTable } from "@shared/tableau";
 
 export function DataPage() {
   const { data, err, loading } = useAsync(() => api.data(), []);
@@ -150,39 +151,12 @@ function Stat({ k, v, sub }: { k: string; v: React.ReactNode; sub?: string }) {
   );
 }
 
-/** A small RFC-4180 reader: quoted fields, doubled quotes, CRLF. Header row → objects. */
-function parseCsv(text: string): Record<string, string>[] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let q = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
-    if (q) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') {
-          cell += '"';
-          i++;
-        } else q = false;
-      } else cell += ch;
-    } else if (ch === '"') q = true;
-    else if (ch === ",") {
-      row.push(cell);
-      cell = "";
-    } else if (ch === "\n" || ch === "\r") {
-      if (ch === "\r" && text[i + 1] === "\n") i++;
-      row.push(cell);
-      cell = "";
-      if (row.some((c) => c !== "")) rows.push(row);
-      row = [];
-    } else cell += ch;
-  }
-  row.push(cell);
-  if (row.some((c) => c !== "")) rows.push(row);
-  const [hdr, ...body] = rows;
-  if (!hdr) return [];
-  const keys = hdr.map((h) => h.trim().replace(/^\uFEFF/, ""));
-  return body.map((r) => Object.fromEntries(keys.map((k, j) => [k, (r[j] ?? "").trim()])));
+/** Reads a text file however Tableau or Excel wrote it: UTF-8, or UTF-16 with a byte-order mark. */
+async function readText(file: File): Promise<string> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if (buf[0] === 0xff && buf[1] === 0xfe) return new TextDecoder("utf-16le").decode(buf.subarray(2));
+  if (buf[0] === 0xfe && buf[1] === 0xff) return new TextDecoder("utf-16be").decode(buf.subarray(2));
+  return new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/, "");
 }
 
 /**
@@ -199,7 +173,7 @@ function LegacyLoader() {
     setBusy(true);
     setLog([]);
     try {
-      const rows = parseCsv(await file.text());
+      const rows = normalizeAreaRows(parseTable(await readText(file)));
       const need = ["week_end", "area_id", "zone", "area", "np_goal", "np_actual"];
       const missing = need.filter((k) => !(k in (rows[0] ?? {})));
       if (!rows.length || missing.length) throw new Error(`not the indicator file: missing column(s) ${missing.join(", ") || "(empty file)"}`);
@@ -230,7 +204,7 @@ function LegacyLoader() {
     setBusy(true);
     setLog([]);
     try {
-      const rows = parseCsv(await file.text());
+      const rows = normalizeBaptismRows(parseTable(await readText(file)));
       const need = ["external_id", "name", "baptism_date", "zone"];
       const missing = need.filter((k) => !(k in (rows[0] ?? {})));
       if (!rows.length || missing.length) throw new Error(`not the baptism file: missing column(s) ${missing.join(", ") || "(empty file)"}`);
@@ -256,17 +230,18 @@ function LegacyLoader() {
     <details style={{ marginTop: "1rem" }}>
       <summary>Load history from Tableau</summary>
       <p className="muted" style={{ maxWidth: "70ch", fontSize: ".85rem" }}>
-        Two CSV files prepared as described in <code>docs/legacy-ki-export.md</code>. Weeks that already
+        Tableau's own downloads (Download → Crosstab → CSV) of the <em>Missionaries Key Indicators</em>
+        table and the <em>People Baptized and Confirmed</em> list, read as they come. Weeks that already
         have an IMOS import are never overwritten. Both loads can be run again with the same file;
-        nothing is duplicated.
+        nothing is duplicated. Details: <code>docs/legacy-ki-export.md</code>.
       </p>
       <div className="row" style={{ gap: "1.2rem", flexWrap: "wrap" }}>
         <label className="field">
-          <span className="k mono">Indicator rows (week_end, area_id, …)</span>
+          <span className="k mono">Missionaries Key Indicators download</span>
           <input type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && loadWeeks(e.target.files[0])} />
         </label>
         <label className="field">
-          <span className="k mono">Baptized members (external_id, name, baptism_date, …)</span>
+          <span className="k mono">People Baptized and Confirmed download</span>
           <input type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && loadBaptisms(e.target.files[0])} />
         </label>
       </div>

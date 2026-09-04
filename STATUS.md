@@ -17,7 +17,7 @@ _Updated 2026-09-03. History is in `git log`; this page is only what is true now
 
 ## Verified by
 
-- `npm test`: 128 unit tests, including a byte-for-byte diff of the pipeline
+- `npm test`: 140 unit tests, including a byte-for-byte diff of the pipeline
   against the Python reference on 12 sample weeks.
 - End-to-end suites run against a local Worker before each deploy (kept in the
   session scratchpad, not the repo): import and views (39 checks), a simulated

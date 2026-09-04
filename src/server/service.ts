@@ -535,7 +535,7 @@ export async function buildConsole(db: D1Database, areaKey: AreaKey) {
             detail:
               `${missing.length} week(s) between ${all[0]} and ${latest} were never imported: ` +
               `${missing.slice(0, 6).join(", ")}${missing.length > 6 ? ", …" : ""}. ` +
-              `Trends and 4-week totals skip them.`,
+              `Trends and 4-week totals skip them. Import them from IMOS, or load them from a Tableau download at Admin → Data.`,
           },
         ]
       : []),
