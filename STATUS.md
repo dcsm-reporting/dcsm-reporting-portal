@@ -8,7 +8,7 @@ _Updated 2026-09-03. History is in `git log`; this page is only what is true now
   `dcsm.reporting@gmail.com` Cloudflare account, behind Cloudflare Access
   (`@missionary.org`, `@churchofjesuschrist.org`) plus the portal's own viewer
   list (Admin → Admin access).
-- **Data:** 18 imported weeks (2026-04-27 to 2026-08-24, no gaps), 11 stakes
+- **Data:** 18 IMOS weeks (2026-04-27 to 2026-08-24, no gaps) plus, once loaded from Admin → Data, 174 Tableau history weeks back to 2023-01-01; 11 stakes
   fully mapped, the Baptisms (MLC) sheet synced every 15 minutes, the Monday
   MLC Slides deck reading `/api/slides`.
 - **Migrations:** 0001 to 0014 applied locally and remotely.
@@ -23,7 +23,7 @@ _Updated 2026-09-03. History is in `git log`; this page is only what is true now
   session scratchpad, not the repo): import and views (39 checks), a simulated
   transfer (60), unit changes (25), sheet columns (13), privacy (12), the
   Slides feed with the real Apps Script run under Node (37), and transfer-night
-  sheet churn (28), baptism goals (24).
+  sheet churn (28), baptism goals (31), Tableau history loads (27).
 
 ## Open hand-offs
 

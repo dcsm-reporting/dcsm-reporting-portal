@@ -80,15 +80,23 @@ export function GoalsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [suggestMonth, share.data, windowMonths, currentZones, edits, stored]);
 
-  function applySuggestion() {
+  // The suggestions are sent to the zones first and the zones decide; they are
+  // shown here and copied out, never written into the goal cells.
+  const [copied, setCopied] = useState(false);
+  async function copySuggestion() {
     if (!suggestion) return;
-    const next = { ...edits };
-    for (const p of suggestion.parts) next[key(suggestMonth, p.zone)] = String(p.goal);
-    setEdits(next);
-    setMsg(
-      `Suggested ${monthLabel(suggestMonth)} zone goals from each zone's share of ${suggestion.total} baptisms over ` +
-        `${windowMonths.map(monthLabel).join(", ")}. Adjust as needed, then save.`,
-    );
+    const lines = [
+      `Suggested ${monthLabel(suggestMonth)} ${year} baptism goals (mission goal ${suggestion.goal}, ` +
+        `from each zone's share of baptisms ${windowMonths.map(monthLabel).join("–")}):`,
+      ...suggestion.parts.map((p) => `${p.zone}: ${p.goal}`),
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setMsg(lines.join(" · "));
+    }
   }
 
   async function save() {
@@ -219,6 +227,14 @@ export function GoalsPage() {
                 baptisms and goals are kept here.
               </summary>
               <table className="grid" style={{ fontSize: ".85rem", marginTop: ".5rem" }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left" }}>Former</th>
+                    {periods.map((p) => (
+                      <th key={p} style={{ textAlign: "center", minWidth: 62 }}>{monthLabel(p)}</th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>{formerZones.map((z) => row(z, true))}</tbody>
               </table>
             </details>
@@ -231,7 +247,8 @@ export function GoalsPage() {
         <p className="muted" style={{ fontSize: ".85rem", marginTop: ".3rem" }}>
           The mission's practice: each zone's share of the mission's baptisms over the last few months,
           multiplied by the mission's goal for the coming month, rounded so the zone goals add up to it. Set
-          the mission goal for the month first. The suggestion only fills the cells; adjust anything, then save.
+          the mission goal for the month first. The suggestions go to the zones; the zones decide, and their
+          decided goals are what you type into the grid above. Nothing here changes the grid.
         </p>
         <div className="row" style={{ gap: ".8rem", alignItems: "center", flexWrap: "wrap" }}>
           <label className="row" style={{ gap: ".4rem" }}>
@@ -250,8 +267,8 @@ export function GoalsPage() {
               ))}
             </select>
           </label>
-          <button onClick={applySuggestion} disabled={!suggestion}>
-            Suggest {monthLabel(suggestMonth)} zone goals
+          <button onClick={copySuggestion} disabled={!suggestion}>
+            {copied ? "Copied" : "Copy for the zones"}
           </button>
           {share.loading && <span className="muted" style={{ fontSize: ".8rem" }}>loading baptism history…</span>}
           {!suggestion && !share.loading && (

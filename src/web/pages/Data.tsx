@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { api } from "../api.js";
 import { ErrorNote, Loading, useAsync } from "../lib.js";
 
@@ -43,6 +44,8 @@ export function DataPage() {
           For schema-level recovery use <code>scripts/backup.sh</code> (see <code>docs/backup.md</code>).
         </div>
       </div>
+
+      <LegacyLoader />
 
       <details>
         <summary>Imported weeks ({data.imports.length})</summary>
@@ -144,5 +147,132 @@ function Stat({ k, v, sub }: { k: string; v: React.ReactNode; sub?: string }) {
       <div className="v">{v}</div>
       {sub ? <div className="sub">{sub}</div> : null}
     </div>
+  );
+}
+
+/** A small RFC-4180 reader: quoted fields, doubled quotes, CRLF. Header row → objects. */
+function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (q) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else q = false;
+      } else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell);
+      cell = "";
+      if (row.some((c) => c !== "")) rows.push(row);
+      row = [];
+    } else cell += ch;
+  }
+  row.push(cell);
+  if (row.some((c) => c !== "")) rows.push(row);
+  const [hdr, ...body] = rows;
+  if (!hdr) return [];
+  const keys = hdr.map((h) => h.trim().replace(/^\uFEFF/, ""));
+  return body.map((r) => Object.fromEntries(keys.map((k, j) => [k, (r[j] ?? "").trim()])));
+}
+
+/**
+ * Loads the two Tableau history files (docs/legacy-ki-export.md). Week by
+ * week so a stall loses nothing; every call is idempotent, so re-running with
+ * the same file is safe.
+ */
+function LegacyLoader() {
+  const [log, setLog] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const say = (s: string) => setLog((l) => [...l.slice(-400), s]);
+
+  async function loadWeeks(file: File) {
+    setBusy(true);
+    setLog([]);
+    try {
+      const rows = parseCsv(await file.text());
+      const need = ["week_end", "area_id", "zone", "area", "np_goal", "np_actual"];
+      const missing = need.filter((k) => !(k in (rows[0] ?? {})));
+      if (!rows.length || missing.length) throw new Error(`not the indicator file: missing column(s) ${missing.join(", ") || "(empty file)"}`);
+      const byWeek = new Map<string, Record<string, string>[]>();
+      for (const r of rows) byWeek.set(r.week_end!, [...(byWeek.get(r.week_end!) ?? []), r]);
+      const weeks = [...byWeek.keys()].sort();
+      say(`${rows.length} rows, ${weeks.length} weeks (${weeks[0]} to ${weeks[weeks.length - 1]}). Loading…`);
+      let loaded = 0, reused = 0, skipped = 0, facts = 0;
+      for (const w of weeks) {
+        const res = await api.legacyWeek(w, byWeek.get(w)!);
+        if (res.skipped) skipped++;
+        else if (res.reused) reused++;
+        else {
+          loaded++;
+          facts += res.facts;
+        }
+        if ((loaded + reused + skipped) % 10 === 0) say(`… ${loaded + reused + skipped} of ${weeks.length} weeks`);
+      }
+      say(`Done. ${loaded} week(s) loaded (${facts} data points), ${reused} already loaded, ${skipped} left alone because an IMOS import exists for them. Reload the page to see them.`);
+    } catch (e) {
+      say(`Stopped: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadBaptisms(file: File) {
+    setBusy(true);
+    setLog([]);
+    try {
+      const rows = parseCsv(await file.text());
+      const need = ["external_id", "name", "baptism_date", "zone"];
+      const missing = need.filter((k) => !(k in (rows[0] ?? {})));
+      if (!rows.length || missing.length) throw new Error(`not the baptism file: missing column(s) ${missing.join(", ") || "(empty file)"}`);
+      say(`${rows.length} rows. Loading…`);
+      const tot = { already: 0, matchedCurrent: 0, confirmedLegacy: 0, inserted: 0, skipped: 0 };
+      for (let i = 0; i < rows.length; i += 250) {
+        const res = await api.legacyBaptisms(rows.slice(i, i + 250));
+        for (const k of Object.keys(tot) as (keyof typeof tot)[]) tot[k] += res[k];
+        say(`… ${Math.min(i + 250, rows.length)} of ${rows.length}`);
+      }
+      say(
+        `Done. ${tot.inserted} added, ${tot.confirmedLegacy} legacy record(s) confirmed, ${tot.matchedCurrent} already on the sheet or in the portal, ` +
+          `${tot.already} loaded before, ${tot.skipped} without a usable date.`,
+      );
+    } catch (e) {
+      say(`Stopped: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <details style={{ marginTop: "1rem" }}>
+      <summary>Load history from Tableau</summary>
+      <p className="muted" style={{ maxWidth: "70ch", fontSize: ".85rem" }}>
+        Two CSV files prepared as described in <code>docs/legacy-ki-export.md</code>. Weeks that already
+        have an IMOS import are never overwritten. Both loads can be run again with the same file;
+        nothing is duplicated.
+      </p>
+      <div className="row" style={{ gap: "1.2rem", flexWrap: "wrap" }}>
+        <label className="field">
+          <span className="k mono">Indicator rows (week_end, area_id, …)</span>
+          <input type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && loadWeeks(e.target.files[0])} />
+        </label>
+        <label className="field">
+          <span className="k mono">Baptized members (external_id, name, baptism_date, …)</span>
+          <input type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && loadBaptisms(e.target.files[0])} />
+        </label>
+      </div>
+      {log.length > 0 && (
+        <pre className="mono" style={{ fontSize: ".78rem", whiteSpace: "pre-wrap", marginTop: ".6rem" }}>{log.join("\n")}</pre>
+      )}
+    </details>
   );
 }

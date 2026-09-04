@@ -168,6 +168,16 @@ export const api = {
     jget<{ months: { month: string; confirmed: number; unverified: number; goal?: number | null }[] }>(
       `/api/friends/monthly?n=${n}`,
     ),
+  legacyWeek: (weekEnd: string, rows: Record<string, unknown>[]) =>
+    jpost<{ weekStart: string; weekEnd: string; areas: number; facts: number; reused: boolean; skipped?: "imos" }>(
+      "/api/import/legacy",
+      { weekEnd, rows },
+    ),
+  legacyBaptisms: (rows: Record<string, unknown>[]) =>
+    jpost<{ rows: number; already: number; matchedCurrent: number; confirmedLegacy: number; inserted: number; skipped: number }>(
+      "/api/friends/legacy",
+      { rows },
+    ),
   baptismsByZone: (n = 6) => jget<BaptismsByZone>(`/api/friends/by-zone?n=${n}`),
   goals: (year: string) => jget<GoalsView>(`/api/goals?year=${year}`),
   setGoals: (entries: { period: string; zone: string; goal: number | null }[]) =>

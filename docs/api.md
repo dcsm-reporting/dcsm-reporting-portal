@@ -103,6 +103,8 @@ Structure and settings (admin):
 | `POST /api/stake/rename` | `{ from, to }` cascades to units, recipients, friends |
 | `POST /api/recipients` | one stake's president and To list; `/cc { ccAll[] }`; `/template { subject, body }` |
 | `POST /api/admins` | `{ admins?[], viewers?[] }`; the saver must stay on the admin list |
+| `POST /api/import/legacy` | `{ weekEnd, rows[] }` one week of Tableau history (`docs/legacy-ki-export.md`); idempotent; an IMOS week is skipped |
+| `POST /api/friends/legacy` | `{ rows[] }` baptized members from Tableau; idempotent by Tableau id |
 | `POST /api/seed` | `{ weekStart, validFrom? }` first-time crosswalk seed from a stored week |
 
 Every write is recorded in the audit log with the signed-in user.

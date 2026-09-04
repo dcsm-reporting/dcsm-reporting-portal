@@ -17,3 +17,6 @@ backups/
 # personal data. They stay on the office machine / mission Drive, not in git.
 resources/*.xlsx
 resources/wdcs_legacy_baptisms.csv
+
+# Tableau history exports (area rows + baptized members by name)
+resources/legacy/

@@ -74,6 +74,7 @@ import { buildReconcile } from "./reconcile.js";
 import { buildPublish } from "./publish.js";
 import { buildSlides } from "./slides.js";
 import { goalsForMonths, goalsView, progressFor, setGoalRows, type GoalEntry } from "./goals.js";
+import { loadLegacyBaptisms, storeLegacyWeek, type LegacyAreaRow, type LegacyBaptismRow } from "./legacy.js";
 import { getConfig, getStakeRecipients, setConsoleCheck, upsertStakeRecipient } from "./db.js";
 import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import stakeRecipientsSeed from "../../resources/stake_recipients.json";
@@ -130,6 +131,7 @@ const ADMIN_WRITE_PREFIXES = [
 ];
 function needsAdmin(method: string, path: string): boolean {
   if (path === "/api/export") return true;
+  if (path === "/api/import/legacy" || path === "/api/friends/legacy") return true; // history loads
   if (path.startsWith("/api/data/raw/")) return true; // raw IMOS payloads carry every missionary's name
   if (method === "GET" || method === "HEAD") return false;
   if (/^\/api\/rollover\/[^/]+\/apply$/.test(path)) return true;
@@ -760,6 +762,35 @@ app.get("/api/friends/summary", async (c) => {
       goals: await progressFor(c.env.DB, week ?? todayIso()),
     })),
   );
+});
+
+// --- history from Tableau (Admin → Data; docs/legacy-ki-export.md) --------
+app.post("/api/import/legacy", async (c) => {
+  const b = await c.req.json<{ weekEnd?: string; rows?: LegacyAreaRow[] }>();
+  let res;
+  try {
+    res = await storeLegacyWeek(c.env.DB, c.get("user"), String(b.weekEnd ?? ""), b.rows ?? []);
+  } catch (e) {
+    throw new HTTPException(400, { message: (e as Error).message });
+  }
+  if (!res.reused && !res.skipped) {
+    await audit(c.env.DB, c.get("user"), "import.legacy", res);
+    await bumpData(c.env);
+  }
+  return c.json(res);
+});
+
+app.post("/api/friends/legacy", async (c) => {
+  const b = await c.req.json<{ rows?: LegacyBaptismRow[] }>();
+  let res;
+  try {
+    res = await loadLegacyBaptisms(c.env.DB, c.get("user"), b.rows ?? []);
+  } catch (e) {
+    throw new HTTPException(400, { message: (e as Error).message });
+  }
+  await audit(c.env.DB, c.get("user"), "friends.legacy", res);
+  if (res.inserted > 0 || res.confirmedLegacy > 0) await bumpFriends(c.env);
+  return c.json(res);
 });
 
 // --- baptism goals (optional; Admin → Baptism goals) ---------------------

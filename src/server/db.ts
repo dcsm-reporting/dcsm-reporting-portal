@@ -29,7 +29,7 @@ interface Stmt {
   params: unknown[];
 }
 
-function bulkInsert(
+export function bulkInsert(
   table: string,
   columns: string[],
   rows: unknown[][],
@@ -51,7 +51,7 @@ function bulkInsert(
   return out;
 }
 
-async function runBatch(db: D1Database, stmts: Stmt[]): Promise<void> {
+export async function runBatch(db: D1Database, stmts: Stmt[]): Promise<void> {
   if (stmts.length === 0) return;
   const prepared = stmts.map((s) => db.prepare(s.sql).bind(...s.params));
   // D1 batch is atomic; chunk defensively so a giant week never trips a limit.
@@ -61,7 +61,7 @@ async function runBatch(db: D1Database, stmts: Stmt[]): Promise<void> {
   }
 }
 
-function sha256Hex(s: string): Promise<string> {
+export function sha256Hex(s: string): Promise<string> {
   const bytes = new TextEncoder().encode(s);
   return crypto.subtle.digest("SHA-256", bytes).then((buf) =>
     [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join(""),

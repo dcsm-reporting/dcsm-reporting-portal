@@ -34,7 +34,7 @@ export function TrendsPage() {
   const [scope, setScope] = useState<string>("mission");
   const [nWeeks, setNWeeks] = useState(12);
   const [measure, setMeasure] = useState<"actual" | "pct">("actual");
-  const [visible, setVisible] = useState<Set<string>>(new Set(["NP", "BD", "SA"]));
+  const [visible, setVisible] = useState<Set<string>>(new Set(KI_CODES));
 
   const mlcOnly = scope === "mlc";
   const zone = scope !== "mission" && scope !== "mlc" ? scope : null;
@@ -95,7 +95,7 @@ export function TrendsPage() {
         <label className="field" style={{ margin: 0 }}>
           <span className="k mono">Window</span>
           <select value={nWeeks} onChange={(e) => setNWeeks(parseInt(e.target.value, 10))}>
-            {[4, 8, 12, 26, 52].map((n) => (
+            {[4, 8, 12, 26, 52, 104, 156].map((n) => (
               <option key={n} value={n}>{n} weeks</option>
             ))}
           </select>
@@ -228,10 +228,11 @@ function MonthlyBaptisms() {
                   type="monotone"
                   dataKey="goal"
                   name="Goal"
-                  stroke="var(--warn)"
+                  stroke="#d97706"
                   strokeWidth={2}
-                  strokeDasharray="5 4"
-                  dot={{ r: 3, fill: "var(--warn)" }}
+                  strokeDasharray="6 4"
+                  dot={{ r: 4, fill: "#fff", stroke: "#d97706", strokeWidth: 2 }}
+                  activeDot={{ r: 5, fill: "#d97706" }}
                   connectNulls={false}
                   isAnimationActive={false}
                 />

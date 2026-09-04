@@ -78,6 +78,7 @@ export async function buildPublish(db: D1Database, week: string) {
   const reportStakes = new Set(stakeView.stakes);
   const unassigned = friends
     .filter((f) => f.active && (isOnDate(f) || (f.baptizedConfirmed && (f.baptismDate ?? "") >= cutoff)))
+    .filter((f) => f.source !== "tableau")
     .filter((f) => !reportStakes.has(stakeFor(f)))
     .map((f) => ({
       name: f.name,
