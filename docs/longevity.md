@@ -53,6 +53,7 @@ validated on save so a mistake cannot take the portal down.
 | New, split, merged, renamed teaching areas; new wards IMOS starts reporting | Admin → Rollover (suggestions pre-filled) |
 | Which missionary positions make an MLC area, zone display order, zones excluded from mission totals, colour thresholds, expected active-area range | Admin → Reporting settings |
 | Who is an admin | Admin → Admin access |
+| Baptism goals for any month or year, mission or zone (optional) | Admin → Baptism goals |
 | Which tabs and columns the Baptisms sheet sync reads | The header-name table at the top of `apps_script/baptisms-sync.gs` (plain text, no code beyond the list) |
 | The Monday deck after a zone change | Nothing: it reads zones from the portal. Only the zone's roster tab in Baptisms (MLC) needs its name to match |
 

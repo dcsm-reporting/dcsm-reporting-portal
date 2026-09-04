@@ -9,7 +9,8 @@ its numbers from the portal instead of the retired reporting sheets:
 | Zone and mission indicator tiles, this week and 4-week | `GET /api/slides/weekly` and `/monthly` on the portal |
 | MLC share (mission total vs MLC areas, this week and last) | the same call |
 | Zone order, which zones are excluded | the portal (Admin → Reporting settings) |
-| "Has a baptismal date" roster and the monthly goal chip on each zone slide | the Baptisms (MLC) sheet, read directly by the script, one tab per zone |
+| "Has a baptismal date" roster on each zone slide | the Baptisms (MLC) sheet, read directly by the script, one tab per zone |
+| The monthly goal chip ("4/8") on each zone slide | the portal when a goal is set for that zone and month (Admin → Baptism goals), else the tab's D2 cell |
 
 The feed carries numbers only. No names leave the portal this way.
 

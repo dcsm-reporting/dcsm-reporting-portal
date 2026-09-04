@@ -173,11 +173,17 @@ function LayoutEditor({ onSaved }: { onSaved: (m: string) => void }) {
 
             <div className="muted mono" style={{ fontSize: ".72rem", marginTop: "1rem" }}>HEADLINE TILES</div>
             <div className="row" style={{ gap: ".4rem 1rem" }}>
-              {(["baptizedThisMonth", "baptizedThisYear", "onDate"] as const).map((k) => (
+              {(["baptizedThisMonth", "baptizedThisYear", "onDate", "missionGoal"] as const).map((k) => (
                 <label key={k} className="row" style={{ gap: ".3rem" }}>
                   <input type="checkbox" checked={L.stats[k]} onChange={(e) => set({ stats: { ...L.stats, [k]: e.target.checked } })} />
                   <span style={{ fontSize: ".85rem" }}>
-                    {k === "baptizedThisMonth" ? "Baptized this month" : k === "baptizedThisYear" ? "Baptized this year" : "On a baptismal date"}
+                    {k === "baptizedThisMonth"
+                      ? "Baptized this month"
+                      : k === "baptizedThisYear"
+                        ? "Baptized this year"
+                        : k === "onDate"
+                          ? "On a baptismal date"
+                          : "Mission baptisms this month, of goal (only when a goal is set)"}
                   </span>
                 </label>
               ))}

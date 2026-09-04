@@ -30,7 +30,7 @@ export interface StakeReportLayout {
   /** months back for the "baptized" list (1–24) */
   baptizedMonths: number;
   /** headline tiles */
-  stats: { baptizedThisMonth: boolean; baptizedThisYear: boolean; onDate: boolean };
+  stats: { baptizedThisMonth: boolean; baptizedThisYear: boolean; onDate: boolean; missionGoal: boolean };
   /** columns in the on-date list; `extra` = sheet column headers the portal has no named field for */
   onDate: { church2x: boolean; calendar: boolean; ward: boolean; extra: string[] };
   /** flag legacy unverified names in the baptized list */
@@ -66,7 +66,7 @@ export const DEFAULT_STAKE_REPORT_LAYOUT: StakeReportLayout = {
   kis: [...KI_IDS],
   trendWeeks: 12,
   baptizedMonths: 6,
-  stats: { baptizedThisMonth: true, baptizedThisYear: true, onDate: true },
+  stats: { baptizedThisMonth: true, baptizedThisYear: true, onDate: true, missionGoal: false },
   onDate: { church2x: true, calendar: true, ward: true, extra: [] },
   showUnverified: true,
   introText: "",
@@ -108,6 +108,7 @@ export function normalizeLayout(v: unknown): { layout: StakeReportLayout; proble
       baptizedThisMonth: o.stats?.baptizedThisMonth ?? d.stats.baptizedThisMonth,
       baptizedThisYear: o.stats?.baptizedThisYear ?? d.stats.baptizedThisYear,
       onDate: o.stats?.onDate ?? d.stats.onDate,
+      missionGoal: o.stats?.missionGoal ?? d.stats.missionGoal,
     },
     onDate: {
       church2x: o.onDate?.church2x ?? d.onDate.church2x,

@@ -77,7 +77,7 @@ function fmt(iso: string | null): string {
   return y ? `${mon} ${d}` : iso;
 }
 
-function StatTile({ n, label }: { n: number; label: string }) {
+function StatTile({ n, label }: { n: React.ReactNode; label: string }) {
   return (
     <div style={{ flex: 1, border: `1px solid ${HAIR}`, borderRadius: 8, padding: "12px 14px" }}>
       <div style={{ fontSize: 26, fontWeight: 700, fontFamily: '"Spectral", Georgia, serif', lineHeight: 1 }}>
@@ -159,6 +159,11 @@ function renderSection(id: StakeReportLayout["sections"][number]["id"], c: Ctx):
       if (L.stats.baptizedThisMonth) tiles.push(<StatTile key="m" n={r.baptizedThisMonth} label="Baptized this month" />);
       if (L.stats.baptizedThisYear) tiles.push(<StatTile key="y" n={r.baptizedYtd} label="Baptized this year" />);
       if (L.stats.onDate) tiles.push(<StatTile key="d" n={r.onDate.length} label="On a baptismal date" />);
+      if (L.stats.missionGoal && r.missionGoal) {
+        tiles.push(
+          <StatTile key="g" n={`${r.missionGoal.actual} of ${r.missionGoal.goal}`} label="Mission baptisms this month, of goal" />,
+        );
+      }
       return tiles.length ? (
         <div key={id} style={{ display: "flex", gap: 12, marginTop: 14 }}>{tiles}</div>
       ) : null;

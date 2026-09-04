@@ -48,9 +48,10 @@ portal.
 | `GET /api/chase/:week` | | Not reported: `{ open[], newThisTransfer[], acknowledged[] }` |
 | `GET /api/publish/:week` | | Everything Publish renders: `board{zones,byZone,byArea,mlc,monthByZone,monthLabel,bands}`, `reports[]` (one per stake: unit table, totals, series, on-date, baptized, recipients), `layout`, `emailTemplate`, `unassigned[]`, `extraKeys[]` |
 | `GET /api/friends` | `status=on-date|baptized|all`, `zone`, `stake` | `{ friends[] }`, each with name, zone, unit, stake, dates, ticks, `dropped`, `missingSince`, `leftSheetAt`, `extra{}` |
-| `GET /api/friends/summary` | `week` | counts: on date, this week, overdue, baptized this month, last sync time and warnings |
+| `GET /api/friends/summary` | `week` | counts: on date, this week, overdue, baptized this month, last sync time and warnings; `goals` (mission and per-zone month and year progress, `any=false` when no goals are set) |
 | `GET /api/friends/by-stake/:week` | | `{ stake→{ onDate[], baptized[] } }` |
-| `GET /api/friends/monthly` | `n` (months, ≤24) | `[{ month, confirmed, unverified }]` |
+| `GET /api/friends/monthly` | `n` (months, ≤24) | `[{ month, confirmed, unverified, goal }]` (`goal` null when none) |
+| `GET /api/goals` | `year` | the editing grid: `{ year, months[], zones[], rows[{period,zone,goal}], actuals{period→{zone→n}} }`; zone `""` is the mission |
 | `GET /api/reconcile` | `month=YYYY-MM` | named baptisms vs the indicator count, per stake, with the gap |
 | `GET /api/console` | | the Monday checklist: `steps[]` with state and detail, `behind`, `missingWeeks`, `system{…}` |
 | `GET /api/config` | | `{ config, defaults }`: MLC positions, zone order and exclusions, bands, expected area range, stake report layout, kept sheet columns |
@@ -67,7 +68,7 @@ portal.
 
 | Route | Parameters | Returns |
 |---|---|---|
-| `GET /api/slides/weekly` | `week` (default: latest imported) | `{ week, subtitle, zones[{name,kis{BC,BD,SAC,NP,LWM,RCA→{goal,actual}}}], mission, mlc{thisWeek,lastWeek}, window, notes[] }` |
+| `GET /api/slides/weekly` | `week` (default: latest imported) | `{ week, subtitle, zones[{name,kis{BC,BD,SAC,NP,LWM,RCA→{goal,actual}},baptisms{month,goal,actual}|null}], mission, mlc{thisWeek,lastWeek}, window, notes[] }` |
 | `GET /api/slides/monthly` | `week` | the same over the four most recent weeks, plus `detail[]` per zone |
 
 Numbers only. `docs/slides-deck.md` has the full shape and the setup.
@@ -89,6 +90,7 @@ Structure and settings (admin):
 | Route | Body |
 |---|---|
 | `PUT /api/config` | `{ key, value }`; keys and validation in `src/server/config.ts`; a bad value is refused, never stored |
+| `PUT /api/goals` | `{ entries[{ period: "YYYY-MM" or "YYYY", zone ("" = mission), goal (null removes) }] }`; any month, past or future |
 | `POST /api/rollover/:week/apply` | `{ areas[], wards[], retire[], validFrom?, transferDate? }` the accepted transfer plan |
 | `POST /api/crosswalk/attach` | `{ imosAreaId, canonicalAreaKey, validFrom, note? }` |
 | `POST /api/crosswalk/canonical` | `{ key, displayName, createdAt? }`; `/rename { key, displayName }`; `/retire { key, retired }` |

@@ -22,6 +22,7 @@ import { lastCompleteWeekOf, missingMondays, todayIso } from "../shared/dates.js
 import { loadConfig } from "./config.js";
 import { loadFacts, mlcAreaIdsForWeek, weeksAvailable } from "./db.js";
 import { orderedZones, periodLabel, recentWeeks, weekLabel, withMlc } from "./service.js";
+import { progressFor } from "./goals.js";
 
 export type SlidesMode = "weekly" | "monthly";
 
@@ -33,6 +34,8 @@ export interface SlidesZone {
   kis: DeckKis;
   /** monthly only: the window's weeks, oldest first */
   detail: { week: string; label: string; kis: DeckKis }[] | null;
+  /** the zone's baptism goal for the week's month and confirmed baptisms so far; null when no goal is set */
+  baptisms: { month: string; goal: number; actual: number } | null;
 }
 
 export interface SlidesData {
@@ -113,6 +116,11 @@ export async function buildSlides(
   };
   if (!lastStart) notes.push("NOTE: no earlier week is imported; the MLC slide's LAST WEEK block is blank.");
   const generatedAt = new Date().toISOString();
+  const prog = await progressFor(db, target);
+  const baptismsFor = (z: string) => {
+    const g = prog.zones[z];
+    return g && g.month.goal !== null ? { month: prog.month, goal: g.month.goal, actual: g.month.actual } : null;
+  };
 
   if (mode === "weekly") {
     const grid = byZone(facts, exclude);
@@ -121,7 +129,7 @@ export async function buildSlides(
       mode,
       week: target,
       subtitle: weekLabel(target),
-      zones: zones.map((z) => ({ name: z, kis: deckKis(grid[z]), detail: null })),
+      zones: zones.map((z) => ({ name: z, kis: deckKis(grid[z]), detail: null, baptisms: baptismsFor(z) })),
       mission: deckKis(grid[MISSION_KEY]),
       mlc: mlcBlock,
       window: [target],
@@ -154,6 +162,7 @@ export async function buildSlides(
       name: z,
       kis: deckKis(mgrid[z]),
       detail: perWeek.map((p) => ({ week: p.week, label: weekLabel(p.week), kis: deckKis(p.grid[z]) })),
+      baptisms: baptismsFor(z),
     })),
     mission: deckKis(mgrid[MISSION_KEY]),
     mlc: mlcBlock,

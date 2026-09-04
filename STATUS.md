@@ -11,19 +11,19 @@ _Updated 2026-09-03. History is in `git log`; this page is only what is true now
 - **Data:** 18 imported weeks (2026-04-27 to 2026-08-24, no gaps), 11 stakes
   fully mapped, the Baptisms (MLC) sheet synced every 15 minutes, the Monday
   MLC Slides deck reading `/api/slides`.
-- **Migrations:** 0001 to 0013 applied locally and remotely.
+- **Migrations:** 0001 to 0014 applied locally and remotely.
 - **Secrets set:** `FRIENDS_SYNC_SECRET`, `SLIDES_READ_SECRET`.
 - **Last deployed with:** Node 24.19, wrangler 3 (its "out of date" warning is noise).
 
 ## Verified by
 
-- `npm test`: 117 unit tests, including a byte-for-byte diff of the pipeline
+- `npm test`: 125 unit tests, including a byte-for-byte diff of the pipeline
   against the Python reference on 12 sample weeks.
 - End-to-end suites run against a local Worker before each deploy (kept in the
   session scratchpad, not the repo): import and views (39 checks), a simulated
   transfer (60), unit changes (25), sheet columns (13), privacy (12), the
   Slides feed with the real Apps Script run under Node (37), and transfer-night
-  sheet churn (28).
+  sheet churn (28), baptism goals (24).
 
 ## Open hand-offs
 

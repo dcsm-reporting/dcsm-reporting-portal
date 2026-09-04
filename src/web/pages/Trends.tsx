@@ -4,6 +4,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Legend,
   Line,
   LineChart,
@@ -185,10 +186,12 @@ function MonthlyBaptisms() {
         label: fmtMonth(m.month),
         confirmed: m.confirmed,
         unverified: m.unverified,
+        goal: m.goal ?? null,
       })),
     [data],
   );
   const hasUnverified = rows.some((r) => r.unverified > 0);
+  const hasGoal = rows.some((r) => r.goal !== null);
 
   return (
     <>
@@ -198,7 +201,7 @@ function MonthlyBaptisms() {
       {data && (
         <div style={{ width: "100%", height: 260 }}>
           <ResponsiveContainer>
-            <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+            <ComposedChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
               <CartesianGrid stroke="var(--rule)" strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--ink-soft)" }} />
               <YAxis tick={{ fontSize: 11, fill: "var(--ink-soft)" }} width={36} allowDecimals={false} />
@@ -210,7 +213,7 @@ function MonthlyBaptisms() {
                   fontSize: 12,
                 }}
               />
-              {hasUnverified && <Legend />}
+              {(hasUnverified || hasGoal) && <Legend />}
               <Bar dataKey="confirmed" name="Confirmed" stackId="b" fill="var(--accent)" radius={hasUnverified ? [0, 0, 0, 0] : [3, 3, 0, 0]}>
                 {rows.map((_, i) => (
                   <Cell key={i} />
@@ -219,13 +222,26 @@ function MonthlyBaptisms() {
               {hasUnverified && (
                 <Bar dataKey="unverified" name="Unverified (legacy)" stackId="b" fill="var(--rule-strong)" radius={[3, 3, 0, 0]} />
               )}
-            </BarChart>
+              {hasGoal && (
+                <Line
+                  type="monotone"
+                  dataKey="goal"
+                  name="Goal"
+                  stroke="var(--warn)"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={{ r: 3, fill: "var(--warn)" }}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
       <p className="muted" style={{ fontSize: ".8rem" }}>
         Named completed baptisms by the month of the baptism date, from the Baptisms (MLC) sheet and
-        portal records.
+        portal records.{hasGoal ? " The dashed line is the mission goal (Admin → Baptism goals)." : ""}
       </p>
     </>
   );

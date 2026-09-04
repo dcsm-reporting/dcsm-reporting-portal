@@ -122,6 +122,26 @@ export interface ChaseView {
   areas: NotReportedArea[];
 }
 
+export interface GoalProgressCell {
+  goal: number | null;
+  actual: number;
+  derived: boolean;
+}
+export interface GoalProgress {
+  month: string;
+  year: string;
+  mission: { month: GoalProgressCell; year: GoalProgressCell };
+  zones: Record<string, { month: GoalProgressCell; year: GoalProgressCell }>;
+  any: boolean;
+}
+export interface GoalsView {
+  year: string;
+  months: string[];
+  zones: string[];
+  rows: { period: string; zone: string; goal: number }[];
+  actuals: Record<string, Record<string, number>>;
+}
+
 export const api = {
   me: () => jget<{ user: string; isAdmin: boolean; authorized?: boolean }>("/api/me"),
   admins: () => jget<{ admins: string[]; viewers: string[] }>("/api/admins"),
@@ -140,9 +160,12 @@ export const api = {
     return jget<{ rows: SeriesRow[]; goals: SeriesRow[] }>(`/api/trends?${p}`);
   },
   monthlyBaptisms: (n = 6) =>
-    jget<{ months: { month: string; confirmed: number; unverified: number }[] }>(
+    jget<{ months: { month: string; confirmed: number; unverified: number; goal?: number | null }[] }>(
       `/api/friends/monthly?n=${n}`,
     ),
+  goals: (year: string) => jget<GoalsView>(`/api/goals?year=${year}`),
+  setGoals: (entries: { period: string; zone: string; goal: number | null }[]) =>
+    jput<{ ok: true; written: number; removed: number }>("/api/goals", { entries }),
   stakes: (w: string) => jget<StakeView>(`/api/stakes/${w}`),
   chase: (w: string) => jget<ChaseView>(`/api/chase/${w}`),
   ackNotReported: (w: string, imosAreaId: number, reason: string) =>
@@ -304,6 +327,7 @@ export interface StakeReport {
   baptized6mo: { name: string; ward: string | null; baptismDate: string | null; confidence: string | null }[];
   baptizedThisMonth: number;
   baptizedYtd: number;
+  missionGoal?: { month: string; goal: number; actual: number } | null;
 }
 
 export interface PublishView {
@@ -397,6 +421,7 @@ export interface FriendRow {
   extra?: Record<string, string>;
 }
 export interface FriendsSummary {
+  goals?: GoalProgress | null;
   onDateTotal: number;
   onDateThisWeek: number;
   overdueCount: number;

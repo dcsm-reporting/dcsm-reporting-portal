@@ -72,6 +72,7 @@ import {
 import { buildReconcile } from "./reconcile.js";
 import { buildPublish } from "./publish.js";
 import { buildSlides } from "./slides.js";
+import { goalsForMonths, goalsView, progressFor, setGoalRows, type GoalEntry } from "./goals.js";
 import { getConfig, getStakeRecipients, setConsoleCheck, upsertStakeRecipient } from "./db.js";
 import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import stakeRecipientsSeed from "../../resources/stake_recipients.json";
@@ -124,6 +125,7 @@ const ADMIN_WRITE_PREFIXES = [
   "/api/ward/",
   "/api/recipients",
   "/api/admins",
+  "/api/goals",
 ];
 function needsAdmin(method: string, path: string): boolean {
   if (path === "/api/export") return true;
@@ -729,9 +731,11 @@ app.get("/api/friends/monthly", async (c) => {
   const n = Math.min(24, Math.max(1, parseInt(c.req.query("n") || "6", 10) || 6));
   const keyDay = todayIso();
   return c.json(
-    await cached(c.env, `friends-monthly:${n}:${keyDay}`, "friends", async () => ({
-      months: await monthlyBaptisms(c.env.DB, n),
-    })),
+    await cached(c.env, `friends-monthly:v2:${n}:${keyDay}`, "friends", async () => {
+      const months = await monthlyBaptisms(c.env.DB, n);
+      const goals = await goalsForMonths(c.env.DB, months.map((m) => m.month));
+      return { months: months.map((m) => ({ ...m, goal: goals[m.month] ?? null })) };
+    }),
   );
 });
 
@@ -742,10 +746,31 @@ app.get("/api/friends/summary", async (c) => {
   const week = c.req.query("week") || null;
   const keyDay = week ?? todayIso();
   return c.json(
-    await cached(c.env, `friends-summary:${keyDay}`, "friends", () =>
-      friendsSummary(c.env.DB, week),
-    ),
+    await cached(c.env, `friends-summary:v2:${keyDay}`, "friends", async () => ({
+      ...(await friendsSummary(c.env.DB, week)),
+      goals: await progressFor(c.env.DB, week ?? todayIso()),
+    })),
   );
+});
+
+// --- baptism goals (optional; Admin → Baptism goals) ---------------------
+app.get("/api/goals", async (c) => {
+  const year = c.req.query("year") || todayIso().slice(0, 4);
+  if (!/^\d{4}$/.test(year)) throw new HTTPException(400, { message: "year must be YYYY" });
+  return c.json(await cached(c.env, `goals:${year}`, "friends", () => goalsView(c.env.DB, year)));
+});
+
+app.put("/api/goals", async (c) => {
+  const b = await c.req.json<{ entries?: GoalEntry[] }>();
+  let res: { written: number; removed: number };
+  try {
+    res = await setGoalRows(c.env.DB, c.get("user"), b.entries ?? []);
+  } catch (e) {
+    throw new HTTPException(400, { message: (e as Error).message });
+  }
+  await audit(c.env.DB, c.get("user"), "goals.set", { entries: (b.entries ?? []).length, ...res });
+  await bumpFriends(c.env);
+  return c.json({ ok: true, ...res });
 });
 
 app.get("/api/friends/by-stake/:week", async (c) => {
@@ -850,6 +875,7 @@ const EXPORT_TABLES = [
   "import_run", "ki_fact", "ward_fact", "missionary_snapshot", "area_history",
   "canonical_area", "area_crosswalk", "area_ward", "friend", "friend_week",
   "friend_sync", "not_reported_ack", "console_check", "stake_recipients", "config", "audit_log",
+  "baptism_goal",
 ] as const;
 app.get("/api/export", async (c) => {
   const db = c.env.DB;

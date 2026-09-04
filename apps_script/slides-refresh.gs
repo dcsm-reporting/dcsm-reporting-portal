@@ -1189,7 +1189,13 @@ function gatherWeekly_() {
   return {
     subtitle: data.subtitle,
     zones: data.zones.map(function (z) {
-      return { name: z.name, kis: z.kis, detail: null, roster: rosterFor_(rosters, z.name) };
+      var roster = rosterFor_(rosters, z.name);
+      // The goal chip: from the portal when a goal is set there (Admin → Baptism
+      // goals), else whatever the tab's D2 cell says.
+      if (roster && z.baptisms && z.baptisms.goal) {
+        roster.goal = z.baptisms.actual + '/' + z.baptisms.goal;
+      }
+      return { name: z.name, kis: z.kis, detail: null, roster: roster };
     }),
     mission: data.mission,
     mlc: data.mlc,

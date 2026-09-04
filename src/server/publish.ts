@@ -11,6 +11,7 @@ import { dedupeBaptized, isOnDate, stakeForFriend } from "../pipeline/friends.js
 import { DEFAULT_EMAIL_TEMPLATE, type EmailTemplate } from "../shared/emailTemplate.js";
 import { getAreaWardRows, weeksAvailable } from "./db.js";
 import { listFriends, stakeLookup } from "./friends.js";
+import { progressFor } from "./goals.js";
 import { buildStakeView, buildWeekView, weekLabel } from "./service.js";
 import { getStakeRecipients } from "./db.js";
 import { getConfig } from "./db.js";
@@ -38,6 +39,8 @@ export interface StakeReport {
   baptized6mo: { name: string; ward: string | null; baptismDate: string | null; confidence: string | null }[];
   baptizedThisMonth: number;
   baptizedYtd: number;
+  /** the mission's baptism goal for the report month, when one is set */
+  missionGoal: { month: string; goal: number; actual: number } | null;
 }
 
 export async function buildPublish(db: D1Database, week: string) {
@@ -54,6 +57,11 @@ export async function buildPublish(db: D1Database, week: string) {
   ]);
   const recipients = await getStakeRecipients(db);
   const recByStake = new Map(recipients.map((r) => [r.stake, r]));
+  const prog = await progressFor(db, week);
+  const missionGoal =
+    prog.mission.month.goal !== null
+      ? { month: prog.month, goal: prog.mission.month.goal, actual: prog.mission.month.actual }
+      : null;
 
   const all = await weeksAvailable(db);
   const { stakeOfWard, knownStakes } = stakeLookup(areaWard, week);
@@ -120,6 +128,7 @@ export async function buildPublish(db: D1Database, week: string) {
       baptizedYtd: myBaptized.filter(
         (f) => confirmedTier(f.confidence) && (f.baptismDate ?? "").startsWith(year),
       ).length,
+      missionGoal,
     };
   });
 

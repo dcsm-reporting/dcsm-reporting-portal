@@ -130,15 +130,42 @@ export function FriendsPage() {
             v={summary.data.onDateThisWeek}
             sub={`${fmtShort(summary.data.weekStart)} to ${fmtShort(summary.data.weekEnd)}`}
           />
-          <Stat
-            k="Baptized this month"
-            v={summary.data.baptizedThisMonth}
-            sub={
-              summary.data.baptizedThisMonthUnverified > 0
-                ? `${MONTHS[parseInt(summary.data.month.slice(5), 10) - 1]} · +${summary.data.baptizedThisMonthUnverified} unverified`
-                : MONTHS[parseInt(summary.data.month.slice(5), 10) - 1]
+          {(() => {
+            const g = summary.data.goals;
+            const zg = zone && g?.zones?.[zone] ? g.zones[zone] : null;
+            const cell = zg ? zg.month : g?.mission.month;
+            const monthName = MONTHS[parseInt(summary.data.month.slice(5), 10) - 1];
+            const unv = summary.data.baptizedThisMonthUnverified;
+            if (cell && cell.goal !== null) {
+              return (
+                <Stat
+                  k={zg ? `${zone}: baptized this month` : "Baptized this month"}
+                  v={`${cell.actual} of ${cell.goal}`}
+                  sub={`${monthName} goal${cell.derived ? " (sum of zone goals)" : ""}${!zg && unv > 0 ? ` · +${unv} unverified` : ""}`}
+                />
+              );
             }
-          />
+            return (
+              <Stat
+                k="Baptized this month"
+                v={summary.data.baptizedThisMonth}
+                sub={unv > 0 ? `${monthName} · +${unv} unverified` : monthName}
+              />
+            );
+          })()}
+          {(() => {
+            const g = summary.data.goals;
+            const zg = zone && g?.zones?.[zone] ? g.zones[zone] : null;
+            const cell = zg ? zg.year : g?.mission.year;
+            if (!cell || cell.goal === null) return null;
+            return (
+              <Stat
+                k={zg ? `${zone}: baptized in ${g!.year}` : `Baptized in ${g!.year}`}
+                v={`${cell.actual} of ${cell.goal}`}
+                sub={`year goal${cell.derived ? " (sum of zone goals)" : ""}`}
+              />
+            );
+          })()}
           <Stat
             k="Baptismal calendar prepared"
             v={`${summary.data.calendarYes} of ${summary.data.calendarYes + summary.data.calendarNo}`}
