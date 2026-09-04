@@ -20,6 +20,15 @@ import { ErrorNote, KI_CODE, KI_IDS, Loading, PageHead, useAsync, useWeek } from
 // Tableau's Key Indicator colours, in KI_IDS order: BC cyan, BD crimson, SA orange, NP green, LMP yellow, NMS navy
 const COLORS = ["#35b7d5", "#a4145a", "#f28c1a", "#2e9e4f", "#e6b422", "#1f3d5c"];
 const KI_CODES = KI_IDS.map((ki) => KI_CODE[ki]);
+/** Window choices: weeks while weeks are easy to picture, then calendar-sized spans. */
+const WINDOWS: [number, string][] = [
+  [4, "4 weeks"], [8, "8 weeks"], [12, "12 weeks"], [26, "6 months"], [52, "1 year"], [104, "2 years"], [156, "3 years"],
+];
+/** "Week of 8/24" inside one calendar year; "Week of 8/24/2025" once the window crosses a year. */
+function weekLabelFor(weekStart: string, withYear: boolean): string {
+  const [y, m, d] = weekStart.split("-").map((x) => parseInt(x, 10));
+  return withYear ? `${m}/${d}/${y}` : `Week of ${m}/${d}`;
+}
 const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
@@ -47,9 +56,11 @@ export function TrendsPage() {
   const chartData = useMemo(() => {
     const rows = data?.rows ?? [];
     const goals = data?.goals ?? [];
+    const years = new Set(rows.map((r) => r.weekStart.slice(0, 4)));
+    const withYear = years.size > 1;
     return rows.map((row, i) => {
       const g = goals[i];
-      const point: Record<string, number | string | null> = { label: row.label };
+      const point: Record<string, number | string | null> = { label: weekLabelFor(row.weekStart, withYear) };
       for (const code of KI_CODES) {
         const a = row[code as "NP"];
         if (measure === "pct") {
@@ -96,8 +107,8 @@ export function TrendsPage() {
         <label className="field" style={{ margin: 0 }}>
           <span className="k mono">Window</span>
           <select value={nWeeks} onChange={(e) => setNWeeks(parseInt(e.target.value, 10))}>
-            {[4, 8, 12, 26, 52, 104, 156].map((n) => (
-              <option key={n} value={n}>{n} weeks</option>
+            {WINDOWS.map(([n, label]) => (
+              <option key={n} value={n}>{label}</option>
             ))}
           </select>
         </label>
