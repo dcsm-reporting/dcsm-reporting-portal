@@ -7,7 +7,9 @@ yearly checks that keep the portal alive are in `docs/longevity.md`.
 
 - **Access token check**: `docs/access-token-check.md`. Two lines in
   `wrangler.toml`, one deploy.
-- **Weekly backup cron**: two GitHub Actions secrets, `docs/backup.md`.
+- **Backup cron, later in September 2026**: before arming it, change the cadence
+  to monthly or point it at Cloudflare R2 (the dump is now about 33 MB and git
+  keeps every copy), then add the two GitHub Actions secrets. `docs/backup.md`.
 - **Decisions for the president or the Data Privacy Officer**: `docs/privacy.md` §6.
 
 ## Ideas worth building
