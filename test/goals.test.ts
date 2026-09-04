@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baptismProgress, isGoalValue, isPeriod, missionGoal, monthlyMissionGoals, type GoalRow } from "../src/pipeline/goals.js";
+import { apportion, baptismProgress, isGoalValue, isPeriod, missionGoal, monthlyMissionGoals, type GoalRow } from "../src/pipeline/goals.js";
 
 const friend = (name: string, date: string | null, zone: string, extra: Partial<{ baptizedConfirmed: boolean; confidence: string | null; source: string }> = {}) => ({
   name,
@@ -82,5 +82,23 @@ describe("progress", () => {
     expect(none.mission.month.goal).toBeNull();
     expect(none.mission.month.actual).toBe(4);
     expect(none.zones).toEqual({});
+  });
+});
+
+describe("apportion (suggested zone goals)", () => {
+  it("splits a mission goal by share and sums exactly", () => {
+    expect(apportion(20, [9, 6, 4, 1])).toEqual([9, 6, 4, 1]);
+    const parts = apportion(20, [7, 7, 7]);
+    expect(parts.reduce((s, n) => s + n, 0)).toBe(20);
+    expect(parts).toEqual([7, 7, 6]);
+  });
+  it("gives the remainder to the largest fractional shares", () => {
+    expect(apportion(10, [1, 1, 1, 1, 1, 1])).toEqual([2, 2, 2, 2, 1, 1]);
+    expect(apportion(15, [50, 30, 20])).toEqual([8, 4, 3]);
+  });
+  it("handles zero weights and zero goals", () => {
+    expect(apportion(12, [0, 0])).toEqual([0, 0]);
+    expect(apportion(0, [3, 2])).toEqual([0, 0]);
+    expect(apportion(5, [0, 5])).toEqual([0, 5]);
   });
 });

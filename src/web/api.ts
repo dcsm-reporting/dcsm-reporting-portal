@@ -134,6 +134,11 @@ export interface GoalProgress {
   zones: Record<string, { month: GoalProgressCell; year: GoalProgressCell }>;
   any: boolean;
 }
+export interface BaptismsByZone {
+  months: string[];
+  zones: { zone: string; counts: Record<string, number>; total: number; share: number }[];
+  mission: { counts: Record<string, number>; total: number };
+}
 export interface GoalsView {
   year: string;
   months: string[];
@@ -163,6 +168,7 @@ export const api = {
     jget<{ months: { month: string; confirmed: number; unverified: number; goal?: number | null }[] }>(
       `/api/friends/monthly?n=${n}`,
     ),
+  baptismsByZone: (n = 6) => jget<BaptismsByZone>(`/api/friends/by-zone?n=${n}`),
   goals: (year: string) => jget<GoalsView>(`/api/goals?year=${year}`),
   setGoals: (entries: { period: string; zone: string; goal: number | null }[]) =>
     jput<{ ok: true; written: number; removed: number }>("/api/goals", { entries }),

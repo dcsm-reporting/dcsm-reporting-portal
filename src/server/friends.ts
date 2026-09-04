@@ -240,6 +240,65 @@ export async function monthlyBaptisms(
   });
 }
 
+/**
+ * Confirmed baptisms per zone per calendar month over the last `months`
+ * months, with each zone's share of the mission total across the window.
+ * This is the number the mission uses to suggest zone goals: a zone's share of
+ * recent baptisms times the mission's goal for the coming month.
+ */
+export async function baptismsByZone(
+  db: D1Database,
+  months = 6,
+): Promise<{
+  months: string[];
+  zones: { zone: string; counts: Record<string, number>; total: number; share: number }[];
+  mission: { counts: Record<string, number>; total: number };
+}> {
+  const keys = recentMonthKeys(months, todayIso());
+  const earliest = keys[0]!;
+  const { results } = await db
+    .prepare(
+      `SELECT name, zone, baptism_date, confidence, source
+       FROM friend WHERE baptized_confirmed = 1 AND baptism_date >= ?`,
+    )
+    .bind(`${earliest}-01`)
+    .all<{ name: string; zone: string | null; baptism_date: string; confidence: string | null; source: string }>();
+  const conf = (c: string | null) => c === null || c === "confirmed";
+  const rows = dedupeBaptized(
+    (results ?? []).map((r) => ({
+      name: r.name,
+      zone: r.zone,
+      baptismDate: r.baptism_date,
+      confidence: r.confidence,
+      source: r.source,
+    })),
+  ).filter((r) => conf(r.confidence) && keys.includes((r.baptismDate ?? "").slice(0, 7)));
+
+  const byZone = new Map<string, Record<string, number>>();
+  const mission: Record<string, number> = {};
+  for (const k of keys) mission[k] = 0;
+  for (const r of rows) {
+    const m = r.baptismDate!.slice(0, 7);
+    const z = r.zone?.trim() || "(no zone)";
+    let c = byZone.get(z);
+    if (!c) {
+      c = {};
+      for (const k of keys) c[k] = 0;
+      byZone.set(z, c);
+    }
+    c[m] = (c[m] ?? 0) + 1;
+    mission[m] = (mission[m] ?? 0) + 1;
+  }
+  const missionTotal = rows.length;
+  const zones = [...byZone.entries()]
+    .map(([zone, counts]) => {
+      const total = Object.values(counts).reduce((s, n) => s + n, 0);
+      return { zone, counts, total, share: missionTotal ? total / missionTotal : 0 };
+    })
+    .sort((a, b) => b.total - a.total || a.zone.localeCompare(b.zone));
+  return { months: keys, zones, mission: { counts: mission, total: missionTotal } };
+}
+
 // --- portal-native record (close-the-gap on reconciliation) --------------
 export interface RecordInput {
   name: string;

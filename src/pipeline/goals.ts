@@ -134,3 +134,25 @@ export function monthlyMissionGoals(rows: readonly GoalRow[], months: readonly s
   for (const m of months) out[m] = missionGoal(rows, m).goal;
   return out;
 }
+
+/**
+ * Largest-remainder split of `total` in proportion to `weights`: whole
+ * numbers that add up to exactly `total`. Used to turn each zone's share of
+ * recent baptisms into suggested zone goals that sum to the mission goal.
+ */
+export function apportion(total: number, weights: readonly number[]): number[] {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  if (sum <= 0 || total <= 0) return weights.map(() => 0);
+  const exact = weights.map((w) => (w / sum) * total);
+  const floors = exact.map(Math.floor);
+  let left = total - floors.reduce((s, n) => s + n, 0);
+  const order = exact
+    .map((x, i) => ({ i, frac: x - Math.floor(x) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (const { i } of order) {
+    if (left <= 0) break;
+    floors[i]! += 1;
+    left--;
+  }
+  return floors;
+}

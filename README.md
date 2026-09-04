@@ -17,6 +17,7 @@ the data, Cloudflare Access for sign-in. Free to run, owned by a role account.
 | `docs/friends-sheet-bridge.md` | The Baptisms (MLC) sheet sync |
 | `docs/slides-deck.md` | The Monday MLC Slides deck |
 | `docs/api.md` | Every API route, for anyone building on the portal |
+| `docs/legacy-ki-export.md` | Loading indicator history from Tableau: the file format and a prompt to prepare it |
 | `docs/backup.md` | Backups and recovery |
 | `docs/privacy.md` | Church data-privacy assessment |
 | `docs/access-token-check.md` | Optional hardening of sign-in |

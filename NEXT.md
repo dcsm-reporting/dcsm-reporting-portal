@@ -42,4 +42,4 @@ previous systems fragile.
   trail and stay (`docs/anomalies.md`, "Data growth over years").
 - **Roles**: viewer list and admin list under Admin → Admin access.
 - **Monday MLC Slides**: reads the portal (`docs/slides-deck.md`).
-- **Baptism goals**: Admin → Baptism goals; optional, any month editable. Shown on the Baptisms page, the Trends chart, the deck's zone chips, and the stake report tile when enabled. Next step when wanted: serve the deck's rosters from the portal too, so the Slides script stops reading the sheet.
+- **Baptism goals**: Admin → Baptism goals; optional, any month editable; zone goals need not sum to the mission goal; "Suggest" fills zones from their share of recent baptisms (Trends → Baptisms by zone shows the shares). Shown on the Baptisms page, the Trends chart, the deck's zone chips, and the stake report tile when enabled. Next step when wanted: serve the deck's rosters from the portal too, so the Slides script stops reading the sheet.

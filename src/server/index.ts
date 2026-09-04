@@ -65,6 +65,7 @@ import {
   friendsSummary,
   listFriends,
   monthlyBaptisms,
+  baptismsByZone,
   recordBaptism,
   syncFriends,
   type SheetRow,
@@ -739,6 +740,14 @@ app.get("/api/friends/monthly", async (c) => {
   );
 });
 
+/** Baptisms per zone per month and each zone's share: the basis for suggested zone goals. */
+app.get("/api/friends/by-zone", async (c) => {
+  const n = Math.min(24, Math.max(1, parseInt(c.req.query("n") || "6", 10) || 6));
+  return c.json(
+    await cached(c.env, `friends-by-zone:${n}:${todayIso()}`, "friends", () => baptismsByZone(c.env.DB, n)),
+  );
+});
+
 app.get("/api/friends/summary", async (c) => {
   // No ?week → measure "this week" / "this month" against today's calendar
   // week and month (the STL sheet works in real time, not IMOS weeks). The
@@ -1070,7 +1079,7 @@ app.get("/api/slides/:mode", async (c) => {
   if (week && !isIsoDate(week)) throw new HTTPException(400, { message: "week must be YYYY-MM-DD" });
   const today = todayIso();
   return c.json(
-    await cached(c.env, `slides:v1:${mode}:${week ?? "latest"}:${today}`, "ki", () =>
+    await cached(c.env, `slides:v1:${mode}:${week ?? "latest"}:${today}`, "both", () =>
       buildSlides(c.env.DB, mode, week, today),
     ),
   );

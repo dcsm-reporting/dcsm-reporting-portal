@@ -174,6 +174,7 @@ export function TrendsPage() {
       )}
 
       <MonthlyBaptisms />
+      <BaptismsByZone />
     </>
   );
 }
@@ -243,6 +244,87 @@ function MonthlyBaptisms() {
         Named completed baptisms by the month of the baptism date, from the Baptisms (MLC) sheet and
         portal records.{hasGoal ? " The dashed line is the mission goal (Admin → Baptism goals)." : ""}
       </p>
+    </>
+  );
+}
+
+/**
+ * Who the baptisms came from. The last column is each zone's share of the
+ * mission total over the window, which is what the mission multiplies by the
+ * next month's goal to suggest zone goals (Admin → Baptism goals).
+ */
+function BaptismsByZone() {
+  const [n, setN] = useState(6);
+  const { data, err, loading } = useAsync(() => api.baptismsByZone(n), [n]);
+  const maxShare = Math.max(0.01, ...(data?.zones ?? []).map((z) => z.share));
+  return (
+    <>
+      <div className="row" style={{ alignItems: "baseline", gap: "1rem", marginTop: "2.4rem" }}>
+        <h3 style={{ margin: 0 }}>Baptisms by zone</h3>
+        <select value={n} onChange={(e) => setN(parseInt(e.target.value, 10))} aria-label="Months">
+          {[3, 6, 12].map((k) => (
+            <option key={k} value={k}>last {k} months</option>
+          ))}
+        </select>
+      </div>
+      {loading && <Loading what="baptisms by zone" />}
+      {err && <ErrorNote err={err} />}
+      {data && data.mission.total === 0 && <p className="muted">No confirmed baptisms in this window.</p>}
+      {data && data.mission.total > 0 && (
+        <div style={{ overflowX: "auto", marginTop: ".6rem" }}>
+          <table className="grid" style={{ fontSize: ".85rem" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Zone</th>
+                {data.months.map((m) => (
+                  <th key={m} style={{ textAlign: "right" }}>{fmtMonth(m)}</th>
+                ))}
+                <th style={{ textAlign: "right" }}>Total</th>
+                <th style={{ textAlign: "left", minWidth: 160 }}>Share of mission</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.zones.map((z) => (
+                <tr key={z.zone}>
+                  <td className="row-head">{z.zone}</td>
+                  {data.months.map((m) => (
+                    <td key={m} style={{ textAlign: "right" }} className={z.counts[m] ? "" : "muted"}>
+                      {z.counts[m] || "·"}
+                    </td>
+                  ))}
+                  <td style={{ textAlign: "right", fontWeight: 600 }}>{z.total}</td>
+                  <td>
+                    <div className="row" style={{ gap: ".5rem", alignItems: "center" }}>
+                      <div
+                        style={{
+                          height: 8,
+                          width: `${Math.round((z.share / maxShare) * 110)}px`,
+                          background: "var(--accent)",
+                          borderRadius: 4,
+                          opacity: 0.85,
+                        }}
+                      />
+                      <span className="mono" style={{ fontSize: ".78rem" }}>{Math.round(z.share * 100)}%</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <td className="row-head" style={{ fontWeight: 700 }}>Mission</td>
+                {data.months.map((m) => (
+                  <td key={m} style={{ textAlign: "right", fontWeight: 600 }}>{data.mission.counts[m] || "·"}</td>
+                ))}
+                <td style={{ textAlign: "right", fontWeight: 700 }}>{data.mission.total}</td>
+                <td className="muted mono" style={{ fontSize: ".78rem" }}>100%</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="muted" style={{ fontSize: ".8rem" }}>
+            Confirmed baptisms by the zone on the record at the time. Share is over the whole window. The
+            suggested zone goals under Admin → Baptism goals multiply this share by the mission's goal.
+          </p>
+        </div>
+      )}
     </>
   );
 }

@@ -51,6 +51,7 @@ portal.
 | `GET /api/friends/summary` | `week` | counts: on date, this week, overdue, baptized this month, last sync time and warnings; `goals` (mission and per-zone month and year progress, `any=false` when no goals are set) |
 | `GET /api/friends/by-stake/:week` | | `{ stake→{ onDate[], baptized[] } }` |
 | `GET /api/friends/monthly` | `n` (months, ≤24) | `[{ month, confirmed, unverified, goal }]` (`goal` null when none) |
+| `GET /api/friends/by-zone` | `n` (months, ≤24) | `{ months[], zones[{ zone, counts{month→n}, total, share }], mission{counts,total} }`: confirmed baptisms per zone per month and each zone's share of the window (the basis for suggested zone goals) |
 | `GET /api/goals` | `year` | the editing grid: `{ year, months[], zones[], rows[{period,zone,goal}], actuals{period→{zone→n}} }`; zone `""` is the mission |
 | `GET /api/reconcile` | `month=YYYY-MM` | named baptisms vs the indicator count, per stake, with the gap |
 | `GET /api/console` | | the Monday checklist: `steps[]` with state and detail, `behind`, `missingWeeks`, `system{…}` |
