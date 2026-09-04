@@ -84,6 +84,40 @@ Then report, in plain text:
 Give me the CSV as a downloadable file, not pasted in chat.
 ```
 
+## The baptism list (optional second file)
+
+Tableau's "Key Indicator Performance by Person" view lists, under "People
+Baptized and Confirmed", every baptized person with the baptism date. That
+list confirms the portal's legacy baptism records (the ones held as
+"unverified") and fills months the old sheets missed. Only this panel is
+wanted; the other four panels are live teaching lists the portal already
+mirrors from the Baptisms (MLC) sheet.
+
+One CSV, these headers:
+
+```
+name,baptism_date,zone,district,area
+```
+
+- `baptism_date` as `YYYY-MM-DD`; names exactly as shown, trimmed. Drop any
+  emoji or icon characters Tableau appends to names.
+- If the export does not carry zone and area, download once per zone with the
+  zone filter set and add the zone column from the filter.
+
+Add this to the preparation prompt:
+
+```
+I also have exports of a Tableau view called "Key Indicator Performance by
+Person", panel "People Baptized and Confirmed": a name and a baptism date per
+row, possibly with zone, district and teaching area. Produce a second CSV with
+the header name,baptism_date,zone,district,area. Dates as YYYY-MM-DD (check
+the day/month order the same way as before). Strip any emoji or icon
+characters from names. Keep one row per (name, baptism_date). If a file came
+from a single-zone filter, fill its zone column with that zone. Sort by
+baptism_date then name, and report the first and last date and the count per
+month.
+```
+
 ## What happens next
 
 Once the file exists, the portal gets a one-off loader that stores each week
