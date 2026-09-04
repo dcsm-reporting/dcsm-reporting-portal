@@ -39,7 +39,7 @@ npm run seed:local           # 12 sample weeks + the crosswalk
 ## Test and deploy
 
 ```bash
-npm test                     # 117 tests, including the diff against the Python reference
+npm test                     # 125 tests, including the diff against the Python reference
 npm run typecheck
 npm run db:migrate:remote    # only when migrations/ gained a file
 npm run deploy
