@@ -46,7 +46,8 @@ npm run deploy
 ```
 
 Apply a new migration to production **before** deploying code that reads the
-new column. Bump a route's cache key when its response shape changes
+new column, and confirm it landed: `npx wrangler d1 migrations list dcsm_ki --remote`
+must show nothing pending (a non-interactive shell can skip the apply silently). Bump a route's cache key when its response shape changes
 (`docs/longevity.md` §11).
 
 ## Layout
